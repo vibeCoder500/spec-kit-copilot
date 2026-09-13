@@ -1,0 +1,644 @@
+{
+  "schemaVersion": 1,
+  "fixtureId": "7ad6452f-c85f-4aeb-bea3-8d32d8295d1a",
+  "sourceKind": "local-development-payload",
+  "plugins": [
+    {
+      "id": "spec-kit-copilot-wizard",
+      "extensionPath": "extensions/speckit-wizard-canvas",
+      "files": [
+        {
+          "path": "extensions/speckit-wizard-canvas/canvas-runtime/actions/catalog.mjs",
+          "bytes": 10177,
+          "sha256": "656c963904893312b2fdd25828078b75a512a1fcd039701e6ecd27a58f868bb4"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/canvas-runtime/actions/composition.mjs",
+          "bytes": 4324,
+          "sha256": "8ed614f976546f9e11f406c7066fe5be45fae77009d67fefefd9043034a5356b"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/canvas-runtime/actions/deps-recovery.mjs",
+          "bytes": 2934,
+          "sha256": "b9c33d03e2153ce37582d4f81f54a6a3361900017f6057d82920e31cf81a4586"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/canvas-runtime/actions/phase.mjs",
+          "bytes": 11388,
+          "sha256": "fea9aed78aeb4c6e1bac0f5a6c5eedf42dd628885a3d7c2525c0aa1d544cd8d0"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/canvas-runtime/actions/wizard-shell.mjs",
+          "bytes": 4183,
+          "sha256": "36901007ab05e96f022bf7ec785fe1799098fd4378159f92e2f39ef875c61803"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/canvas-runtime/boot-progress.mjs",
+          "bytes": 6400,
+          "sha256": "834e4005c740ac3c40cda0f49c7dc56d9aa974473ba10e95b477b2bee29e479d"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/canvas-runtime/composition-apply.mjs",
+          "bytes": 17147,
+          "sha256": "73941b9e3dc81fe5fcc11cfcedf5dd10bb714eb4b06e0b84fee306d76cdb83b7"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/canvas-runtime/dispatch.mjs",
+          "bytes": 8269,
+          "sha256": "229759e323c1896d17096a63921d841c138d27696c46b8bc19939927153b6147"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/canvas-runtime/instances.mjs",
+          "bytes": 8247,
+          "sha256": "8d6feddc979fda0273b177d6bf5e7140deb71f32dc942a0f280bfc550e47b140"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/canvas-runtime/run-tracker.mjs",
+          "bytes": 3538,
+          "sha256": "30694c39dcc01801414bcccb445be13f5e794bbd621e87fc1781ad9d0fea57ff"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/canvas-runtime/snapshot-builder.mjs",
+          "bytes": 11635,
+          "sha256": "72fbecca205cd6aa755c93cac4db79ba42cabdd3ee14490e9daab67fca04aeb6"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/canvas-runtime/snapshot.mjs",
+          "bytes": 8655,
+          "sha256": "cf11adf60200a55d905a59b7d2c4d513d035424ce2c7b8a7eeaf8d3d34cabde8"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/canvas-runtime/watchers.mjs",
+          "bytes": 8505,
+          "sha256": "4b848862ece610f45ace37be6920522432a50272ea976221a582eb8eca2e83e6"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/canvas-runtime/wizard-phases.mjs",
+          "bytes": 9835,
+          "sha256": "cfc992ce75e7848cbe763aecee688d3df8d1c36575b159f102e9d6ddbd34c4ae"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/catalog/bundles.mjs",
+          "bytes": 2687,
+          "sha256": "490d97d1e735ff669b5f9815f1c363f10730dbcc1f2598559376aad0e2341d68"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/catalog/extensions.mjs",
+          "bytes": 3601,
+          "sha256": "4c513edd32e1a26a03b40a78c53d32752ab4a8bc592311373ab9fc277c6c4abc"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/catalog/presets.mjs",
+          "bytes": 3129,
+          "sha256": "30c98ec4ddf97d5d71dddd6e9882981421c6e95b23e670baf28372ff7fb05f94"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/catalog/shared.mjs",
+          "bytes": 6952,
+          "sha256": "48fd593128b7f02843b6835ea9cb47e2f6c4c0e2031ae8106c660eca88f73980"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/catalog/sources.mjs",
+          "bytes": 3004,
+          "sha256": "58cfc44ef41223ceed56b52628c427c396da90cf8d977ef9724ed09fb443cc76"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/composition/assembler.mjs",
+          "bytes": 23768,
+          "sha256": "3ba76aa5a4aa3293941f83078eca4edf70f07a2ea8b07082cb3fc17171818e88"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/composition/collect.mjs",
+          "bytes": 17766,
+          "sha256": "afdae6e28cb6e2a8c2e5c6f9265539f6371f9e2ba3ad00db65454878518f712a"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/composition/preset-loader.mjs",
+          "bytes": 26753,
+          "sha256": "b61021474227eb981827193b17cc41ce2e64ee251dbcec692aefe53f8e1c3036"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/composition/preset-order.mjs",
+          "bytes": 5540,
+          "sha256": "ba3aa0c7da6d6c3bfb5457931f5ec39051b50cf1fd86865ce8c6555186f7b9ca"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/copilot-extension.json",
+          "bytes": 58,
+          "sha256": "40ae3a6e491a17befdf73ac3b56a352d31e19f4c297db3e6fb866d996a92632c"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/env/deps-check.mjs",
+          "bytes": 8507,
+          "sha256": "1d2cf83acd7dfcb450ec0b01565c18c4f6bc18148a651476675cb93d3b612f14"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/env/deps-error-classifier.mjs",
+          "bytes": 4364,
+          "sha256": "caa323ae1abf339c122d0e9653f518c3a095c069c4709c3e2cf2fe40b85ccabc"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/env/deps-recovery.mjs",
+          "bytes": 5764,
+          "sha256": "edcf1f6092635d81ee31f294692f05a39df48934f1c68a3672a956e6d8496109"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/env/probe-cache.mjs",
+          "bytes": 4736,
+          "sha256": "f350370fcbb28d4f55c42c397b442a6413dd54cc72b1ec97af95687f0496f5fc"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/env/probe.mjs",
+          "bytes": 4393,
+          "sha256": "83af8c48441baaf011f70f8710c1065c1c848ed0138f1b0e26e89c6b0742180e"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/env/resolve-path.mjs",
+          "bytes": 4965,
+          "sha256": "c37caaefd86e93471177c29c0dac5cacba620d4f50b2ed35d5f898acbd42398b"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/env/workspace.mjs",
+          "bytes": 2014,
+          "sha256": "c23d41713a492e247b587873f212ac1881f0a3f44a39fd57d11614a4608c347f"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/extension.mjs",
+          "bytes": 16643,
+          "sha256": "62bf9cc7e8495347562b647423aa238fca60b6a4bcdb719599c788962c0318b0"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/node_modules/argparse/argparse.js",
+          "bytes": 129714,
+          "sha256": "2e73e7a3167ba840dbcf41feeafc3544a3e2b39220b5e997133c519861febf16"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/node_modules/argparse/CHANGELOG.md",
+          "bytes": 5966,
+          "sha256": "c3f89be070b29b2db49d6ecee73e5e2a50dd32e8b68dc9a8ca1a959fc14fe451"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/node_modules/argparse/lib/sub.js",
+          "bytes": 2252,
+          "sha256": "2bc4ef9e87c47f1a4e0cfcb3706d886e0d73edce88149e300d2364066f396ed6"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/node_modules/argparse/lib/textwrap.js",
+          "bytes": 17391,
+          "sha256": "2550466c9a0425fa583a70e25bb93e190fe09b61f7de4861ea8ec54b7b899db0"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/node_modules/argparse/LICENSE",
+          "bytes": 12775,
+          "sha256": "de4d1f2d2ad5ad0cfd1657a106476b31cb5db5ef9d1ff842b237c0c81f0c8a23"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/node_modules/argparse/package.json",
+          "bytes": 682,
+          "sha256": "688bace28e14392b3a1c4137eb56bc48b684dbf5cb56278ed7056cd2ece07990"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/node_modules/argparse/README.md",
+          "bytes": 2768,
+          "sha256": "44161d4e4baf71c745a327a5d05ee4a762c3004db5453aca221e3d0a3fa52ba6"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/node_modules/js-yaml/bin/js-yaml.mjs",
+          "bytes": 2440,
+          "sha256": "a4ed507c9e2840c251364aae5295b4ea23d756c8855eb69e3f819405a2834c70"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/node_modules/js-yaml/dist/browser/js-yaml.esm.min.mjs",
+          "bytes": 75792,
+          "sha256": "83592ae8fa991d9ef8023997ecd86a64b18231451696625a4b5d7bf9c0c8c0c8"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/node_modules/js-yaml/dist/browser/js-yaml.umd.min.js",
+          "bytes": 58875,
+          "sha256": "2e92e942b8f6633431c15fa3e4d3d8acac92bc90590f2c90c42e68d158f7d229"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/node_modules/js-yaml/dist/js-yaml.cjs.js",
+          "bytes": 122488,
+          "sha256": "f1499c20ab232a283f6f9f85aeecc99dceab175e8dd4005bd3d764848f3e5965"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/node_modules/js-yaml/dist/js-yaml.d.ts",
+          "bytes": 14260,
+          "sha256": "df68f13398faab6c849e3f9b34a09b068621f8470593f994a43f9b8042f4de57"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/node_modules/js-yaml/dist/js-yaml.mjs",
+          "bytes": 114610,
+          "sha256": "4c743c6486a71faa2cad75390173ab9a582283d8e2c108b9c17eae6de905df6b"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/node_modules/js-yaml/LICENSE",
+          "bytes": 1084,
+          "sha256": "a07bc24468b9654ce76a547d47a2db282d07733b715db4c73a98bd63961f9550"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/node_modules/js-yaml/package.json",
+          "bytes": 2972,
+          "sha256": "5eccc3913abc304c34a0c4f1235eb52cbed30e3cf9e494639a2aaab476f3f939"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/node_modules/js-yaml/README.md",
+          "bytes": 7228,
+          "sha256": "84e46311d55748fc4104b64430a05ce2cff130cd47cd3ec4e2ce8f86bdeecdaa"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/package-lock.json",
+          "bytes": 1413,
+          "sha256": "d46436b332909e7f5d044ec1f7a49d9a82730bb062a0181ff2b30725e8a15cdb"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/package.json",
+          "bytes": 367,
+          "sha256": "3c8fd7f1efa243f4cefcea84e9844da993d9953a2172ddad70210b7208e026ba"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/pipeline/active-artifacts.mjs",
+          "bytes": 11870,
+          "sha256": "768f25825b6f15647f00c44c7541f2073d4ba7b8cf638a194bcba587c53c3fb2"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/pipeline/canonical.mjs",
+          "bytes": 25772,
+          "sha256": "96e257dcf8b8c98d5ca9d0cc84ae7d7cae4cd3423add9974f52e4b5762938150"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/pipeline/effective-phases.mjs",
+          "bytes": 3317,
+          "sha256": "c85269bf22303e9b926793c165c07571ae956004305c0ee76fd415b58ceffe40"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/pipeline/validate.mjs",
+          "bytes": 11687,
+          "sha256": "58e6fb903ad182bbfcc2bba8d9b6c1c48b82853c3d8d288ef33da88ad92c943a"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/project-scanner.mjs",
+          "bytes": 12192,
+          "sha256": "5be6500440c66ecbdaa8b82c482e31eb3f044ebb5657b5c53602dad432426dca"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/project-scanner/artifact-review.mjs",
+          "bytes": 99,
+          "sha256": "7ea2ec1bf7d1bc401f6831b2f13a583cc634be2ed471b67b5e82c38b718fe60b"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/project-scanner/extension-artifacts.mjs",
+          "bytes": 11423,
+          "sha256": "07a731fb65d267b623b61d3778a6954ab3819801f9c22fa73d94815d96be71f0"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/project-scanner/fs-helpers.mjs",
+          "bytes": 4082,
+          "sha256": "1fe38c83ac8e1724f3127b09d05003ad8d4a055d4ab18c12453ba4f1fcbb4e2f"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/project-scanner/markdown.mjs",
+          "bytes": 1800,
+          "sha256": "b95eb770f1e565fba60f42a95917c224e3cf6a8aa387ee0363daf47a7d3e5571"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/project-scanner/preset-catalog.mjs",
+          "bytes": 4943,
+          "sha256": "2dfb9b0e389cd64027d82ed2de79bd0c678fc4a55a65212cf459856814d3f45c"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/project-scanner/spec-phases.mjs",
+          "bytes": 7288,
+          "sha256": "2d90db6c4922e3a630fa7bdb92209597c7cd476d0a9cd06b3fc72bcc5106a28a"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/prompts.mjs",
+          "bytes": 16974,
+          "sha256": "e44cb241a21df155b2a350d9744b8ecaefd657a2ea54acc9ebefbba402f04456"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/prompts/catalog.mjs",
+          "bytes": 7270,
+          "sha256": "0d9e657103d1dc573e43222b0e598bdead016f8cd6d99ad4ed257b0676b8e3d2"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/prompts/composition.mjs",
+          "bytes": 14969,
+          "sha256": "34d35c75b6eb05d7f618c6760e77f0bc05735aa380fe82a185b1e081aca6342b"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/prompts/pipeline.mjs",
+          "bytes": 3802,
+          "sha256": "8474db85e73e4ab35038aea2728aa2f751c1f2a79d74e4f33d4390275d985f8a"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/prompts/setup.mjs",
+          "bytes": 8180,
+          "sha256": "774402dd1ab9e2108c7d71f006ef001417e193aec9b26213907b6d8d5fbc4f60"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/prompts/shared.mjs",
+          "bytes": 6533,
+          "sha256": "0c782fc7deedf7068b0f997a1bbda8a0eb28a92bd55a9949b504d94d74d0d861"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/README.md",
+          "bytes": 14923,
+          "sha256": "8e72f1b71e353ccf9eddf50debfecdc3d47feb4677167c040bc7d401095edc43"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/server.mjs",
+          "bytes": 20471,
+          "sha256": "e0cfaa2cb5067436e4882b46d02adfe74602528399a70538d3e8ec9882b41e4d"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/server/artifact-discovery.mjs",
+          "bytes": 5316,
+          "sha256": "d56723031089fd34a0abc31753d7e37fba073937d0efa7ba3e29d166aba1d2ae"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/server/artifact-read.mjs",
+          "bytes": 7688,
+          "sha256": "0dd9d858f737521bcbce3280e1349872f77ef222f5db2c832576f18216f6ae55"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/server/artifact-review.mjs",
+          "bytes": 24064,
+          "sha256": "dd8d1b71eb022a87e88e9ed4ae7eebe7becd03a6e2624a809e20ad442bbe3522"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/server/handlers-deps.mjs",
+          "bytes": 5978,
+          "sha256": "68a63e8a0150f17a0235f4371862c21025dcab596fb629b0bd672a19706d0e86"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/server/handlers-ops.mjs",
+          "bytes": 16335,
+          "sha256": "a75d7f2e77c8c2738317dd8d3ce844480431465c3e667b0cd45abbfdd460de56"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/server/handlers-phase.mjs",
+          "bytes": 4406,
+          "sha256": "6885ea6fd29d2e92bcd5e17908c41522e403693f754a48c8019dc4ccc940dd5d"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/server/http-utils.mjs",
+          "bytes": 4726,
+          "sha256": "7afd6d5dcdaab04cbf02e0842dd57f5ba1de530cc62601848996bd4139c65136"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/state/execution-reports.mjs",
+          "bytes": 11155,
+          "sha256": "082ef205b04b8ab75e74ac2d544d8cfd047452e1cac87a85e9d03a142294fe07"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/state/normalize.mjs",
+          "bytes": 12714,
+          "sha256": "3e4a99d56dfbf5ea45487172edfde23ac6d364d683072ea32f44b0604da512e7"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/state/store.mjs",
+          "bytes": 14249,
+          "sha256": "72767c53bcf333edd1e831031ad547f5b399eba7ba8683b5756ed128d073b99d"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/ui/app.js",
+          "bytes": 10711,
+          "sha256": "70281ff899524b3b0dd103565989844d2a3498a176a1e27255e3a3d83a2373b1"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/ui/artifact-review.js",
+          "bytes": 11392,
+          "sha256": "b79d43a19ad2590d2518a87fe5623c73750d74f40011e8f782cb4175117c5634"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/ui/boot.js",
+          "bytes": 15035,
+          "sha256": "c42c8dc3b358fc1ac3a2819e6ebd894f57a64c3c4a633ddf76f4b793321e6f6f"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/ui/catalog.js",
+          "bytes": 25996,
+          "sha256": "761f8b9db74f0d7ecdd475df82de7c42873e5ec04fec33fa2158b5d78a342d12"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/ui/client.js",
+          "bytes": 16467,
+          "sha256": "2f241d77e9a2c1a46891370c8733b776415f463c310056d12bdab7f6bd4476a6"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/ui/composition-artifacts.js",
+          "bytes": 33845,
+          "sha256": "49f17f791ff088986b45435b47e472c1dd9f3aec6777421fd64a450e7bc35c87"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/ui/composition.js",
+          "bytes": 28868,
+          "sha256": "06bbf16b5a7325a87cb2edca526cfda7ae3b47ee5ba667313ad158b8a3a51059"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/ui/index.html",
+          "bytes": 18945,
+          "sha256": "69fed9ce8dc64e983785a14ce827a21fb9207f765848c4b27a86bfe730ea9c89"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/ui/modals.js",
+          "bytes": 42562,
+          "sha256": "d8a11faca1ce1032379986c648a6fa1382976545884dde825a8d8b6bc7107f9a"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/ui/phase-card.js",
+          "bytes": 42853,
+          "sha256": "02c7cd851888f50194cf0ccccfcc93f022f62c4f73ce054e60e867f8ed715f08"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/ui/phase-contributors.js",
+          "bytes": 46053,
+          "sha256": "1a4cb4ae3fd78883e9c65c7f7f3a734b0612a320ebae9b0b1ca494dcac6f5b3c"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/ui/phase-runtime.js",
+          "bytes": 44915,
+          "sha256": "3f710594882387fe6e35b719b0750ceea62580275f260e56e83deb0965ea1752"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/ui/setup.js",
+          "bytes": 30535,
+          "sha256": "565e6cb2b084eabe68ed45656bda665e052acfae5028a122d3ee88e12618bca4"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/ui/state.js",
+          "bytes": 9736,
+          "sha256": "4c2bafa291c6896199a44fb759fc00ff68a0e610e8fb4809e6d6245a0652c78c"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/ui/styles/artifact-review.css",
+          "bytes": 751,
+          "sha256": "05fd3245c3657a55c362671a01178a22262bff697f503df9e03563673777f788"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/ui/styles/boot.css",
+          "bytes": 9745,
+          "sha256": "d57592f6a6496a47adee3a427270f7a932b71a53cf84af521065df0e0172ecd4"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/ui/styles/catalog.css",
+          "bytes": 9057,
+          "sha256": "64876f79b29fade9a1938249c094202a82cf7e77afa8505959b8dff292482e02"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/ui/styles/composition.css",
+          "bytes": 42111,
+          "sha256": "3cca9fcdaa6efbe205ad1ea9ac823155c521dd814288b86b9975a1f1fa73f6be"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/ui/styles/foundation.css",
+          "bytes": 7236,
+          "sha256": "06337e40f069786c42ab22c0efecaddb34e932c22546c1edd4b41e9672f9f5a4"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/ui/styles/overlays.css",
+          "bytes": 10818,
+          "sha256": "8d1af27bc1ada6f8f22f31bf737119a7725d86fd3189989c48154933ea09d3f4"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/ui/styles/phase-card.css",
+          "bytes": 20995,
+          "sha256": "856c5953d07a6b1b7721fb3ba9852aa530cc3707b340e292b62136ead5b95ca3"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/ui/styles/pipeline.css",
+          "bytes": 11073,
+          "sha256": "9b7025acfe8b66043112e424ba62d4f45fa0c507cb4f668b77144b94d003b525"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/ui/styles/setup-substeps.css",
+          "bytes": 9989,
+          "sha256": "5076b835d6cc55e620448784d1c1199c327b69fa1e13070e2a190c1ca3272250"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/ui/styles/stepper.css",
+          "bytes": 10827,
+          "sha256": "8c473fe229e6289aa8c89f1ac383861933a4998083c4d3f0f96e921bd8fa9227"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/ui/vendor/markdown-reader/manifest.json",
+          "bytes": 12079,
+          "sha256": "21e16f5be2667555862a5f5aa27823aab66acf6f01d6fbc6c4e6a381f1013709"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/ui/vendor/markdown-reader/markdown-reader.css",
+          "bytes": 7393,
+          "sha256": "3dfda0cb0df58516131bb1b7da5402880e18cf4df48336f7490e4a7b1b430184"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/ui/vendor/markdown-reader/markdown-reader.js",
+          "bytes": 489487,
+          "sha256": "103e6c96d67a8c1d4e307b4bd2e955a6bec60221911447d389994f3a7fc4286d"
+        },
+        {
+          "path": "extensions/speckit-wizard-canvas/ui/vendor/markdown-reader/THIRD_PARTY_NOTICES.txt",
+          "bytes": 86383,
+          "sha256": "2939337eb66613e0414361d5ee5436ff544bae6d5a51f103f0851da837cbcc80"
+        },
+        {
+          "path": "plugin.json",
+          "bytes": 592,
+          "sha256": "7be75763b5f3cc49ceac432e07261a730607c0d595cd1d26dc6fe7d1c7babb85"
+        },
+        {
+          "path": "UPSTREAM_LICENSE",
+          "bytes": 1081,
+          "sha256": "4c316b104ef3d385024b8c1aafd000eb945de141ff64191e92ce6f14ef911fc4"
+        }
+      ]
+    },
+    {
+      "id": "spec-kit-copilot-sdd",
+      "extensionPath": "extensions/sdd-canvas",
+      "files": [
+        {
+          "path": "extensions/sdd-canvas/artifact-review.mjs",
+          "bytes": 2936,
+          "sha256": "757d6e90fd48568f6bc9c52cb16bd4a22a11b82d9fdc37dec4adc629b4f87f7e"
+        },
+        {
+          "path": "extensions/sdd-canvas/copilot-extension.json",
+          "bytes": 47,
+          "sha256": "6bc49bbacf398df8049631505882b442180744db6fe6d9ca22995d9eb735f001"
+        },
+        {
+          "path": "extensions/sdd-canvas/extension.mjs",
+          "bytes": 25129,
+          "sha256": "2bdc2d7f4b3fab074d3da42576aa592cbac9536b7881a5a32d378c2289b6035a"
+        },
+        {
+          "path": "extensions/sdd-canvas/index.html",
+          "bytes": 41661,
+          "sha256": "cff29de1c5d3c85222cf689a2e7cc21841f4e8e1aa36b4d4007f052914a5ef1b"
+        },
+        {
+          "path": "extensions/sdd-canvas/README.md",
+          "bytes": 8482,
+          "sha256": "a1d9b5380ce0b553e073bde4e7fbe56a5c12cd5e9825b79b91cdad25297fc206"
+        },
+        {
+          "path": "extensions/sdd-canvas/sdd.mjs",
+          "bytes": 21405,
+          "sha256": "7790c8f19a48e0c70b58356f57b263b3e106d8092df447952a7f2ab25212d6a7"
+        },
+        {
+          "path": "extensions/sdd-canvas/ui/artifact-review.js",
+          "bytes": 11392,
+          "sha256": "b79d43a19ad2590d2518a87fe5623c73750d74f40011e8f782cb4175117c5634"
+        },
+        {
+          "path": "extensions/sdd-canvas/vendor/artifact-discovery.mjs",
+          "bytes": 5316,
+          "sha256": "d56723031089fd34a0abc31753d7e37fba073937d0efa7ba3e29d166aba1d2ae"
+        },
+        {
+          "path": "extensions/sdd-canvas/vendor/artifact-read.mjs",
+          "bytes": 7688,
+          "sha256": "0dd9d858f737521bcbce3280e1349872f77ef222f5db2c832576f18216f6ae55"
+        },
+        {
+          "path": "extensions/sdd-canvas/vendor/artifact-review.mjs",
+          "bytes": 24064,
+          "sha256": "dd8d1b71eb022a87e88e9ed4ae7eebe7becd03a6e2624a809e20ad442bbe3522"
+        },
+        {
+          "path": "extensions/sdd-canvas/vendor/markdown-reader/manifest.json",
+          "bytes": 12079,
+          "sha256": "21e16f5be2667555862a5f5aa27823aab66acf6f01d6fbc6c4e6a381f1013709"
+        },
+        {
+          "path": "extensions/sdd-canvas/vendor/markdown-reader/markdown-reader.css",
+          "bytes": 7393,
+          "sha256": "3dfda0cb0df58516131bb1b7da5402880e18cf4df48336f7490e4a7b1b430184"
+        },
+        {
+          "path": "extensions/sdd-canvas/vendor/markdown-reader/markdown-reader.js",
+          "bytes": 489487,
+          "sha256": "103e6c96d67a8c1d4e307b4bd2e955a6bec60221911447d389994f3a7fc4286d"
+        },
+        {
+          "path": "extensions/sdd-canvas/vendor/markdown-reader/THIRD_PARTY_NOTICES.txt",
+          "bytes": 86383,
+          "sha256": "2939337eb66613e0414361d5ee5436ff544bae6d5a51f103f0851da837cbcc80"
+        },
+        {
+          "path": "plugin.json",
+          "bytes": 690,
+          "sha256": "0d73d22a35ddf4c105933a5eeac03fda648e4d4b64155dd80fb6f7f1474b1559"
+        },
+        {
+          "path": "UPSTREAM_LICENSE",
+          "bytes": 1081,
+          "sha256": "4c316b104ef3d385024b8c1aafd000eb945de141ff64191e92ce6f14ef911fc4"
+        }
+      ]
+    }
+  ]
+}

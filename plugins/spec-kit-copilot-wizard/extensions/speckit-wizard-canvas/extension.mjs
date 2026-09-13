@@ -102,9 +102,11 @@ async function onOpen(ctx) {
     // fresh state to the UI immediately.
     startStateWatcher(inst, { snapshot, normalizeHookArtifactsInComposition }).catch(() => { /* best-effort */ });
     startArtifactWatcher(inst, { snapshot }).catch(() => { /* best-effort */ });
+    const url = new URL(inst.url);
+    if (ctx.input?.readerProbe === true) url.searchParams.set("readerProbe", "1");
     return {
         title: "Spec Kit Wizard",
-        url: inst.url,
+        url: url.href,
     };
 }
 
@@ -350,6 +352,7 @@ setSession(await joinSession({
                 type: "object",
                 properties: {
                     cwd: { type: "string", description: "Workspace directory. Defaults to the session's cwd." },
+                    readerProbe: { type: "boolean", description: "Enable the opt-in packaged Markdown reader development probe." },
                 },
             },
             actions: ACTIONS,

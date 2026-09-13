@@ -8,6 +8,7 @@ import { join, relative } from "node:path";
 import { DEFAULT_STATE } from "./canvas-runtime/wizard-phases.mjs";
 import { readState } from "./state/store.mjs";
 import { loadPresetGraph } from "./composition/preset-loader.mjs";
+export { deriveWizardArtifacts, scanArtifactCandidates } from "./project-scanner/artifact-review.mjs";
 import {
     toPortable,
     SKIP_DIRS,

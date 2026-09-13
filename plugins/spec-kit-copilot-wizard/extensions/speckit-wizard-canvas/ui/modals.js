@@ -3,10 +3,12 @@
 import { state, TOKEN } from "./state.js";
 import { escapeHtml, safeExternalHref } from "./client.js";
 import { parseClarifications } from "../pipeline/canonical.mjs";
+import { createArtifactReview } from "./artifact-review.js";
 import {
     clearClarifications,
     clearPhaseRunning,
     clearSubmittedClarifications,
+    createClarificationDraftStore,
     getPendingClarifications,
     getPhaseLastSubmitted,
     isPhaseRunning,
@@ -431,10 +433,248 @@ export function openWizardModal(opts) {
 
 let __postJson = async () => { throw new Error("viewers: postJson not injected"); };
 let __HEADERS = {};
+let __readerProbeLoader = loadReaderProbe;
+let readerProbe = null;
+let readerProbeGeneration = 0;
+let readerProbeRequest = null;
+let readerProbeReturn = null;
+let artifactReview = null;
+let reviewConnected = true;
+let readerMountOverride = null;
+const reviewDrafts = createClarificationDraftStore();
 
-export function setViewersDeps({ postJson, HEADERS } = {}) {
+function reviewSubmissionPending() {
+    const contextId = artifactReview?.context?.contextId;
+    return Boolean(contextId && reviewDrafts.isPending(contextId));
+}
+
+function discardReviewDrafts() {
+    const contextId = artifactReview?.context?.contextId;
+    if (contextId) reviewDrafts.discard(contextId);
+}
+
+function reviewBinding(descriptor, contextId) {
+    return { ...descriptor, contextId };
+}
+
+function boundReviewClarifications(document, context) {
+    if (!context) return [];
+    reviewDrafts.invalidate(context.contextId, document.artifact.id, document.revision);
+    return (document.clarifications ?? []).filter((descriptor) => descriptor.mode === "wizard-batched").map((descriptor) => {
+        const draft = reviewDrafts.get(reviewBinding(descriptor, context.contextId));
+        return { ...descriptor, answer: draft?.answer, status: draft?.status };
+    });
+}
+
+function renderReviewDraftBanner(message = "") {
+    const root = document.getElementById("phase-artifact-viewer");
+    const banner = root?.querySelector(".artifact-viewer-clarify-banner");
+    const context = artifactReview?.context;
+    const current = artifactReview?.document;
+    if (!banner || !context || !current) return;
+    reviewDrafts.invalidate(context.contextId, current.artifact.id, current.revision);
+    const drafts = reviewDrafts.list(context.contextId, current.artifact.id, current.revision);
+    const staleDrafts = reviewDrafts.list(context.contextId, current.artifact.id).filter((draft) => draft.revision !== current.revision);
+    const pending = reviewDrafts.isPending(context.contextId);
+    banner.hidden = !drafts.length && !staleDrafts.length && !message;
+    banner.replaceChildren();
+    if (!banner.hidden) {
+        const text = document.createElement("span");
+        text.textContent = message || (staleDrafts.length ? "Saved answers from an earlier revision need confirmation."
+            : `${drafts.length} clarification${drafts.length === 1 ? "" : "s"} queued${pending ? "; applying..." : "."}`);
+        banner.append(text);
+        if (drafts.length) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "btn btn-primary btn-sm";
+            button.textContent = pending ? "Applying..." : "Apply and Rerun";
+            button.disabled = pending || drafts.some((draft) => draft.status === "stale");
+            button.addEventListener("click", () => void flushReviewedClarifications());
+            banner.append(button);
+        }
+        for (const previous of staleDrafts) {
+            const saved = document.createElement("div");
+            saved.className = "artifact-viewer-saved-answer";
+            const answer = document.createElement("p");
+            answer.textContent = `${previous.question}\n${previous.answer}`;
+            saved.append(answer);
+            const matches = (current.clarifications ?? []).filter((descriptor) => descriptor.mode === "wizard-batched" &&
+                descriptor.commandName === previous.commandName && descriptor.question === previous.question);
+            if (matches.length === 1) {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = "btn btn-secondary btn-sm";
+                button.textContent = "Review saved answer";
+                button.setAttribute("aria-label", `Review saved answer: ${previous.question}`);
+                button.disabled = pending;
+                button.addEventListener("click", () => openReviewedClarification(matches[0].id, previous));
+                saved.append(button);
+            }
+            banner.append(saved);
+        }
+    }
+    artifactReview?.updateControls();
+}
+
+async function flushReviewedClarifications() {
+    const review = artifactReview;
+    const context = review?.context;
+    const current = review?.document;
+    if (!context || !current || reviewDrafts.isPending(context.contextId)) return false;
+    const bindings = boundReviewClarifications(current, context).filter((binding) => binding.answer).map((binding) => reviewBinding(binding, context.contextId));
+    if (!bindings.length || bindings.some((binding) => binding.status === "stale")) return false;
+    const commandName = bindings[0].commandName;
+    if (isPhaseRunning(commandName)) { renderReviewDraftBanner("The owning command is still running."); return false; }
+    let submission;
+    try { submission = reviewDrafts.begin(bindings); }
+    catch { renderReviewDraftBanner("The clarification source is stale or unavailable."); return false; }
+    renderReviewDraftBanner();
+    const answers = submission.entries.map(({ questionId, question, answer }) => ({ questionId, question, answer }));
+    const lastArgs = getPhaseLastSubmitted(commandName) || "";
+    const suffix = answers.map((answer) => `Clarification - ${answer.question}\nAnswer: ${answer.answer}`).join("\n\n");
+    const args = lastArgs ? `${lastArgs}\n\n${suffix}` : suffix;
+    let ok = false;
+    let stale = false;
+    try {
+        await review.validateClarifications(answers, commandName);
+        if (artifactReview !== review || review.document?.revision !== current.revision) throw Object.assign(new Error("Source changed"), { code: "changed_source" });
+        markPhaseRunning(commandName);
+        const result = await __postJson("/api/phase/submit", {
+            commandName, args, review: { contextId: context.contextId, artifactId: current.artifact.id, expectedRevision: current.revision, answers },
+        });
+        if (!result?.queued) throw new Error("Submission failed");
+        setPhaseLastSubmitted(commandName, args);
+        ok = true;
+    } catch (error) {
+        stale = error.code === "changed_source";
+        if (stale) reviewDrafts.invalidate(context.contextId, current.artifact.id, "changed");
+        clearPhaseRunning(commandName);
+    } finally { reviewDrafts.complete(submission, { ok }); }
+    if (artifactReview === review) {
+        if (ok && !reviewDrafts.list(context.contextId).length) await closeArtifactViewer();
+        else renderReviewDraftBanner(ok ? "" : stale ? "Source changed. Refresh before submitting; your answers are preserved." : "Submission failed. Your queued answers are preserved.");
+    }
+    return ok;
+}
+
+function openReviewedClarification(descriptorId, previous) {
+    const review = artifactReview;
+    const context = review?.context;
+    const current = review?.document;
+    if (!context || !current || reviewDrafts.isPending(context.contextId)) return;
+    const descriptor = boundReviewClarifications(current, context).find((binding) => binding.id === descriptorId);
+    if (!descriptor || descriptor.status === "stale") return;
+    const binding = reviewBinding(descriptor, context.contextId);
+    openWizardModal({
+        title: "Resolve clarification", questionBox: descriptor.question, textareaLabel: "Your answer",
+        description: previous ? "Source changed. Confirm this answer against the current revision." : "",
+        required: true, confirmLabel: "Save answer", initialValue: previous?.answer ?? descriptor.answer ?? "",
+        onConfirm: async (value, close) => {
+            if (artifactReview !== review || review.document?.revision !== current.revision || review.context?.contextId !== context.contextId) {
+                close(); renderReviewDraftBanner("Source changed. Refresh before answering."); return;
+            }
+            try {
+                if (previous) reviewDrafts.recover(previous, binding, String(value ?? ""));
+                else reviewDrafts.save(binding, String(value ?? ""));
+            }
+            catch { renderReviewDraftBanner("The answer could not be queued for this source."); return; }
+            close();
+            renderReviewDraftBanner();
+            const all = boundReviewClarifications(current, context);
+            if (all.length && all.every((item) => item.answer && item.status !== "stale")) await flushReviewedClarifications();
+        },
+    });
+}
+
+export function refreshArtifactReview(message) {
+    const hint = message?.review?.contextHint;
+    if (hint && hint !== artifactReview?.context?.contextId) return;
+    if (["state", "review"].includes(message?.type)) void artifactReview?.refresh();
+}
+
+export function setArtifactReviewConnected(connected) {
+    reviewConnected = connected;
+    artifactReview?.setConnected(connected);
+}
+
+export function setViewersDeps({ postJson, HEADERS, readerProbeLoader, readerMount } = {}) {
     if (postJson) __postJson = postJson;
     if (HEADERS) __HEADERS = HEADERS;
+    if (readerProbeLoader) __readerProbeLoader = readerProbeLoader;
+    if (readerMount !== undefined) readerMountOverride = readerMount;
+}
+
+function probeEnabled(path) {
+    return typeof location !== "undefined" && new URLSearchParams(location.search).get("readerProbe") === "1" && /\.(?:md|markdown)$/i.test(path);
+}
+
+async function loadReaderProbe() {
+    if (!document.head.querySelector("link[data-reader-probe]")) {
+        const stylesheet = document.createElement("link");
+        stylesheet.rel = "stylesheet";
+        stylesheet.dataset.readerProbe = "true";
+        stylesheet.referrerPolicy = "no-referrer";
+        stylesheet.href = new URL(`./vendor/markdown-reader/markdown-reader.css?token=${encodeURIComponent(TOKEN)}`, import.meta.url).href;
+        document.head.appendChild(stylesheet);
+    }
+    return import(new URL(`./vendor/markdown-reader/markdown-reader.js?token=${encodeURIComponent(TOKEN)}`, import.meta.url).href);
+}
+
+function disposeReaderProbe() {
+    readerProbeGeneration++;
+    readerProbeRequest?.abort();
+    readerProbeRequest = null;
+    readerProbe?.unmount();
+    readerProbe = null;
+}
+
+function captureProbeReturn() {
+    if (readerProbeReturn) return;
+    const trigger = document.activeElement;
+    const scroll = [];
+    for (let ancestor = trigger; ancestor; ancestor = ancestor.parentElement) {
+        scroll.push({ element: ancestor, top: ancestor.scrollTop, left: ancestor.scrollLeft });
+    }
+    readerProbeReturn = { trigger, scroll };
+}
+
+function restoreProbeReturn() {
+    if (!readerProbeReturn) return;
+    const { trigger, scroll } = readerProbeReturn;
+    readerProbeReturn = null;
+    for (const entry of scroll) {
+        if (!entry.element.isConnected) continue;
+        entry.element.scrollTop = entry.top;
+        entry.element.scrollLeft = entry.left;
+    }
+    if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+}
+
+async function showReaderProbe(root, phase, text, generation) {
+    const bytes = new TextEncoder().encode(text);
+    const digest = await crypto.subtle.digest("SHA-256", bytes);
+    const revision = `sha256:${Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+    if (generation !== readerProbeGeneration || root.hidden) return;
+    const { mountMarkdownReader } = await __readerProbeLoader();
+    if (generation !== readerProbeGeneration || root.hidden) return;
+    const body = root.querySelector(".artifact-viewer-body");
+    if (!body) return;
+    const element = document.createElement("div");
+    body.replaceChildren(element);
+    const artifact = { id: phase.artifactPath, relativePath: phase.artifactPath, label: phase.shortLabel || phase.title || phase.artifactPath, role: "primary", availability: "available" };
+    readerProbe = mountMarkdownReader(element, {
+        readerId: `wizard-probe-${generation}`,
+        state: "ready",
+        connectionState: "connected",
+        document: { artifact, revision, content: text, byteSize: bytes.length, modifiedAt: "", sourceKind: "working-tree" },
+        artifacts: [artifact],
+        selectedArtifactId: artifact.id,
+        scrollElement: body,
+        onSelectArtifact() {},
+        onNavigateReference() {},
+        onNavigateHistory() {},
+        onReturnToWorkflow: closeArtifactViewer,
+    });
 }
 let activeArtifactPhase = null; // phase currently open in the viewer
 const clarificationFlushes = new Map(); // commandName -> in-flight flush promise
@@ -478,8 +718,21 @@ export async function openArtifactViewer(p) {
     const root = document.getElementById("phase-artifact-viewer");
     if (!root) return;
     if (!p?.artifactPath) return;
+    if (reviewSubmissionPending()) { renderReviewDraftBanner("Applying clarification rerun. Wait for it to finish before switching."); return false; }
 
+    discardReviewDrafts();
+    artifactReview?.close({ restore: false });
+    artifactReview = null;
+    captureProbeReturn();
+    disposeReaderProbe();
+    const useProbe = probeEnabled(p.artifactPath);
+    const probeGeneration = readerProbeGeneration;
+    if (useProbe) {
+        captureProbeReturn();
+        readerProbeRequest = new AbortController();
+    }
     activeArtifactPhase = p;
+    document.body.classList.add("artifact-review-open");
     root.hidden = false;
     root.innerHTML = `
         <div class="artifact-viewer-header">
@@ -496,18 +749,62 @@ export async function openArtifactViewer(p) {
     `;
     root.querySelector(".artifact-viewer-back")?.addEventListener("click", closeArtifactViewer);
 
+    if (!useProbe && /\.(?:md|markdown)$/i.test(p.artifactPath)) {
+        artifactReview = createArtifactReview({
+            container: root.querySelector(".artifact-viewer-body"), scrollElement: root.querySelector(".artifact-viewer-body"),
+            readerId: `wizard-review-${probeGeneration}`, fetch, headers: __HEADERS,
+            mount: readerMountOverride ?? undefined,
+            onReturn: closeArtifactViewer,
+            getClarifications: boundReviewClarifications,
+            onClarification: openReviewedClarification,
+            canNavigate: () => !reviewSubmissionPending(),
+            onDocument: (document) => {
+                root.querySelector(".artifact-viewer-title h2").textContent = document.artifact.label;
+                root.querySelector(".artifact-viewer-title code").textContent = document.artifact.relativePath;
+                renderReviewDraftBanner();
+                return false;
+            },
+        });
+        await artifactReview.open({
+            stage: p.id !== p.artifactPath ? p.id : undefined,
+            source: p.artifactPath, command: p.commandName,
+        });
+        artifactReview?.setConnected(reviewConnected);
+        renderReviewDraftBanner();
+        return;
+    }
+
     let text = "";
     try {
         const url = `/api/artifact?p=${encodeURIComponent(p.artifactPath)}&token=${encodeURIComponent(TOKEN)}`;
-        const res = await fetch(url, { headers: __HEADERS });
+        const res = await fetch(url, { headers: __HEADERS, ...(useProbe ? { signal: readerProbeRequest.signal } : {}) });
         if (!res.ok) throw new Error(`${res.status} ${await res.text().catch(() => "")}`);
         text = await res.text();
     } catch (err) {
+        if (useProbe && probeGeneration !== readerProbeGeneration) return;
         const body = root.querySelector(".artifact-viewer-body");
+        if (useProbe) {
+            if (body) body.textContent = "Reader probe could not load the artifact.";
+            return;
+        }
         if (body) body.innerHTML = `<p class="wizard-modal-error">Failed to load artifact: ${escapeHtml(String(err?.message ?? err))}</p>`;
         return;
     }
 
+    if (useProbe) {
+        try { await showReaderProbe(root, p, text, probeGeneration); }
+        catch {
+            if (probeGeneration !== readerProbeGeneration) return;
+            const body = root.querySelector(".artifact-viewer-body");
+            if (body) body.textContent = "Reader probe assets are unavailable.";
+        }
+        return;
+    }
+
+    renderArtifactClarifications(root, p, text);
+}
+
+function renderArtifactClarifications(root, p, text) {
     const marks = parseClarifications(text);
     const placeholders = [];
     let processed = "";
@@ -599,6 +896,10 @@ export async function openArtifactViewer(p) {
 export async function closeArtifactViewer() {
     const root = document.getElementById("phase-artifact-viewer");
     const p = activeArtifactPhase;
+    if (reviewSubmissionPending()) {
+        renderReviewDraftBanner("Applying clarification rerun. Wait for it to finish before closing.");
+        return false;
+    }
     if (p?.commandName && isClarificationFlushPending(p.commandName)) {
         const banner = root?.querySelector(".artifact-viewer-clarify-banner");
         if (banner) {
@@ -607,6 +908,11 @@ export async function closeArtifactViewer() {
         }
         return false;
     }
+    discardReviewDrafts();
+    closeWizardModal();
+    artifactReview?.close({ restore: false });
+    artifactReview = null;
+    disposeReaderProbe();
     activeArtifactPhase = null;
     if (p?.commandName) {
         // Back-to-Wizard discards any queued clarifications — the
@@ -615,9 +921,15 @@ export async function closeArtifactViewer() {
         // wants to close the viewer.
         clearClarifications(p.commandName);
     }
-    if (!root) return;
-    root.hidden = true;
-    root.innerHTML = "";
+    if (root) {
+        root.hidden = true;
+        root.innerHTML = "";
+    }
+    document.body.classList.remove("artifact-review-open");
+    const closedGeneration = readerProbeGeneration;
+    const frame = document.defaultView?.requestAnimationFrame?.bind(document.defaultView);
+    if (frame) await new Promise((resolve) => frame(() => frame(resolve)));
+    if (closedGeneration === readerProbeGeneration && root?.hidden) restoreProbeReturn();
 }
 
 // Portable-path dirname: given a POSIX-style workspace-relative path like
@@ -630,6 +942,13 @@ export async function closeArtifactViewer() {
 export async function openFolderBrowser(p, folderPath) {
     const root = document.getElementById("phase-artifact-viewer");
     if (!root || !folderPath) return;
+    if (reviewSubmissionPending()) return false;
+    discardReviewDrafts();
+    artifactReview?.close({ restore: false });
+    artifactReview = null;
+    captureProbeReturn();
+    disposeReaderProbe();
+    document.body.classList.add("artifact-review-open");
     root.hidden = false;
     root.innerHTML = `
         <div class="artifact-viewer-header">
@@ -680,8 +999,11 @@ export async function openFolderBrowser(p, folderPath) {
 // Command viewer overlay — reuses the artifact viewer's DOM/CSS to display
 // a command markdown file inline with a Back-to-Wizard button.
 export async function openCommandViewer(sourcePath, title) {
+    if (reviewSubmissionPending()) return false;
+    if (/\.(?:md|markdown)$/i.test(sourcePath)) return openArtifactViewer({ id: sourcePath, title, artifactPath: sourcePath });
     const root = document.getElementById("phase-artifact-viewer");
     if (!root || !sourcePath) return;
+    disposeReaderProbe();
     root.hidden = false;
     root.innerHTML = `
         <div class="artifact-viewer-header">
@@ -721,6 +1043,7 @@ export async function openCommandViewer(sourcePath, title) {
 export async function openCatalogViewer(remoteUrl, title) {
     const root = document.getElementById("phase-artifact-viewer");
     if (!root || !remoteUrl) return;
+    disposeReaderProbe();
     root.hidden = false;
     root.innerHTML = `
         <div class="artifact-viewer-header">
