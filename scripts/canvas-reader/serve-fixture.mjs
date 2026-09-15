@@ -4,6 +4,7 @@ import { registerHooks } from "node:module";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createOwnedWorkspace } from "./fixtures/workspace.mjs";
+import { createRepositoryFixture } from "./fixtures/repositories.mjs";
 import { REPOSITORY_ROOT } from "./sync-assets.mjs";
 
 export function parseArguments(args) {
@@ -14,11 +15,12 @@ export function parseArguments(args) {
     throw new Error("Choose --canvas wizard or --canvas sdd; arbitrary workspace roots are not accepted.");
 }
 
-export async function startFixture({ canvas, pluginRoot, markdown, allowMutations = false, allowMockDispatch = false } = {}) {
+export async function startFixture({ canvas, pluginRoot, markdown, allowMutations = false, allowMockDispatch = false, repositories = false } = {}) {
     if (!["wizard", "sdd"].includes(canvas)) throw new Error("Choose an existing Wizard or SDD canvas.");
     const fixture = await createOwnedWorkspace({ markdown, allowMutations });
     const root = pluginRoot || join(REPOSITORY_ROOT, `plugins/spec-kit-copilot-${canvas}`);
     const extension = join(root, "extensions", canvas === "wizard" ? "speckit-wizard-canvas" : "sdd-canvas");
+    const repositoryFixture = repositories && canvas === "sdd" ? await createRepositoryFixture() : null;
     let entry;
     let dispatches = 0;
     let deniedWrites = 0;
@@ -69,19 +71,21 @@ export async function startFixture({ canvas, pluginRoot, markdown, allowMutation
             } });
             try {
                 const module = await import(`${pathToFileURL(join(extension, "extension.mjs")).href}?fixture=${fixture.id}`);
-                entry = await module.startServer();
+                entry = await module.startServer(repositoryFixture?.options ?? { profileStatus: { state: "unconfigured" } });
             } finally { hooks.deregister(); delete globalThis[key]; }
         }
         const listeners = entry.server.listeners("request");
         entry.server.removeAllListeners("request");
         const readRoutes = new Set(["/api/state", "/api/events", "/api/artifact", "/api/artifact-list", "/api/clarifications",
-            "/api/review/context", "/api/review/artifacts", "/api/review/content"]);
+            "/api/review/context", "/api/review/artifacts", "/api/review/content", "/api/repositories/connection"]);
+        const repositoryRoutes = new Set(["connection", "connect", "disconnect", "local", "relevant", "search", "detail", "context", "items", "content", "reference", "refresh", "clone/confirm", "clone", "clone/cancel"].map((name) => `/api/repositories/${name}`));
         entry.server.on("request", (request, response) => {
             const path = new URL(request.url, "http://127.0.0.1").pathname;
             if (eventsPaused && ["/api/events", "/events"].includes(path)) { response.writeHead(503); response.end(); return; }
             const readOnlyLink = request.method === "POST" && ["/api/review/resolve-link", "/api/review/validate-clarifications"].includes(path);
             const mockClarification = allowMockDispatch && canvas === "sdd" && request.method === "POST" && path === "/api/clarify";
-            if (!mockClarification && !readOnlyLink && (request.method !== "GET" || (path.startsWith("/api/") && !readRoutes.has(path)))) {
+            const repositoryRead = repositoryFixture && repositoryRoutes.has(path);
+            if (!repositoryRead && !mockClarification && !readOnlyLink && (request.method !== "GET" || (path.startsWith("/api/") && !readRoutes.has(path)))) {
                 deniedWrites++;
                 response.writeHead(403, { "Content-Type": "application/json", "Cache-Control": "no-store" });
                 response.end(JSON.stringify({ ok: false, error: "fixture is read-only" }));
@@ -95,6 +99,7 @@ export async function startFixture({ canvas, pluginRoot, markdown, allowMutation
             url: url.href,
             workspace: fixture.workspace,
             fixtureId: fixture.id,
+            repositories: repositoryFixture,
             dispatchCount: () => dispatches,
             blockedWrites: () => deniedWrites,
             workspaceChanged: fixture.changed,
@@ -119,6 +124,7 @@ export async function startFixture({ canvas, pluginRoot, markdown, allowMutation
                         entry.server.close(resolveClose);
                         entry.server.closeAllConnections();
                     });
+                    await repositoryFixture?.cleanup();
                 }
                 return fixture.cleanup();
             },
@@ -130,6 +136,7 @@ export async function startFixture({ canvas, pluginRoot, markdown, allowMutation
             entry.server.close();
         }
         await fixture.cleanup();
+        await repositoryFixture?.cleanup();
         throw new Error("Owned canvas fixture could not start; verify the staged plugin and approved prerequisites.");
     }
 }

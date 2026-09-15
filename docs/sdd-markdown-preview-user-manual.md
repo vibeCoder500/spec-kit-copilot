@@ -10,6 +10,11 @@ your original canvas afterward. You do not need the implementation repository.
 **Manual date:** 2026-09-13. **Platform covered by these commands:** Windows with
 PowerShell 7. Other operating systems have not been validated by this manual.
 
+The ZIP pinned below is unchanged and does not include the newer repository
+browser. The separate [repository browser guide](sdd-repository-browser.md)
+describes that unreleased development feature; do not substitute its runtime for
+this manual's checksummed preview.
+
 ## 1. What This Preview Changes
 
 The kit temporarily replaces the implementation of the existing `sdd-canvas`.

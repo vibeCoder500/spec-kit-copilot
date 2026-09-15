@@ -158,3 +158,28 @@ test("probe treats HTML, images, links and clarification-looking text as non-exe
         assert.equal(element.querySelectorAll(".md-reader__article button").length, 0);
     });
 });
+
+test("commit previews show remote provenance and return to the repository without workflow callbacks", async () => {
+    await withPreview(async ({ element, options, mount }) => {
+        let returned = 0;
+        const remote: ReaderOptions = { ...options, onClarification: undefined, returnLabel: "Back to repository", navigationEnabled: true,
+            onReturnToWorkflow: () => { returned++; }, document: { ...options.document!, sourceKind: "git-commit",
+                source: { provider: "azure-devops", repositoryId: "11111111-1111-4111-8111-111111111111", repositoryName: "Synthetic repository",
+                    branch: "refs/heads/main", commit: "a".repeat(40), objectId: "b".repeat(40) } } };
+        await act(async () => { mount(remote); });
+        assert.match(element.querySelector('[aria-label="Artifact source"]')?.textContent ?? "", /Synthetic repository.*Git commit aaaaaaaaaaaa/);
+        assert.doesNotMatch(element.textContent ?? "", /Working-tree revision/);
+        await act(async () => { (element.querySelector('[aria-label="Back to repository"]') as HTMLButtonElement).click(); });
+        assert.equal(returned, 1);
+    });
+});
+
+test("commit source validation rejects missing provenance and any clarification callback", async () => {
+    await withPreview(async ({ options, mount }) => {
+        const document = { ...options.document!, sourceKind: "git-commit" as const,
+            source: { provider: "azure-devops" as const, repositoryId: "11111111-1111-4111-8111-111111111111", repositoryName: "Synthetic",
+                branch: "refs/heads/main", commit: "a".repeat(40), objectId: "b".repeat(40) } };
+        assert.throws(() => mount({ ...options, document }), /read-only/);
+        assert.throws(() => mount({ ...options, onClarification: undefined, document: { ...document, source: { ...document.source, commit: "not-a-commit" } } }), /commit source/);
+    });
+});

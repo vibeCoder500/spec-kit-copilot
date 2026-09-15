@@ -310,7 +310,7 @@ function countChecklists(dir) {
 }
 
 // Build the full dashboard state for a project root.
-export function scanFeatures(projectRoot) {
+export function scanFeatures(projectRoot, { artifactTime } = {}) {
     const realProjectRoot = realDirectoryWithin(projectRoot);
     const specsDir = join(projectRoot, "specs");
     const initialized = Boolean(realProjectRoot) && hasRealDirectoryChain(projectRoot, ".specify");
@@ -374,6 +374,10 @@ export function scanFeatures(projectRoot) {
                 if (!st.isSymbolicLink() && st.isFile()) {
                     exists = true;
                     mtime = st.mtimeMs;
+                    if (artifactTime) {
+                        const committedTime = artifactTime(`specs/${slug}/${stage.file}`, mtime);
+                        if (Number.isFinite(committedTime) && committedTime >= 0) mtime = committedTime;
+                    }
                 }
             } catch {
                 // absent

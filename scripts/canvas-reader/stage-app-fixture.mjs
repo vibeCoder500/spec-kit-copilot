@@ -8,6 +8,7 @@ import { ASSET_FILES, READER_PACKAGE, REPOSITORY_ROOT, inspectScriptStrings } fr
 
 const PLUGINS = ["spec-kit-copilot-wizard", "spec-kit-copilot-sdd"];
 const EXCLUDED = new Set(["node_modules", "dist", "build", "coverage", "test-results", "playwright-report", ".git", ".vscode", "test", "tests"]);
+const REPOSITORY_BUILD_PATH = "extensions/sdd-canvas/repository-browser";
 const require = createRequire(new URL(`../../${READER_PACKAGE}/package.json`, import.meta.url));
 const builtinImports = new Set(builtinModules.flatMap((name) => [name, `node:${name}`]));
 const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
@@ -28,6 +29,7 @@ export async function verifyStagedPlugin({ pluginRoot: input } = {}) {
             const filename = relative(pluginRoot, target).split(sep).join("/");
             const dependency = filename.includes("/node_modules/");
             if ((!dependency && EXCLUDED.has(entry.name) && entry.name !== "node_modules") || /^\.env|\.(?:map|log|tmp|pem|key)$/i.test(entry.name) ||
+                filename === REPOSITORY_BUILD_PATH || filename.startsWith(`${REPOSITORY_BUILD_PATH}/`) ||
                 filename.includes("ui/markdown-reader/") || /(?:^|\/)\.canvas-reader/.test(filename)) throw new Error("Payload contains forbidden private or development files.");
             if (entry.isSymbolicLink()) throw new Error("Payload contains a redirecting path.");
             if (entry.isDirectory()) await visit(target);
@@ -64,6 +66,21 @@ export async function verifyStagedPlugin({ pluginRoot: input } = {}) {
     if (`sha256:${digest(assets.files.map((file) => `${file.path}\0${file.sha256}`).join("\n"))}` !== assets.buildHash) throw new Error("Reader build hash mismatch.");
     const notices = required(`${assetPath}/THIRD_PARTY_NOTICES.txt`).content.toString("utf8");
     if (assets.dependencies.some((dependency) => !dependency.license || !notices.includes(`${dependency.name}@${dependency.version}`))) throw new Error("Reader dependency notices are incomplete.");
+    if (!wizard) {
+        const repositoryPrefix = `${extensionPath}/vendor/repository-browser`;
+        const repositoryManifest = JSON.parse(required(`${repositoryPrefix}/manifest.json`).content.toString("utf8"));
+        const expected = ["vendor/repository-browser/server.mjs", "vendor/repository-browser/xdg-open", "vendor/repository-browser/THIRD_PARTY_NOTICES.txt", "ui/repository-browser.js", "ui/repository-browser.css"];
+        if (repositoryManifest.schemaVersion !== 1 || repositoryManifest.kind !== "sdd-repository-browser" ||
+            JSON.stringify(repositoryManifest.files.map((file) => file.path).sort()) !== JSON.stringify(expected.sort())) throw new Error("Repository runtime manifest is invalid.");
+        for (const expectedFile of repositoryManifest.files) {
+            const file = required(`${extensionPath}/${expectedFile.path}`);
+            if (file.bytes !== expectedFile.bytes || file.sha256 !== expectedFile.sha256) throw new Error("Repository runtime asset hash mismatch.");
+        }
+        if (repositoryManifest.buildHash !== digest(repositoryManifest.files.map((file) => `${file.path}\0${file.sha256}`).join("\n"))) throw new Error("Repository runtime build hash mismatch.");
+        const repositoryNotices = required(`${repositoryPrefix}/THIRD_PARTY_NOTICES.txt`).content.toString("utf8");
+        if (!repositoryManifest.dependencies.length || repositoryManifest.dependencies.some((dependency) => !dependency.license || !repositoryNotices.includes(`${dependency.name}@${dependency.version}`))) throw new Error("Repository runtime notices are incomplete.");
+        if (files.some((file) => file.path.startsWith(`${repositoryPrefix}/`) && !["server.mjs", "xdg-open", "THIRD_PARTY_NOTICES.txt", "manifest.json"].includes(file.path.slice(repositoryPrefix.length + 1)))) throw new Error("Unexpected repository runtime asset.");
+    }
     const typescript = require("typescript");
     const { JSDOM } = require("jsdom");
     const { init, parse } = require("es-module-lexer");
@@ -87,6 +104,7 @@ export async function verifyStagedPlugin({ pluginRoot: input } = {}) {
     }
 
     function browserAsset(route) {
+        if (route === "/ui/repository-browser.js" && !wizard) return `${extensionPath}/ui/repository-browser.js`;
         if (route === "/ui/artifact-review.js") return `${extensionPath}/ui/artifact-review.js`;
         if (route === "/ui/vendor/markdown-reader/markdown-reader.js") return `${assetPath}/markdown-reader.js`;
         throw new Error("Dynamic browser import is not an allowlisted reader asset.");
@@ -168,6 +186,7 @@ async function collectFiles(root, directory = root, includeRuntime = false) {
         const path = join(directory, entry.name);
         const relativePath = relative(root, path).split(sep).join("/");
         if (!includeRuntime && EXCLUDED.has(entry.name)) continue;
+        if (!includeRuntime && relativePath === REPOSITORY_BUILD_PATH) continue;
         if (relativePath.endsWith("ui/markdown-reader")) continue;
         if (/^\.env|\.(?:map|log|tmp)$/i.test(entry.name)) continue;
         if (entry.isSymbolicLink()) throw new Error("Plugin source contains a redirecting path.");

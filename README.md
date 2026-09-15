@@ -134,6 +134,12 @@ own README for full details.
 
 ## Installation
 
+The development branch adds optional Azure DevOps repository browsing and
+confirmed local clone preparation to SDD. See the
+[repository browser guide](docs/sdd-repository-browser.md). This change is not
+published by this checkout; existing marketplace versions and preview ZIPs are
+unchanged. Release version updates remain a separate approval step.
+
 ### Via marketplace (recommended)
 
 This repository ships a marketplace manifest at

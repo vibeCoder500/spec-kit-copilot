@@ -12,14 +12,31 @@ export interface ArtifactReference {
     availability: "available" | "expected" | "deleted" | "unsupported";
 }
 
-export interface MarkdownDocument {
+interface MarkdownDocumentBase {
     artifact: ArtifactReference;
     revision: DocumentRevision;
     content: string;
     byteSize: number;
+}
+
+export interface WorkingTreeDocument extends MarkdownDocumentBase {
     modifiedAt: string;
     sourceKind: "working-tree";
 }
+
+export interface CommitDocument extends MarkdownDocumentBase {
+    sourceKind: "git-commit";
+    source: {
+        provider: "azure-devops";
+        repositoryId: string;
+        repositoryName: string;
+        branch: string;
+        commit: string;
+        objectId: string;
+    };
+}
+
+export type MarkdownDocument = WorkingTreeDocument | CommitDocument;
 
 export interface ClarificationDescriptor {
     id: string;
@@ -63,6 +80,7 @@ export interface ReaderOptions {
     onNavigateReference(target: string): void;
     onNavigateHistory(direction: "back" | "forward"): void;
     onReturnToWorkflow(): void;
+    returnLabel?: "Back to repository";
     onRefresh?(): void;
     onClarification?(descriptorId: string, answer?: string): void;
     onRendered?(event: RenderedEvent): void;

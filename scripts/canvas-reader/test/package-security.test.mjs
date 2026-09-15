@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { mock, test } from "node:test";
 import { createOwnedWorkspace } from "../fixtures/workspace.mjs";
-import { stageAppFixture } from "../stage-app-fixture.mjs";
+import { stageAppFixture, verifyStagedPlugin } from "../stage-app-fixture.mjs";
 import { startFixture } from "../serve-fixture.mjs";
 
 const require = createRequire(new URL("../../../plugins/spec-kit-copilot-wizard/extensions/speckit-wizard-canvas/ui/markdown-reader/package.json", import.meta.url));
@@ -59,6 +59,14 @@ function adapterFixture() {
     const opened = { contextId: "ctx_fixture", primaryArtifactId: artifact.id, generation: 1, items: [artifact] };
     return { dom, container, document, opened };
 }
+
+test("SDD payload excludes repository proof source and rejects injected build directories", () => withPayload("sdd", async ({ pluginRoot, extensionRoot }) => {
+    const forbidden = join(extensionRoot, "repository-browser");
+    await assert.rejects(filesystemPromises.access(forbidden), { code: "ENOENT" });
+    await filesystemPromises.mkdir(forbidden);
+    await filesystemPromises.writeFile(join(forbidden, "profile.json"), JSON.stringify({ synthetic: true }));
+    await assert.rejects(verifyStagedPlugin({ pluginRoot }), /forbidden private or development files/);
+}));
 
 for (const canvas of ["wizard", "sdd"]) {
     test(`${canvas} packaged preview performs zero process, setup, model, remote-fetch, or write operations`, () => withPayload(canvas, async ({ pluginRoot }) => {

@@ -1,0 +1,277 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdd-repository-browser",
+  "sourceHash": "68ce645cdb3503527e0a9c37a4580e7bdbdbb5e865d4538da4a2ea2a851c308f",
+  "buildHash": "96b76fe3bdc207baec066b76aae3dcb9e4ba0fc6e82b7228639073011ae39844",
+  "sources": [
+    {
+      "path": "build-runtime.mjs",
+      "sha256": "c8859bfe78c9125e2bf06859efd7b460b15244eec90bdf786d96c004cb18d96c"
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "df5c1886f4dca5b20d05fc0a52982f5facd086c5627e3cea93ec29a17573d52a"
+    },
+    {
+      "path": "src/ado-client.ts",
+      "sha256": "215a3f53e8af24f2822af02cc199ec98856255d8e2d73c2a635854dd9ff3aa76"
+    },
+    {
+      "path": "src/artifact-clock.ts",
+      "sha256": "3c9ef41f822591287305ade6ecfe4292b09c5d989407cba80f4a5383cf48ab79"
+    },
+    {
+      "path": "src/auth.ts",
+      "sha256": "70fd6ba43222db134e280b1f4c1dccf3c73972e0c27bcdc092e39c45ac4de5ad"
+    },
+    {
+      "path": "src/clone.ts",
+      "sha256": "cbd46e3f76d6682b3d8859f43e458a69429719f62c773459a7cc17abc4d2785b"
+    },
+    {
+      "path": "src/continuations.ts",
+      "sha256": "05a07635aed7fa3d6db1b183829ba3680ed350d61dc41561fa37cf9ae03d8ba8"
+    },
+    {
+      "path": "src/discovery.ts",
+      "sha256": "9bde6891347a5d4bfad69c0b48f0397de07f1ccb05df9bff7d8bd18df66a7b23"
+    },
+    {
+      "path": "src/errors.ts",
+      "sha256": "16a67d5edc746d0952dd562034a2fbe1650e1f0f0052f85e7384702a7fadbbc2"
+    },
+    {
+      "path": "src/msal-client.ts",
+      "sha256": "e59e6b7470855603f2ec58ac0997f3b031b5f9eeee0d0de619187440bf954544"
+    },
+    {
+      "path": "src/oauth-callback.ts",
+      "sha256": "18e1d146ebdd40ccc0192e0c841fd72e4001b9df4d6de5dd1497bbe295901da3"
+    },
+    {
+      "path": "src/profile.ts",
+      "sha256": "591bba17e05da093eb446c9d1cbe37e966ac216225b2c08044fd78f0f0d9d8f4"
+    },
+    {
+      "path": "src/remote-review.ts",
+      "sha256": "43ba52e81727bf4f06461a2a9872fd07ca637bb73de7a3e5641b98db0a9aba1f"
+    },
+    {
+      "path": "src/repository-service.ts",
+      "sha256": "c764356e8d56e507e2d73cb1e8fbc7a6f9fe1898726d758611bba82cffc59e77"
+    },
+    {
+      "path": "src/ui/api.ts",
+      "sha256": "d41c5cc3056c9c77ec2557a0ed6748a60b71e27e8d9c55a9e6493b57fcb94562"
+    },
+    {
+      "path": "src/ui/remote-reader.ts",
+      "sha256": "5b61b76d9fcb6c909b14011f48804f9223ad8130460049f6f0ad05e248e37c9d"
+    },
+    {
+      "path": "src/ui/repository-browser.css",
+      "sha256": "2c51c72c608d12b6c060619573483b7f5176e6da59510e0c68259464c79a16b0"
+    },
+    {
+      "path": "src/ui/repository-browser.ts",
+      "sha256": "1aff193c848edece3e325fa744d06106176d510cf04af86b5369b43342bb561c"
+    },
+    {
+      "path": "src/ui/tree.ts",
+      "sha256": "405751a206444d601e24af446286a8cb9275388ee03cf9f4b596ef4e2db1a452"
+    },
+    {
+      "path": "src/workspace-binding.ts",
+      "sha256": "dbfc4a4f00d5f83d2f07d3d9ae7f5917253fc5cd2e7260e89a5b0a3044eb163a"
+    }
+  ],
+  "dependencies": [
+    {
+      "name": "@azure/msal-common",
+      "version": "16.14.0",
+      "license": "MIT"
+    },
+    {
+      "name": "@azure/msal-node",
+      "version": "6.0.0",
+      "license": "MIT"
+    },
+    {
+      "name": "buffer-equal-constant-time",
+      "version": "1.0.1",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "name": "bundle-name",
+      "version": "4.1.0",
+      "license": "MIT"
+    },
+    {
+      "name": "default-browser",
+      "version": "5.5.1",
+      "license": "MIT"
+    },
+    {
+      "name": "default-browser-id",
+      "version": "5.0.1",
+      "license": "MIT"
+    },
+    {
+      "name": "define-lazy-prop",
+      "version": "3.0.0",
+      "license": "MIT"
+    },
+    {
+      "name": "ecdsa-sig-formatter",
+      "version": "1.0.11",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "is-docker",
+      "version": "3.0.0",
+      "license": "MIT"
+    },
+    {
+      "name": "is-in-ssh",
+      "version": "1.0.0",
+      "license": "MIT"
+    },
+    {
+      "name": "is-inside-container",
+      "version": "1.0.0",
+      "license": "MIT"
+    },
+    {
+      "name": "is-wsl",
+      "version": "3.1.1",
+      "license": "MIT"
+    },
+    {
+      "name": "jsonwebtoken",
+      "version": "9.0.3",
+      "license": "MIT"
+    },
+    {
+      "name": "jwa",
+      "version": "2.0.1",
+      "license": "MIT"
+    },
+    {
+      "name": "jws",
+      "version": "4.0.1",
+      "license": "MIT"
+    },
+    {
+      "name": "lodash.includes",
+      "version": "4.3.0",
+      "license": "MIT"
+    },
+    {
+      "name": "lodash.isboolean",
+      "version": "3.0.3",
+      "license": "MIT"
+    },
+    {
+      "name": "lodash.isinteger",
+      "version": "4.0.4",
+      "license": "MIT"
+    },
+    {
+      "name": "lodash.isnumber",
+      "version": "3.0.3",
+      "license": "MIT"
+    },
+    {
+      "name": "lodash.isplainobject",
+      "version": "4.0.6",
+      "license": "MIT"
+    },
+    {
+      "name": "lodash.isstring",
+      "version": "4.0.1",
+      "license": "MIT"
+    },
+    {
+      "name": "lodash.once",
+      "version": "4.1.1",
+      "license": "MIT"
+    },
+    {
+      "name": "lucide",
+      "version": "1.42.0",
+      "license": "ISC"
+    },
+    {
+      "name": "ms",
+      "version": "2.1.3",
+      "license": "MIT"
+    },
+    {
+      "name": "open",
+      "version": "11.0.2",
+      "license": "MIT"
+    },
+    {
+      "name": "powershell-utils",
+      "version": "0.2.1",
+      "license": "MIT"
+    },
+    {
+      "name": "run-applescript",
+      "version": "7.1.0",
+      "license": "MIT"
+    },
+    {
+      "name": "safe-buffer",
+      "version": "5.2.1",
+      "license": "MIT"
+    },
+    {
+      "name": "semver",
+      "version": "7.8.5",
+      "license": "ISC"
+    },
+    {
+      "name": "wsl-utils",
+      "version": "1.0.0",
+      "license": "MIT"
+    },
+    {
+      "name": "powershell-utils",
+      "version": "0.1.0",
+      "license": "MIT"
+    },
+    {
+      "name": "yaml",
+      "version": "2.9.0",
+      "license": "ISC"
+    }
+  ],
+  "files": [
+    {
+      "path": "ui/repository-browser.css",
+      "bytes": 7681,
+      "sha256": "2c51c72c608d12b6c060619573483b7f5176e6da59510e0c68259464c79a16b0"
+    },
+    {
+      "path": "ui/repository-browser.js",
+      "bytes": 49468,
+      "sha256": "d15589e823b733c2a44e143fce01726b286121297809f459654db2fb9462dc5b"
+    },
+    {
+      "path": "vendor/repository-browser/server.mjs",
+      "bytes": 906526,
+      "sha256": "2249c31cd61dedf46762c7fdf099b68425d299c649275ff8be79c49cdae15f39"
+    },
+    {
+      "path": "vendor/repository-browser/THIRD_PARTY_NOTICES.txt",
+      "bytes": 51830,
+      "sha256": "b071a120129a043b6cdf211f7100b2d1d003c3e25f12eb9a9905b87b881c21ec"
+    },
+    {
+      "path": "vendor/repository-browser/xdg-open",
+      "bytes": 32416,
+      "sha256": "7d759d54f0d4ce1beeb34ee62c587985b5042374e8de237b0dcb8cd47aa698cf"
+    }
+  ]
+}

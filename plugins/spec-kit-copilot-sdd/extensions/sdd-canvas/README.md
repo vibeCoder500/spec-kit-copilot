@@ -69,9 +69,33 @@ The agent opens the dashboard in a side panel. See
 - **Live updates** — the panel refreshes automatically (SSE) as the core
   commands write new artifacts.
 
-The canvas is **read-only against the filesystem**; it never writes spec files.
-All changes happen through the core commands themselves, so their safety
-guardrails still apply (only `speckit-implement` ever edits source code).
+Artifact browsing never writes spec files. Optional repository browsing adds an
+explicitly confirmed clone into a new owned local folder; it never overwrites an
+existing checkout. Workflow edits still run through the core commands and the
+current Copilot session's permissions.
+
+## Optional Repository Browser
+
+This unreleased development build includes an Azure DevOps repository search
+dropdown with expandable `.specify` and `specs` trees, a personalized team rail,
+commit-pinned Markdown previews, and confirmed clone preparation. It requires a
+trusted per-user connection profile. Without that profile, the existing local
+SDD experience remains unchanged and no remote connection is attempted.
+
+The connected Microsoft account determines repository access. GitHub Copilot
+sign-in is not reused as an Azure DevOps token. Authentication uses the system
+browser and delegated Microsoft Entra access; tokens stay in the extension's
+memory and are discarded on disconnect or close.
+
+After cloning, open the prepared folder in a new App session. The canvas verifies
+the actual Git workspace and initial source before local workflows can run.
+Project-local skills and the canvas provider still need to be present in that
+session; cloning does not install them or run project initialization. Verified,
+unchanged cloned artifacts use committed times so checkout order does not create
+false stale-stage warnings. Local modifications retain the normal freshness rules.
+
+See the [repository browser guide](../../../../docs/sdd-repository-browser.md)
+for configuration, permissions, native handoff, cancellation, and recovery.
 
 ## Feature targeting
 

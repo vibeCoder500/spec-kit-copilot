@@ -37,7 +37,9 @@ jobs:
         with:
           node-version: 24.19.0
           cache: npm
-          cache-dependency-path: plugins/spec-kit-copilot-wizard/extensions/speckit-wizard-canvas/ui/markdown-reader/package-lock.json
+          cache-dependency-path: |
+            plugins/spec-kit-copilot-wizard/extensions/speckit-wizard-canvas/ui/markdown-reader/package-lock.json
+            plugins/spec-kit-copilot-sdd/extensions/sdd-canvas/repository-browser/package-lock.json
 
       - name: Install locked build dependencies without lifecycle scripts
         run: |
@@ -47,6 +49,22 @@ jobs:
       - name: Install existing Wizard runtime from its lockfile
         run: |
           npm ci --prefix ../.. --ignore-scripts --no-fund
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Install and validate isolated repository browser
+        working-directory: plugins/spec-kit-copilot-sdd/extensions/sdd-canvas/repository-browser
+        run: |
+          npm ci --ignore-scripts --no-fund
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm audit --audit-level=low --ignore-scripts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run typecheck
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run lint
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm run verify:package
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Audit dependencies

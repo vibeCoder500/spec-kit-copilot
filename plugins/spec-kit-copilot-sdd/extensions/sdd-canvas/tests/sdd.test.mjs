@@ -51,6 +51,23 @@ test("implementation progress scans the complete bounded tasks artifact", (t) =>
     assert.equal(feature.nextStage, "implement");
 });
 
+test("verified artifact clocks prevent checkout order from inventing stale stages", (t) => {
+    const root = mkdtempSync(join(tmpdir(), "sdd-clone-clock-"));
+    t.after(() => rmSync(root, { recursive: true, force: true }));
+    mkdirSync(join(root, ".specify"));
+    const folder = join(root, "specs/001-feature");
+    mkdirSync(folder, { recursive: true });
+    write(join(folder, "spec.md"), "# Specification\n", 30);
+    write(join(folder, "plan.md"), "# Plan\n", 10);
+    write(join(folder, "tasks.md"), "# Tasks\n- [ ] T001 Work\n", 20);
+    assert.equal(scanFeatures(root).features[0].stages.tasks.stale, true);
+    const times = new Map([["spec.md", 1000], ["plan.md", 2000], ["tasks.md", 3000]]);
+    const artifactTime = (path, fallback) => times.get(path.split("/").at(-1)) ?? fallback;
+    assert.equal(scanFeatures(root, { artifactTime }).features[0].stages.tasks.done, true);
+    times.delete("spec.md");
+    assert.equal(scanFeatures(root, { artifactTime }).features[0].stages.tasks.stale, true);
+});
+
 test("clarifications retain stable indices across supported markdown blocks", () => {
     const markdown = [
         "## Requirements",

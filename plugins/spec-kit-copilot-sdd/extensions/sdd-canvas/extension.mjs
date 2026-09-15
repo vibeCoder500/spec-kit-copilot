@@ -17,6 +17,7 @@ import { joinSession, createCanvas, CanvasError } from "@github/copilot-sdk/exte
 import { createSddReviewService } from "./artifact-review.mjs";
 import { handleArtifactReview } from "./vendor/artifact-review.mjs";
 import { ArtifactReadError } from "./vendor/artifact-read.mjs";
+import { createRepositoryService, handleRepositoryRequest } from "./vendor/repository-browser/server.mjs";
 import {
     scanFeatures,
     readArtifact,
@@ -33,12 +34,17 @@ import {
 } from "./sdd.mjs";
 
 let PROJECT_ROOT = findProjectRoot();
+let ARTIFACT_CLOCK;
 const INDEX_HTML = readFileSync(fileURLToPath(new URL("./index.html", import.meta.url)), "utf8");
 const READER_ASSETS = new Map([
     ["/ui/vendor/markdown-reader/markdown-reader.js", ["markdown-reader.js", "text/javascript; charset=utf-8"]],
     ["/ui/vendor/markdown-reader/markdown-reader.css", ["markdown-reader.css", "text/css; charset=utf-8"]],
     ["/ui/vendor/markdown-reader/manifest.json", ["manifest.json", "application/json; charset=utf-8"]],
     ["/ui/vendor/markdown-reader/THIRD_PARTY_NOTICES.txt", ["THIRD_PARTY_NOTICES.txt", "text/plain; charset=utf-8"]],
+]);
+const REPOSITORY_ASSETS = new Map([
+    ["/ui/repository-browser.js", ["ui/repository-browser.js", "text/javascript; charset=utf-8"]],
+    ["/ui/repository-browser.css", ["ui/repository-browser.css", "text/css; charset=utf-8"]],
 ]);
 const SETUP_PROMPT = [
     "Set up Spec Kit spec-driven development in this repository.",
@@ -50,13 +56,25 @@ const SETUP_PROMPT = [
 // instanceId -> { server, url, clients:Set<res>, lastSig:string, timer }
 const servers = new Map();
 
+async function assertActionWorkspace(context) {
+    const entry = servers.get(context?.instanceId);
+    if (entry) { await entry.repositories.verifyLocal(context?.input?.localContextId); return; }
+    for (const server of servers.values()) {
+        const state = server.repositories.snapshot();
+        if (state.mode !== "local" || state.configuration === "configured") throw new CanvasError("local_context_mismatch", "Use the local workspace controls in this canvas to run workflows.");
+    }
+    const service = await createRepositoryService({ workspacePath: PROJECT_ROOT });
+    try { await service.verifyLocal(context?.input?.localContextId); }
+    finally { service.dispose(); }
+}
+
 // Keys that address a runnable command (project-level, spine, gates, implement).
 const RUNNABLE_KEYS = [CONSTITUTION.key, ...STAGES.map((s) => s.key), IMPLEMENT.key, ...GATES.map((g) => g.key)];
 // Stages whose existing artifact must be explicitly overwritten on rerun.
 const OVERWRITE_KEYS = new Set(["plan", "tasks"]);
 
 function currentState() {
-    return scanFeatures(PROJECT_ROOT);
+    return scanFeatures(PROJECT_ROOT, { artifactTime: ARTIFACT_CLOCK });
 }
 
 function sendJson(res, code, obj) {
@@ -283,6 +301,15 @@ function makeHandler(entry) {
             return;
         }
         try {
+            if (path.startsWith("/api/repositories/")) {
+                return await handleRepositoryRequest(req, res, url, entry.repositories);
+            }
+            if (req.method === "GET" && REPOSITORY_ASSETS.has(path)) {
+                const [file, contentType] = REPOSITORY_ASSETS.get(path);
+                res.writeHead(200, { "Content-Type": contentType, "Cache-Control": "no-store", "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff" });
+                res.end(readFileSync(new URL(`./${file}`, import.meta.url)));
+                return;
+            }
             if (path.startsWith("/api/review/")) {
                 return await handleArtifactReview(req, res, url, entry.review);
             }
@@ -341,6 +368,7 @@ function makeHandler(entry) {
             }
             if (path === "/api/clarify" && req.method === "POST") {
                 const body = await readBody(req);
+                await entry.repositories.verifyLocal(body.localContextId);
                 const hasReview = ["contextId", "artifactId", "expectedRevision", "questionId"].some((key) => Object.hasOwn(body, key));
                 const review = hasReview ? { service: entry.review, contextId: body.contextId, artifactId: body.artifactId,
                     expectedRevision: body.expectedRevision, questionId: body.questionId } : undefined;
@@ -349,6 +377,8 @@ function makeHandler(entry) {
                 return;
             }
             if (path === "/api/setup" && req.method === "POST") {
+                const body = await readBody(req);
+                await entry.repositories.verifyLocal(body.localContextId);
                 await session.send({ prompt: SETUP_PROMPT });
                 sendJson(res, 200, { ok: true, prompt: SETUP_PROMPT });
                 return;
@@ -360,6 +390,7 @@ function makeHandler(entry) {
                     Connection: "keep-alive",
                 });
                 res.write(`event: state\ndata: ${JSON.stringify(currentState())}\n\n`);
+                res.write(`event: repositories\ndata: ${JSON.stringify(entry.repositories.snapshot())}\n\n`);
                 entry.clients.add(res);
                 req.on("close", () => entry.clients.delete(res));
                 return;
@@ -368,6 +399,7 @@ function makeHandler(entry) {
                 // Constitution setup is only required for feature/gate commands;
                 // the constitution command itself is part of that setup surface.
                 const body = await readBody(req);
+                await entry.repositories.verifyLocal(body.localContextId);
                 const key = String(body.key || "");
                 if (currentState().prerequisites.setupRequired) {
                     sendJson(res, 409, { ok: false, error: "Set up Spec Kit spec-driven development first" });
@@ -393,12 +425,16 @@ function makeHandler(entry) {
             res.end("not found");
         } catch (err) {
             if (reviewing) { reviewFailure("read_failed"); return; }
+            if (["remote_read_only", "local_context_mismatch", "invalid_context"].includes(err?.code)) {
+                sendJson(res, 409, { ok: false, error: err.message, code: err.code });
+                return;
+            }
             sendJson(res, 500, { ok: false, error: String((err && err.message) || err) });
         }
     };
 }
 
-export async function startServer() {
+export async function startServer(repositoryOptions = {}) {
     const workspacePath = PROJECT_ROOT;
     const entry = {
         cap: randomBytes(32).toString("base64url"),
@@ -411,8 +447,13 @@ export async function startServer() {
         timer: null,
         review: createSddReviewService({ workspacePath, instanceId: randomBytes(16).toString("hex") }),
     };
+    entry.repositories = await createRepositoryService({ ...repositoryOptions, workspacePath, onChange: () => {
+        const payload = `event: repositories\ndata: ${JSON.stringify(entry.repositories.snapshot())}\n\n`;
+        for (const client of entry.clients) { try { client.write(payload); } catch { continue; } }
+    } });
+    ARTIFACT_CLOCK = entry.repositories.artifactTime;
     const server = createServer(makeHandler(entry));
-    server.once("close", () => entry.review.dispose());
+    server.once("close", () => { entry.review.dispose(); entry.repositories.dispose(); });
     await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
     const port = server.address().port;
     entry.server = server;
@@ -469,7 +510,9 @@ const canvas = createCanvas({
         {
             name: "setup_sdd",
             description: "Initialize Spec Kit in Copilot skills mode so the core spec-driven commands are available before running the pipeline.",
-            handler: async () => {
+            inputSchema: { type: "object", properties: { localContextId: { type: "string" } } },
+            handler: async (ctx) => {
+                await assertActionWorkspace(ctx);
                 await session.send({ prompt: SETUP_PROMPT });
                 return { ok: true, prompt: SETUP_PROMPT };
             },
@@ -484,10 +527,12 @@ const canvas = createCanvas({
                     index: { type: "integer", minimum: 0 },
                     question: { type: "string" },
                     answer: { type: "string" },
+                    localContextId: { type: "string" },
                 },
                 required: ["feature", "index", "question", "answer"],
             },
             handler: async (ctx) => {
+                await assertActionWorkspace(ctx);
                 const result = await clarificationRun(
                     ctx.input?.feature,
                     ctx.input?.index,
@@ -513,10 +558,12 @@ const canvas = createCanvas({
                     description: { type: "string", description: "Feature description (only used by specify to create a new feature)." },
                     instructions: { type: "string", description: "Optional guidance, constraints, or focus for the command." },
                     overwrite: { type: "boolean", description: "Required true when rerunning plan or tasks whose artifact already exists." },
+                    localContextId: { type: "string", description: "The verified local workspace context from the repository connection state." },
                 },
                 required: ["key"],
             },
             handler: async (ctx) => {
+                await assertActionWorkspace(ctx);
                 if (currentState().prerequisites.setupRequired) {
                     throw new CanvasError("setup_required", "Set up Spec Kit spec-driven development first");
                 }

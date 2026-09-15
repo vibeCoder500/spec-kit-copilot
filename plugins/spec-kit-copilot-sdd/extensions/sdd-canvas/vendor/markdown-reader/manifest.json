@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
-  "sourceHash": "sha256:d59751f6c92ab6602dfbb217344a4b8765309e517266c467554b3fbc210923d4",
-  "buildHash": "sha256:5f51f164a1884bd262e5465869bc0ec3b3ff2d20fbd1642fdd741ada3f24f253",
+  "sourceHash": "sha256:245979f9e0334e1c67b5bf537da4b51aad4c6266ecc54e990133be50dfd732ff",
+  "buildHash": "sha256:5dca0e3a54606828ec58a724d9164f540d5890386c31ed7188a16421e038b03e",
   "files": [
     {
       "path": "markdown-reader.js",
-      "bytes": 493001,
-      "sha256": "044848bbd060c55a0edb491f46ce670d67c722aa75ebe324d8baa2a49e1905fd"
+      "bytes": 494483,
+      "sha256": "513295a8dda7d0a6ea905ffb5f118e75cdb496b64804fd2140f9984f7ce5195e"
     },
     {
       "path": "markdown-reader.css",

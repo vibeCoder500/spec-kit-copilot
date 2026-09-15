@@ -6,7 +6,7 @@ import remarkGfm from "remark-gfm";
 import { visit } from "unist-util-visit";
 import type { Emphasis, Root, Text } from "mdast";
 import type { Plugin } from "unified";
-import { ChevronLeft, ChevronRight, Files, RefreshCw } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Files, RefreshCw } from "lucide-react";
 import { createMarkdownOutline, namespaceMarkdownTargets } from "./markdownOutline.ts";
 import { MarkdownTableOfContents } from "./MarkdownTableOfContents/MarkdownTableOfContents.tsx";
 import { scrollToMarkdownHeading, useActiveMarkdownHeading } from "./useActiveMarkdownHeading.ts";
@@ -173,6 +173,7 @@ export function MarkdownReader({ options }: { options: ReaderOptions }) {
                 if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); options.onReturnToWorkflow(); }
             }}>
             {options.navigationEnabled && <nav ref={toolbar} className="md-reader__toolbar" aria-label="Artifact navigation">
+                {options.returnLabel && <button type="button" aria-label={options.returnLabel} title={options.returnLabel} onClick={options.onReturnToWorkflow}><ArrowLeft size={16} aria-hidden="true" /></button>}
                 <button type="button" aria-label="Previous artifact" title="Previous artifact" disabled={!options.canNavigateBack} onClick={() => options.onNavigateHistory("back")}><ChevronLeft size={16} aria-hidden="true" /></button>
                 <button type="button" aria-label="Next artifact" title="Next artifact" disabled={!options.canNavigateForward} onClick={() => options.onNavigateHistory("forward")}><ChevronRight size={16} aria-hidden="true" /></button>
                 <Files size={16} aria-hidden="true" />
@@ -181,7 +182,11 @@ export function MarkdownReader({ options }: { options: ReaderOptions }) {
                 </select>
                 {options.onRefresh && <button type="button" aria-label="Refresh artifact" title="Refresh artifact" disabled={options.state === "loading"} onClick={options.onRefresh}><RefreshCw size={16} aria-hidden="true" /></button>}
             </nav>}
-            {document && <div ref={identity} className="md-reader__identity" role="group" aria-label="Artifact source"><span>{document.artifact.relativePath}</span><small>Working-tree revision {document.revision.slice(7, 19)}</small></div>}
+            {document && <div ref={identity} className="md-reader__identity" role="group" aria-label="Artifact source"><span>{document.artifact.relativePath}</span>
+                {document.sourceKind === "git-commit"
+                    ? <small title={`${document.source.repositoryName} / ${document.source.branch} / ${document.source.commit}`}>{document.source.repositoryName} / {document.source.branch.slice(11)} / Git commit {document.source.commit.slice(0, 12)}</small>
+                    : <small>Working-tree revision {document.revision.slice(7, 19)}</small>}
+            </div>}
             {options.connectionState === "disconnected" && <p className="md-reader__notice" role="status">Disconnected. Displayed content may be out of date.</p>}
             {showDocument && ["changed", "no-heading"].includes(presentationState) && <p className="md-reader__notice" role="status">{STATE_MESSAGES[presentationState]}</p>}
             {showDocument ? <div className={`md-reader__layout${parsed.headings.length ? " md-reader__layout--outlined" : ""}`}>

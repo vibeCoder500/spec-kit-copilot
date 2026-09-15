@@ -23,7 +23,16 @@ function validate(element: HTMLElement, options: ReaderOptions) {
         if (options.document.artifact.id !== options.selectedArtifactId) throw new Error("Selected artifact does not match document.");
         if (!options.artifacts.some((artifact) => artifact.id === options.selectedArtifactId && artifact.relativePath === options.document?.artifact.relativePath)) throw new Error("Document is not in the current artifact list.");
         if (!/^sha256:[0-9a-f]{64}$/.test(options.document.revision)) throw new Error("Invalid document revision.");
-        if (options.document.sourceKind !== "working-tree" || typeof options.document.content !== "string") throw new Error("Invalid artifact source.");
+        if (!["working-tree", "git-commit"].includes(options.document.sourceKind) || typeof options.document.content !== "string") throw new Error("Invalid artifact source.");
+        if (options.document.sourceKind === "git-commit") {
+            const source = options.document.source;
+            if (!source || source.provider !== "azure-devops" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(source.repositoryId) ||
+                !/^[0-9a-f]{40}$/i.test(source.commit) || !/^[0-9a-f]{40}$/i.test(source.objectId) ||
+                typeof source.repositoryName !== "string" || !source.repositoryName.trim() || source.repositoryName.length > 256 ||
+                typeof source.branch !== "string" || !source.branch.startsWith("refs/heads/") || source.branch.length > 1024 ||
+                /[\p{Cc}\p{Cf}]/u.test(source.repositoryName + source.branch)) throw new Error("Invalid commit source.");
+            if (options.clarifications?.length || options.onClarification) throw new Error("Remote artifacts are read-only.");
+        }
         if (!Number.isInteger(options.document.byteSize) || options.document.byteSize < 0 || options.document.byteSize > 5_242_880) throw new Error("Invalid artifact byte size.");
     }
 }
