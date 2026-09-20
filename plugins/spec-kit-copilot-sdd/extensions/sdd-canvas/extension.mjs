@@ -10,6 +10,7 @@
 // commands do that (and only `speckit-implement` ever touches source code).
 
 import { createServer } from "node:http";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -17,7 +18,7 @@ import { joinSession, createCanvas, CanvasError } from "@github/copilot-sdk/exte
 import { createSddReviewService } from "./artifact-review.mjs";
 import { handleArtifactReview } from "./vendor/artifact-review.mjs";
 import { ArtifactReadError } from "./vendor/artifact-read.mjs";
-import { createRepositoryService, handleRepositoryRequest } from "./vendor/repository-browser/server.mjs";
+import { createEntryCoordinator, createHostHandoffAdapter, createRepositoryService, createWorkflowBinding, handleEntryRequest, handleRepositoryRequest, loadEntrySettings } from "./vendor/repository-browser/server.mjs";
 import {
     scanFeatures,
     readArtifact,
@@ -34,7 +35,7 @@ import {
 } from "./sdd.mjs";
 
 let PROJECT_ROOT = findProjectRoot();
-let ARTIFACT_CLOCK;
+const workflowContext = new AsyncLocalStorage();
 const INDEX_HTML = readFileSync(fileURLToPath(new URL("./index.html", import.meta.url)), "utf8");
 const READER_ASSETS = new Map([
     ["/ui/vendor/markdown-reader/markdown-reader.js", ["markdown-reader.js", "text/javascript; charset=utf-8"]],
@@ -43,8 +44,8 @@ const READER_ASSETS = new Map([
     ["/ui/vendor/markdown-reader/THIRD_PARTY_NOTICES.txt", ["THIRD_PARTY_NOTICES.txt", "text/plain; charset=utf-8"]],
 ]);
 const REPOSITORY_ASSETS = new Map([
-    ["/ui/repository-browser.js", ["ui/repository-browser.js", "text/javascript; charset=utf-8"]],
-    ["/ui/repository-browser.css", ["ui/repository-browser.css", "text/css; charset=utf-8"]],
+    ["/ui/repository-entry.js", ["ui/repository-entry.js", "text/javascript; charset=utf-8"]],
+    ["/ui/repository-entry.css", ["ui/repository-entry.css", "text/css; charset=utf-8"]],
 ]);
 const SETUP_PROMPT = [
     "Set up Spec Kit spec-driven development in this repository.",
@@ -57,15 +58,32 @@ const SETUP_PROMPT = [
 const servers = new Map();
 
 async function assertActionWorkspace(context) {
-    const entry = servers.get(context?.instanceId);
-    if (entry) { await entry.repositories.verifyLocal(context?.input?.localContextId); return; }
-    for (const server of servers.values()) {
-        const state = server.repositories.snapshot();
-        if (state.mode !== "local" || state.configuration === "configured") throw new CanvasError("local_context_mismatch", "Use the local workspace controls in this canvas to run workflows.");
-    }
-    const service = await createRepositoryService({ workspacePath: PROJECT_ROOT });
+    const entry = workflowContext.getStore();
+    if (entry?.entryMode) throw new CanvasError("entry_required", "Choose a repository or open the canvas directly first.");
+    if (entry?.repositories) { await entry.verifyWorkspace(); await entry.repositories.verifyLocal(context?.input?.localContextId); return; }
+    const service = await createRepositoryService({ workspacePath: currentRoot(), profileStatus: { state: "unconfigured" } });
     try { await service.verifyLocal(context?.input?.localContextId); }
     finally { service.dispose(); }
+}
+
+function currentRoot() { return workflowContext.getStore()?.workspacePath ?? PROJECT_ROOT; }
+
+function canvasKey(context) { return `${context.extensionId || "sdd"}:${context.canvasId}:${context.instanceId}`; }
+
+function entryHtml() {
+    try { return readFileSync(new URL("./entry.html", import.meta.url), "utf8"); }
+    catch { throw new CanvasError("canvas_unavailable", "Repository entry is unavailable. Open the canvas directly."); }
+}
+
+function sessionHost(context, metadata) {
+    return createHostHandoffAdapter({ sessionId: metadata.sessionId, extensionId: context.extensionId,
+        metadata: session.rpc.metadata, canvas: session.rpc.canvas,
+        subscribeContextChanged: typeof session.on === "function" ? listener => session.on("session.context_changed", listener) : undefined,
+        subscribeActivityChanged: typeof session.on === "function" ? listener => {
+            const subscriptions = ["assistant.turn_start", "session.background_tasks_changed", "command.queued", "command.execute", "session.idle"]
+                .map(event => session.on(event, listener));
+            return () => subscriptions.forEach(unsubscribe => unsubscribe());
+        } : undefined });
 }
 
 // Keys that address a runnable command (project-level, spine, gates, implement).
@@ -74,7 +92,7 @@ const RUNNABLE_KEYS = [CONSTITUTION.key, ...STAGES.map((s) => s.key), IMPLEMENT.
 const OVERWRITE_KEYS = new Set(["plan", "tasks"]);
 
 function currentState() {
-    return scanFeatures(PROJECT_ROOT, { artifactTime: ARTIFACT_CLOCK });
+    return scanFeatures(currentRoot(), { artifactTime: workflowContext.getStore()?.artifactTime });
 }
 
 function sendJson(res, code, obj) {
@@ -225,7 +243,7 @@ async function clarificationRun(slugInput, indexInput, questionInput, answerInpu
             return { error: "clarification source changed; refresh before submitting" };
         }
     } else {
-        artifact = readArtifact(PROJECT_ROOT, slug, "specify");
+        artifact = readArtifact(currentRoot(), slug, "specify");
         if (!artifact.ok) return { error: artifact.error };
         clarification = extractClarifications(artifact.content)[index];
         if (!clarification) return { error: "clarification no longer exists" };
@@ -253,6 +271,17 @@ async function broadcast(entry) {
     if (entry.broadcasting || !entry.clients.size) return;
     entry.broadcasting = true;
     try {
+        if (entry.entryMode) {
+            const state = await entry.coordinator.state();
+            const signature = JSON.stringify(state);
+            if (signature === entry.lastSig) return;
+            entry.lastSig = signature;
+            for (const client of entry.clients) {
+                try { client.write(`event: entry\ndata: ${signature}\n\n`); } catch { continue; }
+            }
+            return;
+        }
+        await entry.verifyWorkspace();
         const state = currentState();
         const signature = await entry.review.signature();
         const sig = stateSignature(state, signature);
@@ -267,7 +296,7 @@ async function broadcast(entry) {
 }
 
 function makeHandler(entry) {
-    return async (req, res) => {
+    return async (req, res) => workflowContext.run(entry, async () => {
         let url;
         try {
             url = new URL(req.url, entry.origin || "http://127.0.0.1");
@@ -301,8 +330,20 @@ function makeHandler(entry) {
             return;
         }
         try {
+            if (entry.entryMode && path.startsWith("/api/review/")) {
+                sendJson(res, 409, { ok: false, error: "Choose a repository first.", code: "entry_required" }); return;
+            }
+            if (!entry.entryMode && path.startsWith("/api/")) await entry.verifyWorkspace();
+            if (path.startsWith("/api/entry/")) {
+                if (!entry.coordinator) { sendJson(res, 404, { ok: false, error: "entry unavailable" }); return; }
+                return await handleEntryRequest(req, res, url, entry.coordinator);
+            }
             if (path.startsWith("/api/repositories/")) {
-                return await handleRepositoryRequest(req, res, url, entry.repositories);
+                const operation = path.slice("/api/repositories/".length);
+                if (!entry.coordinator || !["connection", "connect", "disconnect", "search", "relevant", "detail"].includes(operation)) {
+                    sendJson(res, 404, { ok: false, error: "repository operation unavailable" }); return;
+                }
+                return await handleRepositoryRequest(req, res, url, entry.coordinator);
             }
             if (req.method === "GET" && REPOSITORY_ASSETS.has(path)) {
                 const [file, contentType] = REPOSITORY_ASSETS.get(path);
@@ -346,19 +387,23 @@ function makeHandler(entry) {
                     "Cache-Control": "no-store",
                     "Referrer-Policy": "no-referrer",
                 });
-                res.end(INDEX_HTML);
+                res.end(entry.entryMode ? entryHtml() : INDEX_HTML);
                 return;
             }
+            if (entry.entryMode && ["/api/state", "/api/artifact", "/api/clarifications", "/api/clarify", "/api/setup", "/api/run"].includes(path)) {
+                sendJson(res, 409, { ok: false, error: "Choose a repository first.", code: "entry_required" }); return;
+            }
+            if (!entry.entryMode) await entry.verifyWorkspace();
             if (path === "/api/state") {
                 sendJson(res, 200, currentState());
                 return;
             }
             if (path === "/api/artifact") {
-                sendJson(res, 200, readArtifact(PROJECT_ROOT, url.searchParams.get("feature"), url.searchParams.get("stage")));
+                sendJson(res, 200, readArtifact(currentRoot(), url.searchParams.get("feature"), url.searchParams.get("stage")));
                 return;
             }
             if (path === "/api/clarifications") {
-                const artifact = readArtifact(PROJECT_ROOT, url.searchParams.get("feature"), "specify");
+                const artifact = readArtifact(currentRoot(), url.searchParams.get("feature"), "specify");
                 if (!artifact.ok) {
                     sendJson(res, 404, artifact);
                     return;
@@ -386,11 +431,11 @@ function makeHandler(entry) {
             if (path === "/events") {
                 res.writeHead(200, {
                     "Content-Type": "text/event-stream",
-                    "Cache-Control": "no-cache",
+                    "Cache-Control": "no-store",
                     Connection: "keep-alive",
                 });
-                res.write(`event: state\ndata: ${JSON.stringify(currentState())}\n\n`);
-                res.write(`event: repositories\ndata: ${JSON.stringify(entry.repositories.snapshot())}\n\n`);
+                if (entry.entryMode) res.write(`event: entry\ndata: ${JSON.stringify(await entry.coordinator.state())}\n\n`);
+                else res.write(`event: state\ndata: ${JSON.stringify(currentState())}\n\n`);
                 entry.clients.add(res);
                 req.on("close", () => entry.clients.delete(res));
                 return;
@@ -425,18 +470,21 @@ function makeHandler(entry) {
             res.end("not found");
         } catch (err) {
             if (reviewing) { reviewFailure("read_failed"); return; }
-            if (["remote_read_only", "local_context_mismatch", "invalid_context"].includes(err?.code)) {
+            if (["remote_read_only", "local_context_mismatch", "invalid_context", "entry_required", "context_changed"].includes(err?.code)) {
                 sendJson(res, 409, { ok: false, error: err.message, code: err.code });
                 return;
             }
             sendJson(res, 500, { ok: false, error: String((err && err.message) || err) });
         }
-    };
+    });
 }
 
 export async function startServer(repositoryOptions = {}) {
-    const workspacePath = PROJECT_ROOT;
+    const workspacePath = repositoryOptions.workspacePath ?? PROJECT_ROOT;
     const entry = {
+        workspacePath,
+        entryMode: repositoryOptions.entryMode === true,
+        verifyWorkspace: repositoryOptions.verifyWorkspace ?? (async () => undefined),
         cap: randomBytes(32).toString("base64url"),
         clients: new Set(),
         host: "",
@@ -447,13 +495,16 @@ export async function startServer(repositoryOptions = {}) {
         timer: null,
         review: createSddReviewService({ workspacePath, instanceId: randomBytes(16).toString("hex") }),
     };
-    entry.repositories = await createRepositoryService({ ...repositoryOptions, workspacePath, onChange: () => {
-        const payload = `event: repositories\ndata: ${JSON.stringify(entry.repositories.snapshot())}\n\n`;
-        for (const client of entry.clients) { try { client.write(payload); } catch { continue; } }
-    } });
-    ARTIFACT_CLOCK = entry.repositories.artifactTime;
+    if (entry.entryMode && repositoryOptions.entryOptions?.host) {
+        entry.coordinator = await createEntryCoordinator({ ...repositoryOptions, ...repositoryOptions.entryOptions,
+            onChange: () => { void broadcast(entry); } });
+    }
+    if (entry.entryMode && !entry.coordinator) throw new CanvasError("canvas_unavailable", "Repository entry is unavailable. Open the canvas directly.");
+    entry.repositories = await createRepositoryService({ workspacePath, profileStatus: { state: "unconfigured" }, bindingOptions: repositoryOptions.bindingOptions,
+        workflowBinding: repositoryOptions.workflowBinding });
+    entry.artifactTime = entry.repositories.artifactTime;
     const server = createServer(makeHandler(entry));
-    server.once("close", () => { entry.review.dispose(); entry.repositories.dispose(); });
+    server.once("close", () => { clearInterval(entry.timer); entry.review.dispose(); entry.repositories.dispose(); entry.coordinator?.dispose(); repositoryOptions.disposeHost?.(); });
     await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
     const port = server.address().port;
     entry.server = server;
@@ -462,13 +513,13 @@ export async function startServer(repositoryOptions = {}) {
     entry.url = `${entry.origin}/?cap=${encodeURIComponent(entry.cap)}`;
     // Poll the filesystem and push SSE updates when the workflow state changes
     // (e.g. after a core command writes a new artifact).
-    entry.timer = setInterval(() => broadcast(entry), 1500);
+    entry.timer = setInterval(() => workflowContext.run(entry, () => broadcast(entry)), 1500);
     return entry;
 }
 
 const FEATURE_KEYS = RUNNABLE_KEYS;
 
-const canvas = createCanvas({
+const canvasDefinition = {
     id: "sdd-canvas",
     displayName: "Spec-Driven Development",
     description: "Visual dashboard for the core SDD workflow: track, preview, and run constitution, specify, clarify, plan, tasks, analyze, checklist, and implement per feature.",
@@ -583,23 +634,46 @@ const canvas = createCanvas({
         },
     ],
     open: async (ctx) => {
-        let entry = servers.get(ctx.instanceId);
+        const current = await session.rpc.metadata.snapshot();
+        if (ctx.sessionId && current.sessionId && ctx.sessionId !== current.sessionId) throw new CanvasError("context_changed", "The active session changed.");
+        const workspacePath = findProjectRoot(current.workingDirectory);
+        const key = canvasKey(ctx);
+        let entry = servers.get(key);
+        if (entry && entry.workspacePath !== workspacePath) throw new CanvasError("context_changed", "Reopen the canvas for the current workspace.");
+        if (entry) await entry.verifyWorkspace();
         if (!entry) {
-            entry = await startServer();
-            servers.set(ctx.instanceId, entry);
+            const settings = ctx.canvasId === "sdd-canvas-direct" ? { state: "disabled" } : await loadEntrySettings();
+            const entryMode = settings.state === "enabled";
+            const host = sessionHost(ctx, current);
+            try {
+                const binding = entryMode ? undefined : await createWorkflowBinding({ host, providerId: ctx.extensionId, instanceId: ctx.instanceId });
+                const options = { workspacePath, entryMode, workflowBinding: binding, disposeHost: () => host.dispose(), verifyWorkspace: async () => {
+                    const latest = await session.rpc.metadata.snapshot();
+                    if (latest.sessionId !== current.sessionId || latest.workingDirectory !== current.workingDirectory) throw new CanvasError("context_changed", "Reopen the canvas for the current workspace.");
+                    await binding?.verify();
+                } };
+                if (entryMode) options.entryOptions = { host };
+                entry = await startServer(options);
+                await binding?.ready();
+            } catch (error) {
+                if (entry?.server) await new Promise(resolve => entry.server.close(resolve));
+                host.dispose(); throw error;
+            }
+            servers.set(key, entry);
         }
         const url = new URL(entry.url);
         if (ctx.input?.readerProbe === true) url.searchParams.set("readerProbe", "1");
         return {
             title: "Spec-Driven Development",
-            status: PROJECT_ROOT,
+            status: entry.entryMode ? "Repository selection" : workspacePath,
             url: url.href,
         };
     },
     onClose: async (ctx) => {
-        const entry = servers.get(ctx.instanceId);
+        const key = canvasKey(ctx);
+        const entry = servers.get(key);
         if (!entry) return;
-        servers.delete(ctx.instanceId);
+        servers.delete(key);
         if (entry.timer) clearInterval(entry.timer);
         for (const client of entry.clients) {
             try {
@@ -610,9 +684,34 @@ const canvas = createCanvas({
         }
         await new Promise((resolve) => entry.server.close(() => resolve()));
     },
-});
+};
 
-const session = await joinSession({ canvases: [canvas] });
+const actions = canvasDefinition.actions.map((action) => ({ ...action, handler: async (context) => {
+    const entry = servers.get(canvasKey(context));
+    if (entry?.entryMode || (!entry && context.canvasId !== "sdd-canvas-direct" && (await loadEntrySettings()).state === "enabled")) {
+        throw new CanvasError("entry_required", "Choose a repository or open the canvas directly first.");
+    }
+    const current = await session.rpc.metadata.snapshot();
+    if (context.sessionId && current.sessionId && context.sessionId !== current.sessionId) throw new CanvasError("context_changed", "The active session changed.");
+    if (entry) {
+        await entry.verifyWorkspace();
+        return workflowContext.run(entry, () => action.handler(context));
+    }
+    const host = sessionHost(context, current);
+    let local;
+    try {
+        const binding = await createWorkflowBinding({ host, providerId: context.extensionId, instanceId: context.instanceId });
+        await binding.verify();
+        const workspacePath = findProjectRoot(current.workingDirectory);
+        local = await createRepositoryService({ workspacePath, profileStatus: { state: "unconfigured" }, workflowBinding: binding });
+        return await workflowContext.run({ workspacePath, repositories: local, verifyWorkspace: binding.verify, artifactTime: local.artifactTime }, () => action.handler(context));
+    } finally { local?.dispose(); host.dispose(); }
+} }));
+const canvas = createCanvas({ ...canvasDefinition, actions });
+const directCanvas = createCanvas({ ...canvasDefinition, id: "sdd-canvas-direct", displayName: "Spec-Driven Development (Current Workspace)",
+    description: "Open the original Spec Kit workflow directly in this session's current workspace, without repository selection or cloning.", actions });
+
+const session = await joinSession({ canvases: [canvas, directCanvas] });
 const metadata = await session.rpc.metadata.snapshot();
 PROJECT_ROOT = findProjectRoot(metadata.workingDirectory);
 await session.log("sdd-canvas ready — open the Spec-Driven Development canvas to drive the core SDD workflow.", { ephemeral: true });

@@ -11,33 +11,36 @@ test("SDD serves only named probe assets through its existing capability, Host a
     await mkdir(join(workspace, ".specify"));
     await mkdir(join(workspace, "specs/999-canvas-preview-fixture"), { recursive: true });
     await writeFile(join(workspace, "specs/999-canvas-preview-fixture/spec.md"), "# Owned SDD fixture\n");
+    let workingDirectory = workspace;
     const holder = {
         canvases: [],
         session: {
-            rpc: { metadata: { snapshot: async () => ({ workingDirectory: workspace }) } },
+            rpc: { metadata: { snapshot: async () => ({ sessionId: "owned-reader-probe", workingDirectory }) } },
             send: async () => assert.fail("Reader probe must not dispatch a workflow."),
             log: async () => {},
         },
     };
     globalThis.__sddReaderProbeTest = holder;
-    const mock = "export const createCanvas = definition => definition; export class CanvasError extends Error {} export async function joinSession(options) { const state = globalThis.__sddReaderProbeTest; state.canvases = options.canvases; return state.session; }";
+    const mock = "export const createCanvas = definition => definition; export class CanvasError extends Error { constructor(code, message) { super(message); this.code = code; } } export async function joinSession(options) { const state = globalThis.__sddReaderProbeTest; state.canvases = options.canvases; return state.session; }";
     const sdkUrl = `data:text/javascript,${encodeURIComponent(mock)}`;
     const hooks = registerHooks({ resolve(specifier, context, nextResolve) {
         if (specifier === "@github/copilot-sdk/extension") return { url: sdkUrl, shortCircuit: true };
         return nextResolve(specifier, context);
     } });
     let canvas;
+    const context = { sessionId: "owned-reader-probe", extensionId: "project:sdd-canvas", canvasId: "sdd-canvas-direct" };
     try {
         await import("../extension.mjs?reader-probe-test");
-        canvas = holder.canvases[0];
-        assert.equal(canvas.id, "sdd-canvas");
+        assert.ok(holder.canvases.some(provider => provider.id === "sdd-canvas"));
+        canvas = holder.canvases.find(provider => provider.id === "sdd-canvas-direct");
+        assert.equal(canvas.id, "sdd-canvas-direct");
         assert.deepEqual(canvas.actions.map((action) => action.name), ["list_features", "setup_sdd", "clarify_item", "run_stage"]);
-        const first = new URL((await canvas.open({ instanceId: "probe-first" })).url);
-        const second = new URL((await canvas.open({ instanceId: "probe-second", input: { readerProbe: true } })).url);
+        const first = new URL((await canvas.open({ ...context, instanceId: "probe-first" })).url);
+        const second = new URL((await canvas.open({ ...context, instanceId: "probe-second", input: { readerProbe: true } })).url);
         assert.equal(first.searchParams.has("readerProbe"), false);
         assert.equal(second.searchParams.get("readerProbe"), "1", "App canvas opening must expose the opt-in packaged reader probe.");
         assert.equal(canvas.inputSchema.properties.readerProbe.type, "boolean");
-        const reopened = new URL((await canvas.open({ instanceId: "probe-second", input: { readerProbe: "true" } })).url);
+        const reopened = new URL((await canvas.open({ ...context, instanceId: "probe-second", input: { readerProbe: "true" } })).url);
         assert.equal(reopened.searchParams.has("readerProbe"), false, "Only the explicit boolean opt-in enables the probe.");
         async function request(path, cap = first.searchParams.get("cap"), headers = {}) {
             const url = new URL(path, first.origin);
@@ -72,10 +75,15 @@ test("SDD serves only named probe assets through its existing capability, Host a
         const artifact = await legacy.json();
         assert.equal(artifact.ok, true);
         assert.equal(artifact.content, "# Owned SDD fixture\n");
+        workingDirectory = join(workspace, "specs");
+        assert.equal((await request("/api/artifact?feature=999-canvas-preview-fixture&stage=specify")).status, 409);
+        const staleReview = await request("/api/review/context?feature=999-canvas-preview-fixture&stage=specify");
+        assert.notEqual(staleReview.status, 200);
+        await assert.rejects(canvas.actions[0].handler({ ...context, instanceId: "probe-first", input: {} }));
     } finally {
         if (canvas) {
-            await canvas.onClose({ instanceId: "probe-first" });
-            await canvas.onClose({ instanceId: "probe-second" });
+            await canvas.onClose({ ...context, instanceId: "probe-first" });
+            await canvas.onClose({ ...context, instanceId: "probe-second" });
         }
         hooks.deregister();
         delete globalThis.__sddReaderProbeTest;

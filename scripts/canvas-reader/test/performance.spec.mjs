@@ -1,5 +1,6 @@
 import { createRequire } from "node:module";
 import { cpus, totalmem } from "node:os";
+import { performance as clock } from "node:perf_hooks";
 import { startFixture } from "../serve-fixture.mjs";
 
 const require = createRequire(new URL("../../../plugins/spec-kit-copilot-wizard/extensions/speckit-wizard-canvas/ui/markdown-reader/package.json", import.meta.url));
@@ -89,3 +90,33 @@ for (const canvas of ["wizard", "sdd"]) {
         });
     }
 }
+
+test("Entry chooser and current-workspace continuation meet p95 budgets over twenty owned runs", async ({ page }, testInfo) => {
+    test.setTimeout(120_000);
+    const chooser = [];
+    const continuation = [];
+    await page.setViewportSize({ width: 1280, height: 900 });
+    for (let index = 0; index < 20; index++) {
+        const fixture = await startFixture({ canvas: "sdd", repositoryEntry: true });
+        try {
+            const opened = clock.now();
+            await page.goto(fixture.url, { waitUntil: "domcontentloaded" });
+            const local = page.getByRole("button", { name: "Use current workspace", exact: true });
+            await expect(local).toBeEnabled();
+            chooser.push(clock.now() - opened);
+            const confirmed = clock.now();
+            await local.click();
+            await expect(page.getByRole("status").filter({ hasText: "canvas opened" })).toBeVisible();
+            continuation.push(clock.now() - confirmed);
+            expect(fixture.entryHost.counts().starts).toBe(0);
+            expect(fixture.dispatchCount()).toBe(0); expect(fixture.workspaceChanged()).toBe(false);
+        } finally { await page.goto("about:blank"); expect((await fixture.stop()).cleaned).toBe(true); }
+    }
+    const percentile = values => [...values].sort((left, right) => left - right)[Math.ceil(values.length * .95) - 1];
+    const record = { scope: "owned-shell-synthetic-host", runs: 20, chooserP95Ms: percentile(chooser), continuationP95Ms: percentile(continuation),
+        chooserMs: chooser, continuationMs: continuation, nativeAppMeasured: false };
+    await testInfo.attach("entry-local-performance", { body: JSON.stringify(record), contentType: "application/json" });
+    console.log(JSON.stringify(record));
+    expect(record.chooserP95Ms).toBeLessThanOrEqual(2000);
+    expect(record.continuationP95Ms).toBeLessThanOrEqual(2000);
+});

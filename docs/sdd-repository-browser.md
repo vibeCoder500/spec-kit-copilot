@@ -1,150 +1,168 @@
-# SDD Repository Browser
+# SDD Repository Entry
 
-Status: Unreleased development implementation on
-`plan/canvas-repository-discovery`. No marketplace update, release, or replacement
-of an existing preview ZIP is implied by these instructions.
+Unreleased development build on `plan/canvas-repository-discovery`. Marketplace
+versions and historical preview ZIPs are unchanged.
 
-## Requirements
+**Current scope:** **Confirm and clone** can create a checkout independently of
+automatic workspace switching, as requested on 2026-09-21. The current App
+workspace stays unchanged; completion shows a copyable checkout path. Automatic
+handoff remains unavailable because the installed App's supported workspace
+activation contract is unverified. Clone completion is not handoff evidence. See the
+[acceptance report](../specs/002-repository-entry-flow/evidence/acceptance.md).
 
-- GitHub Copilot App with the current SDD canvas payload available in the session.
-- A Microsoft account in the configured Entra tenant with access to the configured
-  Azure DevOps project/repositories. App consent never grants access to otherwise
-  inaccessible repositories.
-- Delegated `vso.code` for code reads. Team personalization also uses `vso.project`
-  and `vso.work`, readable team settings, and available Code Search indexing.
-- A public-client desktop redirect on the existing registration:
-  `http://localhost/speckit-canvas/oauth/callback`. Keep existing SPA/broker
-  redirects and grants intact. The runtime uses an ephemeral localhost port.
-- Existing Git on the App process's trusted PATH for clone preparation. The
-  canvas reports missing tools; it does not install them.
+## Open The Current Workspace
 
-Windows App 1.1.20 and its Node 24.20.0 extension runtime were used for native
-validation. Other App platforms require their own native acceptance. Tenant
-policies, MFA, and Conditional Access remain authoritative.
+1. Ask Copilot to **Open Spec-Driven Development** (`sdd-canvas`). The normal
+   enabled launch opens a separate repository chooser.
+2. Select **Use current workspace**. The extension rechecks the session's actual
+   Git identity and opens the original canvas in that session. This does not
+   require a connection profile, Microsoft sign-in, cloning, or remote handoff.
+3. Alternatively, ask for **Spec-Driven Development (Current Workspace)**
+   (`sdd-canvas-direct`). This always offers the original canvas directly,
+   independently of remote configuration or chooser-controller failure.
 
-## Connection Profile
+Existing dirty files, untracked work, branches and drafts are not reset or stashed.
+The local shortcut is unavailable when the session has no verified repository.
+Direct entry retains the canvas's original explicit setup behavior for a project
+that is not initialized; opening a canvas does not run setup or a workflow.
 
-The feature reads the current OS user's
-`~/.speckit-canvas/repository-profile.json`. This is a per-user configuration
-location, not a repository file. Only these fields are accepted:
+## Entry Settings
+
+The chooser is enabled by default. To disable only the chooser, use the current
+OS user's `~/.speckit-canvas/entry-settings.json`:
+
+```json
+{"schemaVersion": 1, "repositoryEntryEnabled": false}
+```
+
+Only those two fields are accepted. Malformed settings fall back to direct entry.
+The runtime does not create or rewrite settings. Repository-controlled overrides
+are not supported. This setting is separate from remote connection configuration.
+
+## Remote Connection
+
+Remote discovery requires a Microsoft account with access to the configured Azure
+DevOps project. Delegated `vso.code` permits code reads; team suggestions also use
+`vso.project`, `vso.work`, readable team settings and Code Search indexing. Consent
+does not grant access to otherwise inaccessible repositories.
+
+The existing public-client registration needs the desktop redirect
+`http://localhost/speckit-canvas/oauth/callback`; the runtime uses an ephemeral
+localhost port. Keep existing SPA/broker redirects, grants and tenant policies.
+MFA and Conditional Access remain authoritative. Do not introduce a client secret.
+
+Configure `~/.speckit-canvas/repository-profile.json` outside the repository:
 
 | Field | Value |
 | --- | --- |
 | `schemaVersion` | Number `1` |
-| `enabled` | Boolean `true`; `false` disables repository browsing |
-| `tenantId` | The existing app registration's tenant UUID |
-| `clientId` | The existing app registration's application UUID |
-| `organization` | The same Azure DevOps organization configured in EzPzSpec |
-| `project` | The same Azure DevOps project name configured in EzPzSpec |
+| `enabled` | Boolean; `false` disables remote discovery, not local entry |
+| `tenantId` | Existing registration tenant UUID |
+| `clientId` | Existing public-client application UUID |
+| `organization` | Approved Azure DevOps organization |
+| `project` | Approved Azure DevOps project |
 
-Use an authorized administrator's configuration values. Do not copy the complete
-EzPzSpec environment/settings file, a client secret, token, PAT, or credential
-cache. Unknown fields and redirected profile paths are rejected. Missing,
-disabled, or invalid configuration leaves the local-only canvas available.
+Unknown fields, oversized files and redirected paths are rejected. Missing or
+invalid remote configuration does not block current-workspace or direct entry.
+Do not copy a complete environment file, token, PAT, secret, or credential cache.
 
-After configuring the profile, reopen the canvas in a fresh session. Select
-**Connect Microsoft account**. The system browser may reuse Microsoft SSO or ask
-for an account/MFA. The canvas displays the connected Microsoft account. It need
-not be the same identity as the GitHub account signed into Copilot.
+Reopen the chooser after configuration and select **Connect Microsoft account**.
+The system browser may reuse Microsoft SSO or request account selection/MFA.
+GitHub Copilot sign-in is not an Azure DevOps token. Tokens stay in memory for the
+entry instance and are discarded on disconnect/close. Disconnect does not sign out
+the browser, EzPzSpec, or Copilot, and never removes a completed clone.
 
-Connection is explicit. Opening the canvas alone does not sign in. Tokens remain
-in memory for that canvas instance and are not shared with another canvas or
-persisted to disk. Disconnect clears remote content and cancels in-progress
-repository work; it does not sign out the system browser, EzPzSpec, or Copilot.
+## Search And Select
 
-## Search And Browse
+Focus the empty search field for readable team-linked suggestions inside the
+dropdown. Type a repository name to search readable enabled repositories in the
+configured project after a one-second pause. All words must occur in the name.
+Clear search to restore the independent suggestions; **More repositories** stays
+within the current collection. Empty or failed suggestions never trigger a whole
+project fallback. Explicit search and local entry remain available.
 
-An empty query shows **My team repositories**: readable repositories whose
-current root metadata matches the connected user's project-team areas. Empty
-personalization does not mean that the account has no repository access.
+Use arrow keys and Enter to select; Escape closes the dropdown. Selection displays
+the account, repository, current default branch, full commit, managed destination
+and whether the App workspace will remain unchanged.
+There is no separate rail, artifact tree, or pre-clone document preview. If the
+selected repository is already the actual current repository, use local entry.
 
-Type a repository name to search all readable, enabled repositories in the
-configured project. Search runs after a one-second pause; separate words must
-all occur in the repository name. Clearing the query restores the personalized
-collection. Load more continues the current collection, not an unrelated query.
+## Guarded Preparation
 
-Expand a repository directly inside the search dropdown. Expand `.specify` or
-`specs`, then folders and files. Selecting a file opens its preview in the canvas.
-Arrow keys navigate the tree, Enter selects, and Escape closes the dropdown.
-The rail and popup share selection and results; they are not separate accounts
-or queries. The rail can be collapsed and becomes an overlay on narrow screens.
+Cloning does not require automatic App handoff. It uses the current Microsoft
+connection, the existing guarded native Git engine, and a separate managed path.
 
-Markdown previews show the repository, branch, and fixed commit. References,
-history, and tree pages stay on that commit until an explicit Refresh. Supported
-text files are displayed literally. The preview rejects binary/unsupported data
-and files larger than 5 MiB. Images do not trigger passive remote requests, raw
-HTML does not execute, and remote clarification markers do not become actions.
+1. Review the selection and choose **Confirm and clone** explicitly. A preview or
+   cancelled selection creates no checkout. Consent expires after 120 seconds;
+   changed account, source revision, context or capabilities require reconfirmation.
+2. The extension rereads the actual session context and activity before admission.
+   Busy, unknown or stale observations reject without queueing or automatic resume.
+   Intervening activity events invalidate the consent even if the next read is idle.
+3. The managed destination is
+   `~/SpecKitCanvas/repositories/<operation-id>/checkout`. A new preparation branch
+   pins the reviewed commit. Existing checkouts are never reused or overwritten.
+4. Native Git runs without a shell, fallback credentials, hooks, recursive
+   submodules or LFS smudge. Credentials are not placed in Git arguments or remote
+   URLs. Progress is bounded and **Cancel preparation** stops only owned work.
+5. A completed clone shows **Clone complete**, the destination, and **Copy checkout
+   path**. The current workspace stays unchanged. Reconnecting lists the retained
+   checkout under **Cloned repositories** without cloning again.
+6. To work in the checkout now, open that path using the App's normal **Open folder**
+   action and open the original Spec Kit canvas there. This is an explicit manual
+   action, not an automatic handoff or a workflow started by the entry layer.
 
-Back to repository restores the dropdown/tree position. Return to local
-workspace restores the existing local SDD view and drafts. Remote selection
-never changes the current Copilot session's working directory or silently
-dispatches a workflow against another repository.
+Clone-only admission is a checked preflight, not an atomic host reservation: the
+App may start unrelated work after the observation. The clone is isolated from
+the active repository and never retargets that work. No atomic capability is
+advertised and no App activity is cancelled or paused.
 
-## Prepare And Open
+## Automatic Handoff
 
-1. Select **Prepare local clone** for the chosen repository. Review the connected
-   account, source branch/commit, new local branch, and destination. No Git
-   operation occurs until **Confirm clone**.
-2. The canvas uses the connected user's delegated credential to prepare a new
-   checkout under `~/SpecKitCanvas/repositories/<operation-id>/checkout`. It does
-   not use a fallback GCM account, PAT, or credential embedded in a remote URL.
-3. Preparation disables hooks, credential-helper fallback, recursive submodules,
-   LFS smudge, and arbitrary protocols. It verifies the exact commit, origin,
-   and new local branch. Existing working copies are never reused or reset.
-4. Wait for **Prepared for manual opening in Copilot App**, then copy the folder
-   path. Use the App's **New project or session > Open folder** and create a new
-   session for that directory. Process launch alone is not workspace readiness.
-5. Open `sdd-canvas` in that session using the approved payload. If the App creates
-   its own worktree, the canvas validates the common Git directory and original
-   commit rather than requiring an identical path. The source browsing session
-   remains on its original local workspace.
-6. Existing SDD prerequisites still apply. A cloned project with only older agent
-   command files, missing skills, or no installed canvas provider needs separate
-   authorized setup. The repository browser does not run `specify init`, install
-   skills, or force-reinitialize the project after cloning.
-7. Run a chosen local workflow only after binding/prerequisite checks pass. The
-   App retains its normal tool/permission prompts. Clone preparation does not
-   commit, push, create PRs, deploy, or grant write access. Such later operations
-   require their own authorization and repository permissions.
+Automatic switching remains gated by
+[G-HOST](../specs/002-repository-entry-flow/contracts/host-handoff.md). It requires
+`workspace_activated`, guarded target-canvas opening, independent identity
+verification and `canvas_ready`. An attested registered linked worktree may use a
+different branch while preserving the original preparation. Unsupported hosts
+show no **Retry handoff** action and do not attempt any workspace mutation.
 
-## Failure And Recovery
+Changing only a canvas heading or working-directory variable, manual folder
+selection, a separate SDK client, private IPC, or a sequence of idle-read/cwd-write
+calls is not automatic handoff. No such fallback is enabled.
 
-- Authentication errors: reconnect explicitly. A denied desktop flow may require
-  tenant policy review; the canvas does not bypass it or try another credential.
-- Empty team rail: explicit project-name search remains available. Code Search
-  indexing and root metadata affect personalization, not the user's access grant.
-- Expired page/context: refresh the collection/repository. A cursor from another
-  account, query, instance, root, or commit is rejected.
-- Permission revoked: further requests recheck access and remove unavailable
-  state. Previously downloaded local clones cannot be retroactively erased.
-- Clone cancellation/failure: only verified owned staging data is eligible for
-  cleanup. Unexpected links/files cause preservation for manual review. No
-  automatic whole-clone retry or removal of a completed clone occurs.
-- Wrong local workspace/source: workflows remain blocked. Open the correct
-  prepared checkout; do not bypass the guard with copied metadata or resets.
-- Close/reopen: the remote connection is not persisted. Completed clones remain
-  user-owned files, and old preview installations are unaffected.
+## Recovery And Boundaries
 
-To disable the feature, set `enabled` to `false` and reopen the canvas. Restoring
-an older verified plugin payload is a separate installation action. Do not remove
-the app's existing SPA/broker redirects or consent grants during rollback.
+- Busy during preparation: a clone already started may finish. On a clone-only
+   host it remains a successful checkout, not a handoff error; becoming idle starts
+   no additional action. A supported handoff requires a fresh explicit retry.
+- Unknown result: retry queries the same attempt first. It cannot blindly create
+  another transition. Activation-only recovery opens/verifies the same target.
+- Missing provider or changed access/identity: retain the checkout and block
+  readiness. Do not install a provider, copy markers, reset files or clone again.
+- Disconnect/close: cancel only incomplete owned work. Completed records survive
+   process replacement; reconnecting shows their paths without automatically
+   cloning, switching or running a workflow.
+- Completed records contain no tokens, capabilities or consent. Version-2 records
+  are limited to 8 KiB and 256 inspected entries. Overflow or an interrupted locked
+  update requires review; records are not deleted to make room. Legacy records are
+  read-only and cannot authorize automatic recovery by themselves.
+- Existing canvas prerequisites and permission prompts still apply. No implicit
+  `specify init`, skill/plugin installation, workflow, commit, push or deployment
+  occurs during entry or acceptance checks.
 
-## Development Checks
+## Validation And Preview
 
-The isolated build package is
-[repository-browser/package.json](../plugins/spec-kit-copilot-sdd/extensions/sdd-canvas/repository-browser/package.json).
-Run `npm ci --ignore-scripts`, `npm run typecheck`, `npm run lint`, `npm test`,
-`npm run build`, and `npm run verify:package` from that directory.
+Use the [validation guide](../specs/002-repository-entry-flow/quickstart.md) and
+[isolated build package](../plugins/spec-kit-copilot-sdd/extensions/sdd-canvas/repository-browser/package.json).
+Install locked dependencies only when necessary with lifecycle scripts disabled.
+Typecheck, lint, unit tests, generated-payload verification, original canvas tests
+and browser journeys are required. CI is configured for Windows/Linux; local
+Windows results are not a claim that hosted CI or native App acceptance ran.
 
-Then run the shared reader's typecheck, lint, tests, tool tests, package
-verification, and browser tests. CI performs these on Windows and Linux using
-synthetic provider data. Runtime assets are bundled with hashes/notices; there is
-no dependency install when the canvas loads.
+For the interactive synthetic chooser, run `npm run dev` from the isolated build
+package and open the printed loopback URL. Its authentication, Git and host are
+test doubles; it never signs into Microsoft, reads a private repository or clones
+from the network. Stop it with Ctrl+C to clean owned fixtures.
 
-For an interactive synthetic preview, run `npm run dev` from the isolated build
-package and open the printed loopback URL. Connect and clone controls use test
-doubles in this preview: no real Microsoft login, private repository reads, or
-native Git clone occurs. Stop the preview with Ctrl+C to clean its owned fixtures.
-
-The existing [read-only preview manual](sdd-markdown-preview-user-manual.md)
-continues to describe its exact historical ZIP and checksum only.
+The existing [read-only preview manual](sdd-markdown-preview-user-manual.md) applies
+only to its historical ZIP/checksum. The earlier manual-open validation is not
+acceptance evidence for this replacement entry flow.

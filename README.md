@@ -134,11 +134,16 @@ own README for full details.
 
 ## Installation
 
-The development branch adds optional Azure DevOps repository browsing and
-confirmed local clone preparation to SDD. See the
-[repository browser guide](docs/sdd-repository-browser.md). This change is not
-published by this checkout; existing marketplace versions and preview ZIPs are
-unchanged. Release version updates remain a separate approval step.
+The development branch adds a separate repository chooser to SDD, with offline
+**Use current workspace**, unconditional `sdd-canvas-direct` entry, and Azure
+DevOps dropdown discovery. **Confirm and clone** creates a separately managed
+checkout after explicit consent and fresh workspace/activity checks. Completion
+shows a copyable checkout path and leaves the current workspace unchanged.
+Automatic App switching remains unavailable; clone completion is not handoff
+acceptance. See the [repository entry guide](docs/sdd-repository-browser.md)
+and [acceptance report](specs/002-repository-entry-flow/evidence/acceptance.md).
+Existing marketplace versions and preview ZIPs are unchanged. Publication and
+version updates remain separate approval steps.
 
 ### Via marketplace (recommended)
 

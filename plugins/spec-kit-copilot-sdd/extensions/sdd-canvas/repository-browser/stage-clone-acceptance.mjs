@@ -1,68 +1,84 @@
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { cp, lstat, mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, isAbsolute, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import { parseDocument, stringify } from "yaml";
-import { parseRepositoryProfile } from "./src/profile.ts";
-import { inspectWorkspaceBinding } from "./src/workspace-binding.ts";
+import { lstat, readFile, realpath } from "node:fs/promises";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { cloneEnvironment, findGitExecutable } from "./src/clone.ts";
+import { supportsRemotePreparation } from "./src/host-handoff.ts";
+import { createPreparationStore } from "./src/preparation-store.ts";
+import { inspectCurrentRepository, verifyReadyRepository } from "./src/workspace-binding.ts";
 import { verifyRepositoryRuntime } from "./build-runtime.mjs";
+import { verifyStagedPlugin } from "../../../../../scripts/canvas-reader/stage-app-fixture.mjs";
 
-const extensionRoot = fileURLToPath(new URL("../", import.meta.url));
-const commands = ["constitution", "specify", "clarify", "plan", "tasks", "analyze", "checklist", "implement"];
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
 
-export async function trackedAcceptanceFingerprint(workspace) {
-    const options = { cwd: workspace, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], windowsHide: true };
-    const files = execFileSync("git", ["ls-files", "-z", "--", ".github", ".specify", "specs"], options).split("\0").filter(Boolean).sort();
-    const records = [];
-    for (const path of files) records.push(`${path}\0${hash(await readFile(join(workspace, path)))}`);
-    return { files: records.length, sha256: hash(records.join("\n")) };
+export async function captureAcceptanceSnapshot(workspacePath) {
+    try {
+        if (!isAbsolute(workspacePath)) throw new Error();
+        const identity = await inspectCurrentRepository({ workspacePath });
+        if (!identity) throw new Error();
+        const workspace = identity.worktreeRoot;
+        const executable = await findGitExecutable(workspace);
+        const env = cloneEnvironment({ token: "", remote: "https://unused.invalid", home: workspace, emptyFile: process.platform === "win32" ? "NUL" : "/dev/null" });
+        delete env.GIT_CONFIG_KEY_0; delete env.GIT_CONFIG_VALUE_0; env.GIT_CONFIG_COUNT = "0"; env.GIT_OPTIONAL_LOCKS = "0";
+        const options = { cwd: workspace, env, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], windowsHide: true, timeout: 10_000, maxBuffer: 4_194_304 };
+        const git = args => execFileSync(executable, ["-c", "core.hooksPath=", "-c", "core.fsmonitor=false", ...args], options);
+        let bytes = 0;
+        async function inventory(args) {
+            const files = [...new Set(git(["ls-files", "-z", ...args]).split("\0").filter(Boolean))].sort();
+            if (files.length > 100_000) throw new Error();
+            const records = [];
+            for (const file of files) {
+                const path = resolve(workspace, file);
+                const within = relative(workspace, path);
+                if (!within || isAbsolute(within) || within === ".." || within.startsWith(`..${sep}`) || file.includes("\ufffd")) throw new Error();
+                let current = workspace;
+                for (const segment of within.split(sep)) {
+                    current = join(current, segment);
+                    try { if ((await lstat(current)).isSymbolicLink()) throw new Error(); }
+                    catch (error) { if (error.code !== "ENOENT") throw error; }
+                }
+                let info;
+                try { info = await lstat(path); }
+                catch (error) { if (error.code !== "ENOENT") throw error; records.push(`${file}\0missing`); continue; }
+                if (!info.isFile() || await realpath(path) !== path || (bytes += info.size) > 268_435_456) throw new Error();
+                const content = await readFile(path);
+                const after = await lstat(path);
+                if (after.size !== info.size || after.mtimeMs !== info.mtimeMs || content.length !== info.size) throw new Error();
+                records.push(`${file}\0${info.mode & 0o111}\0${hash(content)}`);
+            }
+            return { files: records.length, sha256: hash(records.join("\n")) };
+        }
+        const tracked = await inventory(["--cached"]);
+        const untracked = await inventory(["--others", "--exclude-standard"]);
+        const statusSha256 = hash(git(["status", "--porcelain=v1", "-z", "--untracked-files=all"]));
+        const after = await inspectCurrentRepository({ workspacePath });
+        if (JSON.stringify(identity) !== JSON.stringify(after)) throw new Error();
+        return { schemaVersion: 1, repositoryIdentity: hash(identity.origin ?? identity.gitCommonDirectory), rootSha256: hash(workspace),
+            commonDirectorySha256: hash(identity.gitCommonDirectory), head: identity.head, branchSha256: hash(identity.branch ?? "detached"), tracked, untracked, statusSha256 };
+    } catch { throw new Error("Acceptance source inventory could not be verified; no files were changed."); }
 }
 
-export async function stageCloneAcceptance({ workspacePath, profile, expectedOperationId }) {
-    if (!isAbsolute(workspacePath) || !/^[a-f0-9]{32}$/.test(expectedOperationId)) throw new Error("Explicit prepared worktree required.");
-    const workspace = resolve(workspacePath);
-    const binding = await inspectWorkspaceBinding({ workspacePath: workspace });
-    if (binding.state !== "verified" || binding.operationId !== expectedOperationId) throw new Error("Prepared App worktree is not verified.");
-    const validated = parseRepositoryProfile(profile);
+export async function trackedAcceptanceFingerprint(workspace) {
+    return (await captureAcceptanceSnapshot(workspace)).tracked;
+}
+
+export async function stageCloneAcceptance({ workspacePath, sourceWorkspacePath, expectedOperationId, host, providerId, instanceId, pluginRoot, expectedPayloadSha256, homeDirectory }) {
+    if (!host || !supportsRemotePreparation(await host.inspectCurrent())) throw new Error("A supported host proof is required before entry acceptance; legacy manual staging is retired.");
+    if (!isAbsolute(workspacePath) || !isAbsolute(sourceWorkspacePath) || !/^[a-f0-9]{32}$/.test(expectedOperationId) ||
+        !/^[a-f0-9]{64}$/.test(expectedPayloadSha256)) throw new Error("Explicit verified source, target and payload identities are required.");
     await verifyRepositoryRuntime();
-    const target = join(workspace, ".github/extensions/sdd-canvas");
-    const wrappers = [];
-    for (const command of commands) {
-        const source = `.github/agents/speckit.${command}.agent.md`;
-        const content = await readFile(join(workspace, source), "utf8");
-        const match = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(content);
-        const metadata = match ? parseDocument(match[1], { uniqueKeys: true }).toJS() : null;
-        if (typeof metadata?.description !== "string" || !metadata.description.trim() || metadata.description.length > 1024) throw new Error("Generated command description is unavailable.");
-        const name = `speckit-${command}`;
-        const frontmatter = stringify({ name, description: metadata.description, "argument-hint": "Approved local workflow guidance" }).trimEnd();
-        const body = `---\n${frontmatter}\n---\n\n# Generated Core Command Wrapper\n\nRead the existing generated command at \`${source}\` from the current repository root and follow its instructions in this same Copilot session. Do not switch agents.\n\nThis temporary native acceptance session authorizes only the requested read-only analyze action. Do not execute extension hooks, initialize the project, install tools, write files, commit, push, or run another workflow. Missing prerequisites must be reported without repair.\n`;
-        wrappers.push({ path: `.github/skills/${name}/SKILL.md`, body, source, sourceSha256: hash(content) });
-    }
-    for (const path of [target, ...wrappers.map((entry) => join(workspace, entry.path)), join(workspace, ".sdd-clone-acceptance.json")]) {
-        try { await lstat(path); throw new Error("Acceptance target already exists; preserve it."); }
-        catch (error) { if (error.code !== "ENOENT") throw error; }
-    }
-    const before = await trackedAcceptanceFingerprint(workspace);
-    await mkdir(dirname(target), { recursive: true });
-    await mkdir(target);
-    for (const file of ["extension.mjs", "copilot-extension.json", "sdd.mjs", "artifact-review.mjs", "index.html", "ui", "vendor"]) {
-        await cp(join(extensionRoot, file), join(target, file), { recursive: true, force: false, errorOnExist: true });
-    }
-    const entry = await readFile(join(target, "extension.mjs"), "utf8");
-    const marker = "entry = await startServer();";
-    if (entry.split(marker).length !== 2) throw new Error("Test configuration site changed; preserve staged files.");
-    await writeFile(join(target, "extension.mjs"), entry.replace(marker, `entry = await startServer({ profileStatus: { state: "configured", profile: ${JSON.stringify(validated)} } });`));
-    for (const wrapper of wrappers) {
-        await mkdir(dirname(join(workspace, wrapper.path)), { recursive: true });
-        await writeFile(join(workspace, wrapper.path), wrapper.body, { flag: "wx" });
-    }
-    const after = await trackedAcceptanceFingerprint(workspace);
-    if (JSON.stringify(before) !== JSON.stringify(after)) throw new Error("Tracked acceptance sources changed; stop before workflow execution.");
-    const record = { schemaVersion: 1, kind: "sdd-clone-acceptance", operationId: expectedOperationId, workspace,
-        binding: "verified", trackedSourceFingerprint: before, wrappers: wrappers.map(({ path, source, sourceSha256 }) => ({ path, source, sourceSha256 })),
-        generatedCommandsModified: false, projectInitialized: false, privateSourceCommitted: false };
-    await writeFile(join(workspace, ".sdd-clone-acceptance.json"), JSON.stringify(record, null, 2), { flag: "wx" });
-    return record;
+    const payload = await verifyStagedPlugin({ pluginRoot });
+    if (payload.payloadSha256 !== expectedPayloadSha256) throw new Error("The on-disk acceptance payload does not match the approved payload.");
+    const record = await createPreparationStore({ homeDirectory }).read(expectedOperationId);
+    const snapshot = await host.inspectCurrent();
+    if (await realpath(workspacePath) !== snapshot.workingDirectory) throw new Error("The target is not the host's current workspace.");
+    await verifyReadyRepository({ record, snapshot, providerId, instanceId, homeDirectory });
+    const source = await captureAcceptanceSnapshot(sourceWorkspacePath);
+    const target = await captureAcceptanceSnapshot(workspacePath);
+    if (source.repositoryIdentity === target.repositoryIdentity) throw new Error("Two distinct repositories are required for entry acceptance.");
+    return { schemaVersion: 2, kind: "sdd-entry-acceptance-observation", operationId: expectedOperationId, payloadSha256: payload.payloadSha256,
+        source, target, hostSessionSha256: hash(snapshot.sessionId), hostContextSha256: hash(snapshot.contextRevision),
+        targetKind: record.acceptedTarget.targetKind, hostTargetBranchSha256: hash(record.acceptedTarget.targetBranch),
+        preparationBranchSha256: hash(record.branch), providerSha256: hash(providerId), instanceSha256: hash(instanceId),
+        workflowDispatches: 0, filesWritten: 0, installations: 0, completedCloneRetained: true, nativeAcceptance: "requires_separate_visible_app_evidence" };
 }

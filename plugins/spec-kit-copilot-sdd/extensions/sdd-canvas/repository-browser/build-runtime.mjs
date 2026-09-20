@@ -11,7 +11,7 @@ const digest = (value) => createHash("sha256").update(value).digest("hex");
 export const sourceDigest = (value) => digest(Buffer.from(value).toString("utf8").replace(/\r\n?/g, "\n"));
 const builtin = new Set(builtinModules.flatMap((name) => [name, `node:${name}`]));
 const prefix = "vendor/repository-browser";
-export const RUNTIME_FILES = [`${prefix}/server.mjs`, `${prefix}/xdg-open`, `${prefix}/THIRD_PARTY_NOTICES.txt`, "ui/repository-browser.js", "ui/repository-browser.css"];
+export const RUNTIME_FILES = [`${prefix}/server.mjs`, `${prefix}/xdg-open`, `${prefix}/THIRD_PARTY_NOTICES.txt`, "ui/repository-entry.js", "ui/repository-entry.css"];
 
 export async function verifyRepositoryRuntime() {
     const manifest = JSON.parse(await readFile(join(extension, prefix, "manifest.json"), "utf8"));
@@ -46,12 +46,12 @@ export async function verifyRepositoryRuntime() {
 export async function buildRepositoryRuntime() {
     const server = await build({ absWorkingDir: root, entryPoints: ["src/repository-service.ts"], outfile: "server.mjs", bundle: true, platform: "node", format: "esm", target: "node20", write: false, metafile: true,
         banner: { js: 'import { createRequire as __createRequire } from "node:module"; const require = __createRequire(import.meta.url);' } });
-    const browser = await build({ absWorkingDir: root, entryPoints: ["src/ui/repository-browser.ts"], outfile: "repository-browser.js", bundle: true, platform: "browser", format: "esm", target: "es2022", write: false, metafile: true });
+    const entryBrowser = await build({ absWorkingDir: root, entryPoints: ["src/ui/repository-entry.ts"], outfile: "repository-entry.js", bundle: true, platform: "browser", format: "esm", target: "es2022", write: false, metafile: true });
     if (Object.values(server.metafile.outputs).some((output) => output.imports.some((entry) => !entry.external || !builtin.has(entry.path))) ||
-        Object.values(browser.metafile.outputs).some((output) => output.imports.length)) throw new Error("Repository runtime has unresolved dependencies.");
+        Object.values(entryBrowser.metafile.outputs).some((output) => output.imports.length)) throw new Error("Repository runtime has unresolved dependencies.");
     const dependencyPaths = new Set();
-    const sourceFiles = new Set(["package-lock.json", "build-runtime.mjs", "src/ui/repository-browser.css"]);
-    for (const input of [...Object.keys(server.metafile.inputs), ...Object.keys(browser.metafile.inputs)]) {
+    const sourceFiles = new Set(["package-lock.json", "build-runtime.mjs", "src/ui/repository-entry.css"]);
+    for (const input of [...Object.keys(server.metafile.inputs), ...Object.keys(entryBrowser.metafile.inputs)]) {
         const normalized = input.replaceAll("\\", "/");
         const match = /^(.*node_modules\/(?:@[^/]+\/)?[^/]+)/.exec(normalized);
         if (match) dependencyPaths.add(match[1]); else sourceFiles.add(normalized);
@@ -73,8 +73,8 @@ export async function buildRepositoryRuntime() {
         [`${prefix}/server.mjs`, server.outputFiles[0].contents],
         [`${prefix}/xdg-open`, await readFile(join(root, "node_modules/open/xdg-open"))],
         [`${prefix}/THIRD_PARTY_NOTICES.txt`, Buffer.from(notices.join("\n\n"))],
-        ["ui/repository-browser.js", browser.outputFiles[0].contents],
-        ["ui/repository-browser.css", Buffer.from((await readFile(join(root, "src/ui/repository-browser.css"), "utf8")).replace(/\r\n?/g, "\n"))],
+        ["ui/repository-entry.js", entryBrowser.outputFiles[0].contents],
+        ["ui/repository-entry.css", Buffer.from((await readFile(join(root, "src/ui/repository-entry.css"), "utf8")).replace(/\r\n?/g, "\n"))],
     ]);
     const files = [];
     for (const [path, content] of contents) {

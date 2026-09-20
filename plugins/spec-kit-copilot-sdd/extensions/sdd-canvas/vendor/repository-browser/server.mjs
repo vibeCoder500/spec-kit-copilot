@@ -7247,7 +7247,7 @@ var require_public_api = __commonJS({
         return docs;
       return Object.assign([], { empty: true }, composer$1.streamInfo());
     }
-    function parseDocument(source, options = {}) {
+    function parseDocument4(source, options = {}) {
       const { lineCounter: lineCounter2, prettyErrors } = parseOptions(options);
       const parser$1 = new parser.Parser(lineCounter2?.addNewLine);
       const composer$1 = new composer.Composer(options);
@@ -7273,7 +7273,7 @@ var require_public_api = __commonJS({
       } else if (options === void 0 && reviver && typeof reviver === "object") {
         options = reviver;
       }
-      const doc = parseDocument(src, options);
+      const doc = parseDocument4(src, options);
       if (!doc)
         return null;
       doc.warnings.forEach((warning) => log.warn(doc.options.logLevel, warning));
@@ -7309,7 +7309,7 @@ var require_public_api = __commonJS({
     }
     exports.parse = parse;
     exports.parseAllDocuments = parseAllDocuments2;
-    exports.parseDocument = parseDocument;
+    exports.parseDocument = parseDocument4;
     exports.stringify = stringify;
   }
 });
@@ -7777,12 +7777,12 @@ var require_jwa = __commonJS({
       };
     }
     var bufferEqual;
-    var timingSafeEqual3 = "timingSafeEqual" in crypto3 ? function timingSafeEqual4(a, b) {
+    var timingSafeEqual4 = "timingSafeEqual" in crypto3 ? function timingSafeEqual5(a, b) {
       if (a.byteLength !== b.byteLength) {
         return false;
       }
       return crypto3.timingSafeEqual(a, b);
-    } : function timingSafeEqual4(a, b) {
+    } : function timingSafeEqual5(a, b) {
       if (!bufferEqual) {
         bufferEqual = require_buffer_equal_constant_time();
       }
@@ -7791,7 +7791,7 @@ var require_jwa = __commonJS({
     function createHmacVerifier(bits) {
       return function verify(thing, signature, secret) {
         var computedSig = createHmacSigner(bits)(thing, secret);
-        return timingSafeEqual3(Buffer4.from(signature), Buffer4.from(computedSig));
+        return timingSafeEqual4(Buffer4.from(signature), Buffer4.from(computedSig));
       };
     }
     function createKeySigner(bits) {
@@ -8531,8 +8531,8 @@ var require_semver = __commonJS({
     var { safeRe: re, t } = require_re();
     var parseOptions = require_parse_options();
     var { compareIdentifiers } = require_identifiers();
-    var isPrereleaseIdentifier = (prerelease, identifier2) => {
-      const identifiers = identifier2.split(".");
+    var isPrereleaseIdentifier = (prerelease, identifier3) => {
+      const identifiers = identifier3.split(".");
       if (identifiers.length > prerelease.length) {
         return false;
       }
@@ -8697,15 +8697,15 @@ var require_semver = __commonJS({
       }
       // preminor will bump the version up to the next minor release, and immediately
       // down to pre-release. premajor and prepatch work the same way.
-      inc(release, identifier2, identifierBase) {
+      inc(release, identifier3, identifierBase) {
         if (release.startsWith("pre")) {
-          if (!identifier2 && identifierBase === false) {
+          if (!identifier3 && identifierBase === false) {
             throw new Error("invalid increment argument: identifier is empty");
           }
-          if (identifier2) {
-            const match = `-${identifier2}`.match(this.options.loose ? re[t.PRERELEASELOOSE] : re[t.PRERELEASE]);
-            if (!match || match[1] !== identifier2) {
-              throw new Error(`invalid identifier: ${identifier2}`);
+          if (identifier3) {
+            const match = `-${identifier3}`.match(this.options.loose ? re[t.PRERELEASELOOSE] : re[t.PRERELEASE]);
+            if (!match || match[1] !== identifier3) {
+              throw new Error(`invalid identifier: ${identifier3}`);
             }
           }
         }
@@ -8715,26 +8715,26 @@ var require_semver = __commonJS({
             this.patch = 0;
             this.minor = 0;
             this.major++;
-            this.inc("pre", identifier2, identifierBase);
+            this.inc("pre", identifier3, identifierBase);
             break;
           case "preminor":
             this.prerelease.length = 0;
             this.patch = 0;
             this.minor++;
-            this.inc("pre", identifier2, identifierBase);
+            this.inc("pre", identifier3, identifierBase);
             break;
           case "prepatch":
             this.prerelease.length = 0;
-            this.inc("patch", identifier2, identifierBase);
-            this.inc("pre", identifier2, identifierBase);
+            this.inc("patch", identifier3, identifierBase);
+            this.inc("pre", identifier3, identifierBase);
             break;
           // If the input is a non-prerelease version, this acts the same as
           // prepatch.
           case "prerelease":
             if (this.prerelease.length === 0) {
-              this.inc("patch", identifier2, identifierBase);
+              this.inc("patch", identifier3, identifierBase);
             }
-            this.inc("pre", identifier2, identifierBase);
+            this.inc("pre", identifier3, identifierBase);
             break;
           case "release":
             if (this.prerelease.length === 0) {
@@ -8778,19 +8778,19 @@ var require_semver = __commonJS({
                 }
               }
               if (i === -1) {
-                if (identifier2 === this.prerelease.join(".") && identifierBase === false) {
+                if (identifier3 === this.prerelease.join(".") && identifierBase === false) {
                   throw new Error("invalid increment argument: identifier already exists");
                 }
                 this.prerelease.push(base);
               }
             }
-            if (identifier2) {
-              let prerelease = [identifier2, base];
+            if (identifier3) {
+              let prerelease = [identifier3, base];
               if (identifierBase === false) {
-                prerelease = [identifier2];
+                prerelease = [identifier3];
               }
-              if (isPrereleaseIdentifier(this.prerelease, identifier2)) {
-                const prereleaseBase = this.prerelease[identifier2.split(".").length];
+              if (isPrereleaseIdentifier(this.prerelease, identifier3)) {
+                const prereleaseBase = this.prerelease[identifier3.split(".").length];
                 if (isNaN(prereleaseBase)) {
                   this.prerelease = prerelease;
                 }
@@ -8867,17 +8867,17 @@ var require_inc = __commonJS({
   "node_modules/semver/functions/inc.js"(exports, module) {
     "use strict";
     var SemVer = require_semver();
-    var inc = (version3, release, options, identifier2, identifierBase) => {
+    var inc = (version3, release, options, identifier3, identifierBase) => {
       if (typeof options === "string") {
-        identifierBase = identifier2;
-        identifier2 = options;
+        identifierBase = identifier3;
+        identifier3 = options;
         options = void 0;
       }
       try {
         return new SemVer(
           version3 instanceof SemVer ? version3.version : version3,
           options
-        ).inc(release, identifier2, identifierBase).version;
+        ).inc(release, identifier3, identifierBase).version;
       } catch (er) {
         return null;
       }
@@ -9198,10 +9198,10 @@ var require_truncate = __commonJS({
   "node_modules/semver/functions/truncate.js"(exports, module) {
     "use strict";
     var parse = require_parse();
-    var constants = require_constants();
+    var constants2 = require_constants();
     var SemVer = require_semver();
     var truncate = (version3, truncation, options) => {
-      if (!constants.RELEASE_TYPES.includes(truncation)) {
+      if (!constants2.RELEASE_TYPES.includes(truncation)) {
         return null;
       }
       const clonedVersion = cloneInputVersion(version3, options);
@@ -10250,7 +10250,7 @@ var require_semver2 = __commonJS({
   "node_modules/semver/index.js"(exports, module) {
     "use strict";
     var internalRe = require_re();
-    var constants = require_constants();
+    var constants2 = require_constants();
     var SemVer = require_semver();
     var identifiers = require_identifiers();
     var parse = require_parse();
@@ -10334,8 +10334,8 @@ var require_semver2 = __commonJS({
       re: internalRe.re,
       src: internalRe.src,
       tokens: internalRe.t,
-      SEMVER_SPEC_VERSION: constants.SEMVER_SPEC_VERSION,
-      RELEASE_TYPES: constants.RELEASE_TYPES,
+      SEMVER_SPEC_VERSION: constants2.SEMVER_SPEC_VERSION,
+      RELEASE_TYPES: constants2.RELEASE_TYPES,
       compareIdentifiers: identifiers.compareIdentifiers,
       rcompareIdentifiers: identifiers.rcompareIdentifiers
     };
@@ -10690,9 +10690,9 @@ var require_lodash = __commonJS({
       }
       return result;
     }
-    function baseValues(object2, props) {
+    function baseValues(object3, props) {
       return arrayMap(props, function(key) {
-        return object2[key];
+        return object3[key];
       });
     }
     function overArg(func, transform) {
@@ -10716,13 +10716,13 @@ var require_lodash = __commonJS({
       }
       return result;
     }
-    function baseKeys(object2) {
-      if (!isPrototype(object2)) {
-        return nativeKeys(object2);
+    function baseKeys(object3) {
+      if (!isPrototype(object3)) {
+        return nativeKeys(object3);
       }
       var result = [];
-      for (var key in Object(object2)) {
-        if (hasOwnProperty.call(object2, key) && key != "constructor") {
+      for (var key in Object(object3)) {
+        if (hasOwnProperty.call(object3, key) && key != "constructor") {
           result.push(key);
         }
       }
@@ -10808,11 +10808,11 @@ var require_lodash = __commonJS({
       var isBinary = reIsBinary.test(value);
       return isBinary || reIsOctal.test(value) ? freeParseInt(value.slice(2), isBinary ? 2 : 8) : reIsBadHex.test(value) ? NAN : +value;
     }
-    function keys(object2) {
-      return isArrayLike(object2) ? arrayLikeKeys(object2) : baseKeys(object2);
+    function keys(object3) {
+      return isArrayLike(object3) ? arrayLikeKeys(object3) : baseKeys(object3);
     }
-    function values(object2) {
-      return object2 ? baseValues(object2, keys(object2)) : [];
+    function values(object3) {
+      return object3 ? baseValues(object3, keys(object3)) : [];
     }
     module.exports = includes;
   }
@@ -11102,11 +11102,11 @@ var require_sign = __commonJS({
       exp: { isValid: isNumber, message: '"exp" should be a number of seconds' },
       nbf: { isValid: isNumber, message: '"nbf" should be a number of seconds' }
     };
-    function validate(schema, allowUnknown, object2, parameterName) {
-      if (!isPlainObject3(object2)) {
+    function validate(schema, allowUnknown, object3, parameterName) {
+      if (!isPlainObject3(object3)) {
         throw new Error('Expected "' + parameterName + '" to be a plain object.');
       }
-      Object.keys(object2).forEach(function(key) {
+      Object.keys(object3).forEach(function(key) {
         const validator = schema[key];
         if (!validator) {
           if (!allowUnknown) {
@@ -11114,7 +11114,7 @@ var require_sign = __commonJS({
           }
           return;
         }
-        if (!validator.isValid(object2[key])) {
+        if (!validator.isValid(object3[key])) {
           throw new Error(validator.message);
         }
       });
@@ -11296,8 +11296,11 @@ var require_jsonwebtoken = __commonJS({
 });
 
 // src/repository-service.ts
-import { randomBytes as randomBytes6 } from "node:crypto";
-import { basename } from "node:path";
+var import_yaml4 = __toESM(require_dist(), 1);
+import { createHash as createHash7, randomBytes as randomBytes8 } from "node:crypto";
+import { realpath as realpath5 } from "node:fs/promises";
+import { homedir as homedir6 } from "node:os";
+import { basename, join as join6 } from "node:path";
 
 // src/ado-client.ts
 import { setTimeout as delay } from "node:timers/promises";
@@ -11321,8 +11324,32 @@ var messages = {
   clone_cancelled: "Repository preparation was cancelled.",
   remote_read_only: "Open the repository in a verified local session to run workflows.",
   local_context_mismatch: "The workflow does not match this session's local repository.",
+  entry_required: "Choose a repository or continue with the current workspace first.",
+  source_changed: "The repository's default revision changed. Select it again before confirming.",
+  context_changed: "The active workspace changed. Review the repository selection again.",
+  confirmation_expired: "Clone confirmation expired. Review and confirm the selection again.",
+  session_busy: "The current session is busy. Wait until it is idle, then try again.",
+  clone_identity_changed: "The prepared checkout changed. It has been preserved and handoff is blocked.",
+  handoff_in_progress: "The repository handoff is still in progress.",
+  handoff_unknown: "The handoff outcome is not confirmed. Check its status before trying again.",
+  host_handoff_unsupported: "This Copilot App host does not provide the verified repository handoff capability.",
+  activity_unknown: "The host's activity state could not be verified. Repository preparation is blocked.",
+  canvas_unavailable: "The original Spec Kit canvas is unavailable in the target session.",
   upstream_unavailable: "The repository service is temporarily unavailable."
 };
+function repositoryErrorStatus(code) {
+  if (code === "invalid_request") return 400;
+  if (code === "resource_unavailable") return 404;
+  if (["connection_required", "interaction_required"].includes(code)) return 401;
+  if (["wrong_tenant", "insufficient_scope", "policy_blocked"].includes(code)) return 403;
+  if (["host_handoff_unsupported", "activity_unknown", "canvas_unavailable"].includes(code)) return 412;
+  if (code === "rate_limited") return 429;
+  if (code === "upstream_unavailable") return 503;
+  return 409;
+}
+function knownRepositoryError(code) {
+  return new RepositoryError(typeof code === "string" && Object.hasOwn(messages, code) ? code : "upstream_unavailable");
+}
 var RepositoryError = class extends Error {
   code;
   retryAfterSeconds;
@@ -11345,6 +11372,7 @@ function errorEnvelope(error) {
 }
 
 // src/profile.ts
+var import_yaml = __toESM(require_dist(), 1);
 import { lstat, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
@@ -11390,6 +11418,33 @@ async function loadRepositoryProfile(homeDirectory = homedir()) {
     return profile.enabled ? { state: "configured", profile } : { state: "disabled" };
   } catch (error) {
     return { state: error.code === "ENOENT" ? "unconfigured" : "invalid" };
+  }
+}
+async function loadEntrySettings(homeDirectory = homedir()) {
+  const result = (state) => ({
+    state,
+    settings: Object.freeze({ schemaVersion: 1, repositoryEntryEnabled: state === "enabled" })
+  });
+  if (!isAbsolute(homeDirectory)) return result("invalid");
+  const filename = join(resolve(homeDirectory), ".speckit-canvas", "entry-settings.json");
+  try {
+    for (let parent = dirname(filename); ; parent = dirname(parent)) {
+      const info2 = await lstat(parent);
+      if (!info2.isDirectory() || info2.isSymbolicLink()) return result("invalid");
+      if (dirname(parent) === parent) break;
+    }
+    const info = await lstat(filename);
+    if (!info.isFile() || info.isSymbolicLink() || info.size > 4096) return result("invalid");
+    const bytes = await readFile(filename);
+    if (bytes.length > 4096) return result("invalid");
+    const raw = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    const input = JSON.parse(raw);
+    if (!input || typeof input !== "object" || Array.isArray(input) || (0, import_yaml.parseDocument)(raw, { schema: "json", uniqueKeys: true }).errors.length) return result("invalid");
+    const fields2 = input;
+    if (fields2.schemaVersion !== 1 || typeof fields2.repositoryEntryEnabled !== "boolean" || Object.keys(fields2).some((key) => !["schemaVersion", "repositoryEntryEnabled"].includes(key))) return result("invalid");
+    return result(fields2.repositoryEntryEnabled ? "enabled" : "disabled");
+  } catch (error) {
+    return result(error.code === "ENOENT" ? "enabled" : "invalid");
   }
 }
 
@@ -11578,20 +11633,584 @@ function record(value) {
 }
 
 // src/artifact-clock.ts
-import { createHash } from "node:crypto";
+import { createHash as createHash2 } from "node:crypto";
 import { lstatSync, readFileSync, realpathSync } from "node:fs";
-import { realpath as realpath2 } from "node:fs/promises";
-import { homedir as homedir3 } from "node:os";
-import { isAbsolute as isAbsolute3, join as join3, relative as relative2, resolve as resolve3, sep as sep2 } from "node:path";
+import { realpath as realpath3 } from "node:fs/promises";
+import { homedir as homedir4 } from "node:os";
+import { isAbsolute as isAbsolute5, join as join4, relative as relative2, resolve as resolve4, sep as sep2 } from "node:path";
 
 // src/clone.ts
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes as randomBytes3, timingSafeEqual } from "node:crypto";
 import { spawn } from "node:child_process";
-import { lstat as lstat2, mkdir, readFile as readFile2, readdir, realpath, rm, writeFile } from "node:fs/promises";
+import { lstat as lstat3, mkdir as mkdir2, open as open2, readFile as readFile2, readdir, realpath as realpath2, rm, writeFile } from "node:fs/promises";
+import { homedir as homedir3 } from "node:os";
+import { delimiter, dirname as dirname3, isAbsolute as isAbsolute4, join as join3, relative, resolve as resolve3, sep } from "node:path";
+
+// src/host-handoff.ts
+import { randomBytes } from "node:crypto";
+import { isAbsolute as isAbsolute2 } from "node:path";
+function record2(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+function identifier2(value, maximum = 256) {
+  return typeof value === "string" && value.length > 0 && value.length <= maximum && !/[\p{Cc}\p{Cf}]/u.test(value);
+}
+function supportsRepositoryCloning(snapshot) {
+  return snapshot.capabilities.checkedPreparation === true || snapshot.capabilities.atomicPreparation;
+}
+function supportsRemotePreparation(snapshot) {
+  const capabilities = snapshot.capabilities;
+  return capabilities.localCanvas && capabilities.atomicPreparation && capabilities.atomicHandoff && capabilities.targetAcknowledgment && capabilities.handoffReconciliation;
+}
+function createHostHandoffAdapter(options) {
+  if (!identifier2(options.sessionId) || options.extensionId !== void 0 && !identifier2(options.extensionId)) throw new RepositoryError("invalid_context");
+  const timeoutMs = options.timeoutMs ?? 5e3;
+  if (!Number.isInteger(timeoutMs) || timeoutMs <= 0 || timeoutMs > 5e3) throw new RepositoryError("invalid_request");
+  const shutdown = new AbortController();
+  const capabilities = Object.freeze({
+    localCanvas: typeof options.canvas?.open === "function",
+    checkedPreparation: typeof options.metadata.activity === "function",
+    atomicPreparation: false,
+    atomicHandoff: false,
+    targetAcknowledgment: false,
+    handoffReconciliation: false
+  });
+  const admittedPreparations = /* @__PURE__ */ new Set();
+  const generation = randomBytes(24).toString("base64url");
+  let epoch = 0;
+  let activityEpoch = 0;
+  let contextRevision = randomBytes(24).toString("base64url");
+  let activityRevision = randomBytes(24).toString("base64url");
+  let lastDirectory;
+  let lastActivity;
+  let readSequence = 0;
+  let appliedSequence = 0;
+  const unsubscribe = options.subscribeContextChanged?.(() => {
+    epoch++;
+    contextRevision = randomBytes(24).toString("base64url");
+  });
+  const unsubscribeActivity = options.subscribeActivityChanged?.(() => {
+    activityEpoch++;
+    activityRevision = randomBytes(24).toString("base64url");
+  });
+  async function bounded(operation, code, external) {
+    if (shutdown.signal.aborted) throw new RepositoryError("invalid_context");
+    const signal = external ? AbortSignal.any([shutdown.signal, external]) : shutdown.signal;
+    if (signal.aborted) throw new RepositoryError("invalid_context");
+    let timer;
+    let onAbort = () => void 0;
+    try {
+      return await Promise.race([
+        Promise.resolve().then(operation).catch(() => {
+          throw new RepositoryError(code);
+        }),
+        new Promise((_resolve, reject) => {
+          timer = setTimeout(() => reject(new RepositoryError(code)), timeoutMs);
+          onAbort = () => reject(new RepositoryError("invalid_context"));
+          signal.addEventListener("abort", onAbort, { once: true });
+        })
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
+      signal.removeEventListener("abort", onAbort);
+    }
+  }
+  async function inspectCurrent(signal) {
+    const expectedEpoch = epoch;
+    const expectedActivityEpoch = activityEpoch;
+    const sequence = ++readSequence;
+    const [rawSnapshot, rawActivity] = await Promise.all([
+      bounded(() => options.metadata.snapshot(), "activity_unknown", signal),
+      options.metadata.activity ? bounded(() => options.metadata.activity(), "activity_unknown", signal).catch(() => void 0) : void 0
+    ]);
+    if (shutdown.signal.aborted || signal?.aborted) throw new RepositoryError("invalid_context");
+    if (expectedEpoch !== epoch || sequence < appliedSequence) throw new RepositoryError("context_changed");
+    const snapshot = record2(rawSnapshot);
+    if (snapshot.sessionId !== options.sessionId || !identifier2(snapshot.workingDirectory, 32768) || !isAbsolute2(snapshot.workingDirectory)) {
+      throw new RepositoryError("context_changed");
+    }
+    if (lastDirectory !== void 0 && lastDirectory !== snapshot.workingDirectory) {
+      epoch++;
+      contextRevision = randomBytes(24).toString("base64url");
+    }
+    lastDirectory = snapshot.workingDirectory;
+    appliedSequence = sequence;
+    const activityFlags = record2(rawActivity);
+    const activity = expectedActivityEpoch !== activityEpoch || typeof activityFlags.hasActiveWork !== "boolean" || typeof activityFlags.abortable !== "boolean" ? "unknown" : activityFlags.hasActiveWork || activityFlags.abortable ? "busy" : "idle";
+    if (activity !== lastActivity) activityRevision = randomBytes(24).toString("base64url");
+    lastActivity = activity;
+    return {
+      sessionId: options.sessionId,
+      contextRevision,
+      workingDirectory: snapshot.workingDirectory,
+      activity,
+      activityRevision,
+      capabilityGeneration: generation,
+      capabilities: { ...capabilities }
+    };
+  }
+  function sameContext(expected, snapshot) {
+    if (expected.sessionId !== snapshot.sessionId || expected.contextRevision !== snapshot.contextRevision) throw new RepositoryError("context_changed");
+  }
+  return {
+    inspectCurrent,
+    async openCurrentCanvas(expected, instanceId, signal) {
+      if (!capabilities.localCanvas) throw new RepositoryError("canvas_unavailable");
+      if (!/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/.test(instanceId)) throw new RepositoryError("invalid_request");
+      const current = await inspectCurrent(signal);
+      sameContext(expected, current);
+      const result = record2(await bounded(() => options.canvas.open({
+        ...options.extensionId ? { extensionId: options.extensionId } : {},
+        canvasId: "sdd-canvas-direct",
+        instanceId,
+        input: {}
+      }), "canvas_unavailable", signal));
+      const verified = await inspectCurrent(signal);
+      sameContext(current, verified);
+      if (result.canvasId !== "sdd-canvas-direct" || result.instanceId !== instanceId || !identifier2(result.extensionId) || options.extensionId !== void 0 && result.extensionId !== options.extensionId) throw new RepositoryError("canvas_unavailable");
+      return {
+        sessionId: verified.sessionId,
+        contextRevision: verified.contextRevision,
+        workingDirectory: verified.workingDirectory,
+        providerId: result.extensionId,
+        instanceId
+      };
+    },
+    async admitPreparation(input, start) {
+      if (!/^[a-f0-9]{32}$/.test(input.operationId)) throw new RepositoryError("invalid_request");
+      if (!capabilities.checkedPreparation) throw new RepositoryError("activity_unknown");
+      if (input.capabilityGeneration !== generation) throw new RepositoryError("context_changed");
+      const current = await inspectCurrent();
+      sameContext(input.expectedSource, current);
+      if (current.activity !== "idle") throw new RepositoryError(current.activity === "busy" ? "session_busy" : "activity_unknown");
+      if (input.activityRevision !== void 0 && input.activityRevision !== current.activityRevision) throw new RepositoryError("context_changed");
+      if (admittedPreparations.has(input.operationId) || admittedPreparations.size >= 32) throw new RepositoryError("clone_conflict");
+      admittedPreparations.add(input.operationId);
+      return start();
+    },
+    async handoffPrepared() {
+      throw new RepositoryError("host_handoff_unsupported");
+    },
+    async getHandoffOutcome() {
+      throw new RepositoryError("host_handoff_unsupported");
+    },
+    dispose() {
+      shutdown.abort();
+      unsubscribe?.();
+      unsubscribeActivity?.();
+    }
+  };
+}
+async function executeHostHandoff({ host, request, outcome, persistActivation, readReadiness, timeoutMs = 3e4 }) {
+  if (!Number.isInteger(timeoutMs) || timeoutMs <= 0 || timeoutMs > 3e4 || request.canvasId !== "sdd-canvas-direct") throw new RepositoryError("invalid_request");
+  const deadline = new AbortController();
+  let timer;
+  const matchesActivation = (activation, current) => current.sessionId === activation.sessionId && current.contextRevision === activation.contextRevision && current.workingDirectory === activation.workingDirectory;
+  const verifyReady = (ready, activation) => {
+    if (ready.instanceId !== request.instanceId || !identifier2(ready.providerId) || ready.attemptId !== request.attemptId || ready.sessionId !== activation.sessionId || ready.contextRevision !== activation.contextRevision || ready.workingDirectory !== activation.workingDirectory || ready.targetKind !== activation.targetKind || ready.targetBranch !== activation.targetBranch) throw new RepositoryError("clone_identity_changed");
+    return { status: "canvas_ready", activation, result: ready };
+  };
+  const execute = async () => {
+    const received = outcome ?? await host.handoffPrepared(request);
+    if (!["workspace_activated", "canvas_ready"].includes(received.status)) return received;
+    const activation = received.activation;
+    if (!activation || activation.attemptId !== request.attemptId || !identifier2(activation.sessionId) || !identifier2(activation.contextRevision) || !identifier2(activation.workingDirectory, 32768) || !isAbsolute2(activation.workingDirectory) || !["prepared_checkout", "host_worktree"].includes(activation.targetKind) || !activation.targetBranch.startsWith("refs/heads/")) throw new RepositoryError("clone_identity_changed");
+    await persistActivation(activation);
+    if (deadline.signal.aborted) throw new RepositoryError("handoff_unknown");
+    const current = await host.inspectCurrent(deadline.signal);
+    if (!matchesActivation(activation, current)) throw new RepositoryError("context_changed");
+    if (!supportsRemotePreparation(current)) throw new RepositoryError("host_handoff_unsupported");
+    const existing = await readReadiness();
+    if (existing) return verifyReady(existing, activation);
+    if (current.activity !== "idle") throw new RepositoryError(current.activity === "busy" ? "session_busy" : "activity_unknown");
+    const opened = await host.openCurrentCanvas(activation, request.instanceId, deadline.signal);
+    if (deadline.signal.aborted) throw new RepositoryError("handoff_unknown");
+    if (opened.sessionId !== activation.sessionId || opened.contextRevision !== activation.contextRevision || opened.workingDirectory !== activation.workingDirectory || opened.instanceId !== request.instanceId) throw new RepositoryError("context_changed");
+    const ready = await readReadiness();
+    if (!ready) throw new RepositoryError("canvas_unavailable");
+    if (ready.providerId !== opened.providerId) throw new RepositoryError("canvas_unavailable");
+    return verifyReady(ready, activation);
+  };
+  try {
+    return await Promise.race([execute(), new Promise((_resolve, reject) => {
+      timer = setTimeout(() => {
+        deadline.abort();
+        reject(new RepositoryError("handoff_unknown"));
+      }, timeoutMs);
+    })]);
+  } catch (error) {
+    throw knownRepositoryError(error?.code);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+// src/preparation-store.ts
+var import_yaml2 = __toESM(require_dist(), 1);
+import { constants } from "node:fs";
+import { link, lstat as lstat2, mkdir, open, opendir, realpath, rename, unlink } from "node:fs/promises";
+import { randomBytes as randomBytes2 } from "node:crypto";
 import { homedir as homedir2 } from "node:os";
-import { delimiter, dirname as dirname2, isAbsolute as isAbsolute2, join as join2, relative, resolve as resolve2, sep } from "node:path";
+import { dirname as dirname2, isAbsolute as isAbsolute3, join as join2, resolve as resolve2 } from "node:path";
+var operationPattern = /^[a-f0-9]{32}$/;
+var digestPattern = /^[a-f0-9]{64}$/;
+var commitPattern = /^[a-f0-9]{40}$/;
+var repositoryPattern = /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i;
+var fields = [
+  "schemaVersion",
+  "kind",
+  "operationId",
+  "repositoryId",
+  "originIdentity",
+  "defaultRef",
+  "sourceCommit",
+  "destination",
+  "gitCommonDirectory",
+  "branch",
+  "initialWorktreeFingerprint",
+  "profileFingerprint",
+  "accountKey",
+  "createdAt",
+  "completedAt"
+];
+function invalid() {
+  throw new RepositoryError("invalid_context");
+}
+function object(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return invalid();
+  return value;
+}
+function safeText(value, maximum = 4096) {
+  return typeof value === "string" && value.length > 0 && value.length <= maximum && !/[\p{Cc}\p{Cf}]/u.test(value);
+}
+function namedRef(value) {
+  return safeText(value, 1024) && value.startsWith("refs/heads/") && !/[ ~^:?*\[\\]|\.\.|@\{|\/\//.test(value) && value.split("/").every((part) => part && !part.startsWith(".") && !part.endsWith(".") && !part.endsWith(".lock"));
+}
+function origin(value, repositoryId) {
+  if (!safeText(value) || !safeText(repositoryId, 64)) return false;
+  try {
+    const url = new URL(value);
+    return url.origin === "https://dev.azure.com" && !url.username && !url.password && !url.search && !url.hash && url.pathname.split("/").length === 5 && url.pathname.endsWith(`/_git/${repositoryId}`);
+  } catch {
+    return false;
+  }
+}
+var activationFields = ["attemptId", "sessionId", "contextRevision", "workingDirectory", "targetKind", "targetBranch"];
+function validateActivation(input, attemptId, ready = false) {
+  const value = object(input);
+  const allowed = ready ? [...activationFields, "providerId", "instanceId"] : activationFields;
+  if (Object.keys(value).length !== allowed.length || allowed.some((field) => !Object.hasOwn(value, field)) || value.attemptId !== attemptId || !safeText(value.sessionId, 256) || !safeText(value.contextRevision, 256) || !safeText(value.workingDirectory) || !isAbsolute3(value.workingDirectory) || !["prepared_checkout", "host_worktree"].includes(String(value.targetKind)) || !namedRef(value.targetBranch) || ready && (!safeText(value.providerId, 256) || !safeText(value.instanceId, 256))) return invalid();
+  return value;
+}
+function validateAttempt(input, operationId) {
+  const value = object(input);
+  const required = ["attemptId", "operationId", "expectedSource", "instanceId", "status", "createdAt"];
+  if (required.some((field) => !Object.hasOwn(value, field)) || Object.keys(value).some((field) => ![...required, "activation", "result", "errorCode"].includes(field)) || !safeText(value.attemptId, 32) || !operationPattern.test(value.attemptId) || value.operationId !== operationId || !safeText(value.instanceId, 256) || !["requested", "in_progress", "workspace_activated", "canvas_ready", "rejected", "unknown"].includes(String(value.status)) || !Number.isSafeInteger(value.createdAt) || Number(value.createdAt) < 0 || value.errorCode !== void 0 && knownRepositoryError(value.errorCode).code !== value.errorCode) return invalid();
+  const source = object(value.expectedSource);
+  if (Object.keys(source).length !== 2 || !safeText(source.sessionId, 256) || !safeText(source.contextRevision, 256)) return invalid();
+  if (value.activation !== void 0) validateActivation(value.activation, value.attemptId);
+  if (value.result !== void 0) {
+    const result = validateActivation(value.result, value.attemptId, true);
+    const activation = object(value.activation);
+    if (result.instanceId !== value.instanceId || activationFields.some((field) => Reflect.get(result, field) !== activation[field])) return invalid();
+  }
+  if (["workspace_activated", "canvas_ready"].includes(String(value.status)) && !value.activation) return invalid();
+  if (value.status === "canvas_ready" !== Boolean(value.result)) return invalid();
+  return structuredClone(value);
+}
+async function regularPath(path3, directory) {
+  if (!safeText(path3) || !isAbsolute3(path3)) return invalid();
+  const resolved = resolve2(path3);
+  let current = resolved;
+  for (; ; ) {
+    const info = await lstat2(current);
+    if (info.isSymbolicLink() || (current !== resolved || directory ? !info.isDirectory() : !info.isFile())) return invalid();
+    if (dirname2(current) === current) break;
+    current = dirname2(current);
+  }
+  return realpath(resolved);
+}
+async function boundedJson(path3, maximum) {
+  await regularPath(path3, false);
+  const before = await lstat2(path3);
+  if (before.size > maximum) return invalid();
+  const handle = await open(path3, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
+  try {
+    const opened = await handle.stat();
+    if (!opened.isFile() || opened.dev !== before.dev || opened.ino !== before.ino) return invalid();
+    const bytes = Buffer.alloc(maximum + 1);
+    let count = 0;
+    while (count < bytes.length) {
+      const read = await handle.read(bytes, count, bytes.length - count, count);
+      if (!read.bytesRead) break;
+      count += read.bytesRead;
+    }
+    const after = await handle.stat();
+    if (count > maximum || count !== before.size || after.size !== before.size || after.mtimeMs !== before.mtimeMs) return invalid();
+    const raw = new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, count));
+    const value = object(JSON.parse(raw));
+    if ((0, import_yaml2.parseDocument)(raw, { schema: "json", uniqueKeys: true }).errors.length) return invalid();
+    return value;
+  } finally {
+    await handle.close();
+  }
+}
+function validateRecord(input) {
+  const value = object(input);
+  if (Object.keys(value).some((field) => ![...fields, "handoff", "acceptedTarget"].includes(field)) || fields.some((field) => !Object.hasOwn(value, field))) return invalid();
+  if (value.schemaVersion !== 2 || value.kind !== "sdd-prepared-repository" || !safeText(value.operationId, 32) || !operationPattern.test(value.operationId) || !safeText(value.repositoryId, 36) || !repositoryPattern.test(value.repositoryId) || !origin(value.originIdentity, value.repositoryId) || !safeText(value.sourceCommit, 40) || !commitPattern.test(value.sourceCommit) || !namedRef(value.defaultRef) || value.branch !== `refs/heads/speckit/canvas-${value.operationId}` || ![value.initialWorktreeFingerprint, value.profileFingerprint, value.accountKey].every((item) => safeText(item, 64) && digestPattern.test(item)) || ![value.createdAt, value.completedAt].every((time) => Number.isSafeInteger(time) && Number(time) >= 0) || Number(value.completedAt) < Number(value.createdAt) || !safeText(value.destination) || !safeText(value.gitCommonDirectory)) return invalid();
+  const handoff = value.handoff === void 0 ? void 0 : validateAttempt(value.handoff, value.operationId);
+  if (handoff && handoff.createdAt < Number(value.completedAt)) return invalid();
+  if (handoff?.status === "canvas_ready" !== Boolean(value.acceptedTarget)) return invalid();
+  if (value.acceptedTarget !== void 0 && JSON.stringify(value.acceptedTarget) !== JSON.stringify(handoff?.result)) return invalid();
+  if (Buffer.byteLength(JSON.stringify(value)) > 8192) return invalid();
+  return structuredClone(value);
+}
+function createPreparationStore({ homeDirectory = homedir2() } = {}) {
+  async function home() {
+    return regularPath(homeDirectory, true);
+  }
+  async function directory(create = false) {
+    let path3 = await home();
+    for (const name3 of [".speckit-canvas", "preparations"]) {
+      path3 = join2(path3, name3);
+      if (create) {
+        try {
+          await mkdir(path3, { mode: 448 });
+        } catch (error) {
+          if (error.code !== "EEXIST") throw error;
+        }
+      }
+      await regularPath(path3, true);
+    }
+    return path3;
+  }
+  async function ownership(operationId, destination, gitCommonDirectory) {
+    const root = join2(await home(), "SpecKitCanvas", "repositories", operationId);
+    if (destination !== join2(root, "checkout") || gitCommonDirectory !== join2(destination, ".git")) return invalid();
+    if (await regularPath(destination, true) !== destination || await regularPath(gitCommonDirectory, true) !== gitCommonDirectory) return invalid();
+    const marker = await boundedJson(join2(root, ".sdd-clone-owner.json"), 1024);
+    if (Object.keys(marker).length !== 2 || marker.kind !== "sdd-repository-clone" || marker.operationId !== operationId) return invalid();
+  }
+  async function read(operationId) {
+    if (!operationPattern.test(operationId)) return invalid();
+    try {
+      const record3 = validateRecord(await boundedJson(join2(await directory(), `${operationId}.json`), 8192));
+      if (record3.operationId !== operationId) return invalid();
+      await ownership(record3.operationId, record3.destination, record3.gitCommonDirectory);
+      return record3;
+    } catch {
+      return invalid();
+    }
+  }
+  async function change(operationId, update) {
+    if (!operationPattern.test(operationId)) return invalid();
+    const parent = await directory();
+    const lockPath = join2(parent, `.${operationId}.lock`);
+    const lock = await open(lockPath, "wx", 384).catch((error) => {
+      if (error.code === "EEXIST") throw new RepositoryError("handoff_in_progress");
+      return invalid();
+    });
+    let temporary;
+    try {
+      const previous = await read(operationId);
+      const next = validateRecord(update(structuredClone(previous)));
+      if (fields.some((field) => Reflect.get(next, field) !== Reflect.get(previous, field))) return invalid();
+      if (JSON.stringify(next) === JSON.stringify(previous)) return previous;
+      temporary = join2(parent, `.${operationId}-${randomBytes2(12).toString("hex")}.tmp`);
+      const handle = await open(temporary, "wx", 384);
+      try {
+        await handle.writeFile(JSON.stringify(next));
+        await handle.sync();
+      } finally {
+        await handle.close();
+      }
+      await regularPath(parent, true);
+      if (JSON.stringify(await read(operationId)) !== JSON.stringify(previous)) throw new RepositoryError("handoff_in_progress");
+      await rename(temporary, join2(parent, `${operationId}.json`));
+      temporary = void 0;
+      return next;
+    } catch (error) {
+      if (error instanceof RepositoryError) throw error;
+      return invalid();
+    } finally {
+      if (temporary) await unlink(temporary).catch(() => void 0);
+      await lock.close();
+      await unlink(lockPath).catch(() => void 0);
+    }
+  }
+  const store = {
+    read,
+    async verifyOwnership(input) {
+      try {
+        const record3 = validateRecord(input);
+        await ownership(record3.operationId, record3.destination, record3.gitCommonDirectory);
+        return record3;
+      } catch {
+        return invalid();
+      }
+    },
+    async beginAttempt(operationId, input) {
+      const attempt = validateAttempt(input, operationId);
+      if (attempt.status !== "requested" || attempt.activation || attempt.result || attempt.errorCode) return invalid();
+      return change(operationId, (record3) => {
+        if (record3.handoff?.attemptId === attempt.attemptId) {
+          if (["operationId", "instanceId", "createdAt"].some((field) => Reflect.get(record3.handoff, field) !== Reflect.get(attempt, field)) || JSON.stringify(record3.handoff.expectedSource) !== JSON.stringify(attempt.expectedSource)) return invalid();
+          return record3;
+        }
+        if (record3.acceptedTarget || record3.handoff && (record3.handoff.status !== "rejected" || record3.handoff.activation)) throw new RepositoryError("handoff_in_progress");
+        return { ...record3, handoff: attempt };
+      });
+    },
+    async updateAttempt(operationId, input) {
+      const incoming = validateAttempt(input, operationId);
+      return change(operationId, (record3) => {
+        const previous = record3.handoff;
+        if (!previous || ["attemptId", "operationId", "instanceId", "createdAt"].some((field) => Reflect.get(incoming, field) !== Reflect.get(previous, field)) || JSON.stringify(incoming.expectedSource) !== JSON.stringify(previous.expectedSource)) return invalid();
+        if (previous.status === "canvas_ready") {
+          if (incoming.status !== "canvas_ready" || JSON.stringify(incoming.result) !== JSON.stringify(previous.result)) return invalid();
+          return record3;
+        }
+        if (incoming.status === "requested") return invalid();
+        if (incoming.status === "canvas_ready" && !previous.activation) return invalid();
+        if (previous.activation && incoming.activation && JSON.stringify(previous.activation) !== JSON.stringify(incoming.activation)) return invalid();
+        if (previous.activation && incoming.status === "rejected") return invalid();
+        const next = { ...incoming, ...previous.activation ? { activation: previous.activation } : {} };
+        if (previous.activation && ["unknown", "in_progress"].includes(next.status)) next.status = "workspace_activated";
+        if (next.status === "canvas_ready") delete next.errorCode;
+        return { ...record3, handoff: next, ...next.result ? { acceptedTarget: next.result } : {} };
+      });
+    },
+    async write(input) {
+      let temporary;
+      try {
+        const record3 = validateRecord(input);
+        if (record3.handoff || record3.acceptedTarget) return invalid();
+        await ownership(record3.operationId, record3.destination, record3.gitCommonDirectory);
+        const parent = await directory(true);
+        const filename = join2(parent, `${record3.operationId}.json`);
+        try {
+          await lstat2(filename);
+          if (JSON.stringify(await read(record3.operationId)) !== JSON.stringify(record3)) return invalid();
+          return;
+        } catch (error) {
+          if (error.code !== "ENOENT") throw error;
+        }
+        temporary = join2(parent, `.${record3.operationId}-${randomBytes2(12).toString("hex")}.tmp`);
+        const handle = await open(temporary, "wx", 384);
+        try {
+          await handle.writeFile(JSON.stringify(record3));
+          await handle.sync();
+        } finally {
+          await handle.close();
+        }
+        await regularPath(parent, true);
+        try {
+          await link(temporary, filename);
+        } catch (error) {
+          if (error.code !== "EEXIST" || JSON.stringify(await read(record3.operationId)) !== JSON.stringify(record3)) throw error;
+        }
+      } catch {
+        return invalid();
+      } finally {
+        if (temporary) await unlink(temporary).catch(() => void 0);
+      }
+    },
+    async list() {
+      const items = [];
+      let inspected = 0;
+      let hasMore = false;
+      try {
+        const parent = await directory();
+        for await (const entry of await opendir(parent)) {
+          if (inspected >= 256) {
+            hasMore = true;
+            break;
+          }
+          inspected++;
+          if (!/^[a-f0-9]{32}\.json$/.test(entry.name) || !entry.isFile() || entry.isSymbolicLink()) continue;
+          const operationId = entry.name.slice(0, -5);
+          try {
+            const input = await boundedJson(join2(parent, entry.name), 8192);
+            if (input.schemaVersion === 2) {
+              const record3 = await read(operationId);
+              items.push({ operationId, destination: record3.destination, legacy: false, actionable: false, record: record3 });
+            } else if (input.schemaVersion === 1) {
+              const legacy = await boundedJson(join2(parent, entry.name), 4096);
+              const legacyFields = ["schemaVersion", "operationId", "kind", "gitDirectory", "checkout", "remote", "repositoryId", "initialCommit", "initialBranch", "createdAt"];
+              if (Object.keys(legacy).length !== legacyFields.length || legacyFields.some((field) => !Object.hasOwn(legacy, field)) || legacy.operationId !== operationId || legacy.kind !== "sdd-prepared-repository" || !origin(legacy.remote, legacy.repositoryId) || !safeText(legacy.initialCommit, 40) || !commitPattern.test(legacy.initialCommit) || legacy.initialBranch !== `speckit/canvas-${operationId}` || !safeText(legacy.createdAt, 64) || !Number.isFinite(Date.parse(legacy.createdAt)) || !safeText(legacy.checkout) || !safeText(legacy.gitDirectory)) continue;
+              await ownership(operationId, legacy.checkout, legacy.gitDirectory);
+              items.push({ operationId, destination: legacy.checkout, legacy: true, actionable: false });
+            }
+          } catch {
+            continue;
+          }
+        }
+      } catch (error) {
+        if (error.code !== "ENOENT") return invalid();
+      }
+      return { items, inspected, hasMore };
+    }
+  };
+  return store;
+}
+
+// src/clone.ts
 var COMMIT2 = /^[a-f0-9]{40}$/;
 var operationIdPattern = /^[a-f0-9]{32}$/;
+var digest = (value) => createHash("sha256").update(value).digest("hex");
+var sameSecret = (value, expected) => typeof value === "string" && value.length <= 256 && timingSafeEqual(Buffer.from(digest(value), "hex"), Buffer.from(expected, "hex"));
+async function fingerprintCheckout(checkout, signal) {
+  const root = await realpath2(checkout);
+  if ((await lstat3(checkout)).isSymbolicLink()) throw new RepositoryError("clone_identity_changed");
+  const queue = [root];
+  const files = [];
+  let count = 0;
+  while (queue.length) {
+    if (signal.aborted) throw new RepositoryError("clone_cancelled");
+    const directory = queue.pop();
+    if ((await lstat3(directory)).isSymbolicLink()) throw new RepositoryError("clone_identity_changed");
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      if (directory === root && entry.name === ".git") continue;
+      if (++count > 1e5 || entry.isSymbolicLink()) throw new RepositoryError("clone_identity_changed");
+      const path3 = join3(directory, entry.name);
+      if (entry.isDirectory()) queue.push(path3);
+      else if (entry.isFile()) files.push(path3);
+      else throw new RepositoryError("clone_identity_changed");
+    }
+  }
+  const hash = createHash("sha256");
+  for (const path3 of files.sort()) {
+    if (signal.aborted) throw new RepositoryError("clone_cancelled");
+    const before = await lstat3(path3);
+    if (!before.isFile() || before.isSymbolicLink() || await realpath2(path3) !== path3) throw new RepositoryError("clone_identity_changed");
+    const handle = await open2(path3, "r");
+    const content = createHash("sha256");
+    try {
+      const opened = await handle.stat();
+      if (!opened.isFile() || opened.ino !== before.ino || opened.dev !== before.dev) throw new RepositoryError("clone_identity_changed");
+      const buffer = Buffer.alloc(65536);
+      let position = 0;
+      for (; ; ) {
+        if (signal.aborted) throw new RepositoryError("clone_cancelled");
+        const result = await handle.read(buffer, 0, buffer.length, position);
+        if (!result.bytesRead) break;
+        content.update(buffer.subarray(0, result.bytesRead));
+        position += result.bytesRead;
+      }
+      const after = await handle.stat();
+      if (position !== before.size || after.size !== before.size || after.mtimeMs !== before.mtimeMs) throw new RepositoryError("clone_identity_changed");
+    } finally {
+      await handle.close();
+    }
+    hash.update(relative(root, path3).split(sep).join("/"));
+    hash.update("\0");
+    hash.update(String(before.mode & 73));
+    hash.update("\0");
+    hash.update(content.digest());
+  }
+  return hash.digest("hex");
+}
 async function runGit({ executable, args, cwd, env, signal }) {
   if (signal.aborted) throw new RepositoryError("clone_cancelled");
   return new Promise((resolveResult, reject) => {
@@ -11608,13 +12227,13 @@ async function runGit({ executable, args, cwd, env, signal }) {
       terminating = true;
       if (process.platform === "win32") {
         const systemRoot = env.SystemRoot ?? env.SYSTEMROOT ?? process.env.SystemRoot ?? process.env.SYSTEMROOT;
-        if (!systemRoot || !isAbsolute2(systemRoot)) {
+        if (!systemRoot || !isAbsolute4(systemRoot)) {
           child.kill("SIGTERM");
           return;
         }
         termination = new Promise((resolveTermination) => {
           const killer = spawn(
-            join2(systemRoot, "System32", "taskkill.exe"),
+            join3(systemRoot, "System32", "taskkill.exe"),
             ["/PID", String(child.pid), "/T", "/F"],
             { windowsHide: true, shell: false, stdio: "ignore" }
           );
@@ -11666,16 +12285,16 @@ async function runGit({ executable, args, cwd, env, signal }) {
 }
 function inside(root, target) {
   const path3 = relative(root, target);
-  return path3 !== ".." && !path3.startsWith(`..${sep}`) && !isAbsolute2(path3);
+  return path3 !== ".." && !path3.startsWith(`..${sep}`) && !isAbsolute4(path3);
 }
 async function findGitExecutable(workspacePath, environment = process.env) {
   const filename = process.platform === "win32" ? "git.exe" : "git";
   for (const directory of (environment.PATH ?? environment.Path ?? "").split(delimiter)) {
-    if (!directory || !isAbsolute2(directory) || inside(resolve2(workspacePath), resolve2(directory))) continue;
-    const candidate = join2(directory, filename);
+    if (!directory || !isAbsolute4(directory) || inside(resolve3(workspacePath), resolve3(directory))) continue;
+    const candidate = join3(directory, filename);
     try {
-      const info = await lstat2(candidate);
-      if (info.isFile() && !info.isSymbolicLink()) return await realpath(candidate);
+      const info = await lstat3(candidate);
+      if (info.isFile() && !info.isSymbolicLink()) return await realpath2(candidate);
     } catch {
       continue;
     }
@@ -11703,23 +12322,23 @@ function cloneEnvironment({ token, remote, home, emptyFile, signalEnvironment = 
 }
 async function ensureParents(path3) {
   const parents = [];
-  for (let current = resolve2(path3); ; current = dirname2(current)) {
+  for (let current = resolve3(path3); ; current = dirname3(current)) {
     parents.push(current);
-    if (dirname2(current) === current) break;
+    if (dirname3(current) === current) break;
   }
   for (const parent of parents.reverse()) {
     try {
-      const info = await lstat2(parent);
+      const info = await lstat3(parent);
       if (!info.isDirectory() || info.isSymbolicLink()) throw new RepositoryError("clone_conflict");
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
-      await mkdir(parent);
+      await mkdir2(parent);
     }
   }
 }
 async function removeOwnedStage(root, operationId) {
   try {
-    const marker = JSON.parse(await readFile2(join2(root, ".sdd-clone-owner.json"), "utf8"));
+    const marker = JSON.parse(await readFile2(join3(root, ".sdd-clone-owner.json"), "utf8"));
     if (marker.operationId !== operationId || marker.kind !== "sdd-repository-clone") return;
     const children = await readdir(root, { withFileTypes: true });
     if (children.some((child) => ![".sdd-clone-owner.json", "config", "checkout"].includes(child.name) || child.isSymbolicLink())) return;
@@ -11727,10 +12346,10 @@ async function removeOwnedStage(root, operationId) {
     let count = 0;
     while (queue.length) {
       const directory = queue.pop();
-      if ((await lstat2(directory)).isSymbolicLink()) return;
+      if ((await lstat3(directory)).isSymbolicLink()) return;
       for (const entry of await readdir(directory, { withFileTypes: true })) {
         if (++count > 1e5 || entry.isSymbolicLink()) return;
-        if (entry.isDirectory()) queue.push(join2(directory, entry.name));
+        if (entry.isDirectory()) queue.push(join3(directory, entry.name));
         else if (!entry.isFile()) return;
       }
     }
@@ -11739,39 +12358,56 @@ async function removeOwnedStage(root, operationId) {
     return;
   }
 }
-function createCloneService({ review, connection, profile, workspacePath, homeDirectory = homedir2(), runner = runGit, executable, onChange = () => void 0, now = Date.now }) {
+function createCloneService({
+  readSource,
+  connection,
+  profile,
+  workspacePath,
+  homeDirectory = homedir3(),
+  runner = runGit,
+  executable,
+  onPrepared,
+  onChange = () => void 0,
+  now = Date.now
+}) {
   const operations = /* @__PURE__ */ new Map();
+  const pending = /* @__PURE__ */ new Set();
   let active;
   let disposed = false;
   const identity2 = (access) => JSON.stringify([access.tenantId, access.accountId, access.connectionId, access.generation]);
   function update(operation, state, error) {
     operation.public = { ...operation.public, state, ...error ? { error } : {} };
-    onChange();
+    try {
+      onChange();
+    } catch {
+      return;
+    }
   }
   async function prepare(operation) {
     const controller = operation.controller;
     const deadline = AbortSignal.timeout(6e5);
     let environment;
     try {
-      const source = await review.source(operation.contextId);
+      const source = await readSource(operation.contextId);
       const access = await connection.access();
-      if (disposed || operation.account !== identity2(access) || source.sourceVersion !== operation.source.sourceVersion || source.repository.id !== operation.source.repository.id) throw new RepositoryError("invalid_context");
+      if (disposed || operation.account !== identity2(access) || source.sourceVersion !== operation.source.sourceVersion || source.repository.id !== operation.source.repository.id || source.repository.defaultBranch !== operation.source.repository.defaultBranch) throw new RepositoryError("invalid_context");
       access.assertCurrent();
       const signal = AbortSignal.any([controller.signal, access.signal, deadline]);
+      if (signal.aborted) throw new RepositoryError("clone_cancelled");
       const git = executable ?? await findGitExecutable(workspacePath);
-      if (!isAbsolute2(git)) throw new RepositoryError("clone_conflict");
-      const canonicalHome = await realpath(homeDirectory);
-      const parent = join2(canonicalHome, "SpecKitCanvas", "repositories");
+      if (!isAbsolute4(git)) throw new RepositoryError("clone_conflict");
+      const canonicalHome = await realpath2(homeDirectory);
+      const parent = join3(canonicalHome, "SpecKitCanvas", "repositories");
       await ensureParents(parent);
-      const root = join2(parent, operation.public.operationId);
-      await mkdir(root);
+      const root = join3(parent, operation.public.operationId);
+      await mkdir2(root);
       operation.root = root;
-      await writeFile(join2(root, ".sdd-clone-owner.json"), JSON.stringify({ kind: "sdd-repository-clone", operationId: operation.public.operationId }), { flag: "wx" });
-      const config = join2(root, "config");
-      await mkdir(config);
-      const hooks = join2(config, "hooks");
-      await mkdir(hooks);
-      const emptyFile = join2(config, "empty");
+      await writeFile(join3(root, ".sdd-clone-owner.json"), JSON.stringify({ kind: "sdd-repository-clone", operationId: operation.public.operationId }), { flag: "wx" });
+      const config = join3(root, "config");
+      await mkdir2(config);
+      const hooks = join3(config, "hooks");
+      await mkdir2(hooks);
+      const emptyFile = join3(config, "empty");
       await writeFile(emptyFile, "", { flag: "wx" });
       const remote = `https://dev.azure.com/${[profile.organization, profile.project, "_git", source.repository.id].map(encodeURIComponent).join("/")}`;
       environment = cloneEnvironment({ token: access.accessToken, remote, home: config, emptyFile });
@@ -11816,33 +12452,52 @@ function createCloneService({ review, connection, profile, workspacePath, homeDi
       }
       await gitCommand(["checkout", "--no-recurse-submodules", "-b", operation.public.localBranch, source.sourceVersion, "--"], operation.public.destination);
       const head = await gitCommand(["rev-parse", "HEAD"], operation.public.destination);
-      const origin = await gitCommand(["remote", "get-url", "origin"], operation.public.destination);
+      const origin2 = await gitCommand(["remote", "get-url", "origin"], operation.public.destination);
       const branch = await gitCommand(["symbolic-ref", "--short", "HEAD"], operation.public.destination);
-      if (head !== source.sourceVersion || origin !== remote || branch !== operation.public.localBranch) throw new RepositoryError("clone_conflict");
+      if (head !== source.sourceVersion || origin2 !== remote || branch !== operation.public.localBranch) throw new RepositoryError("clone_conflict");
       const common = await gitCommand(["rev-parse", "--path-format=absolute", "--git-common-dir"], operation.public.destination);
-      const gitDirectory = await realpath(common);
+      const gitDirectory = await realpath2(common);
       if (!inside(root, gitDirectory)) throw new RepositoryError("clone_conflict");
-      const metadataDirectory = join2(canonicalHome, ".speckit-canvas", "preparations");
-      await ensureParents(metadataDirectory);
       access.assertCurrent();
       if (signal.aborted) throw new RepositoryError("clone_cancelled");
-      await writeFile(join2(metadataDirectory, `${operation.public.operationId}.json`), JSON.stringify({
-        schemaVersion: 1,
-        operationId: operation.public.operationId,
-        kind: "sdd-prepared-repository",
-        gitDirectory,
-        checkout: operation.public.destination,
-        remote,
-        repositoryId: source.repository.id,
-        initialCommit: head,
-        initialBranch: branch,
-        createdAt: new Date(now()).toISOString()
-      }), { flag: "wx" });
-      update(operation, "prepared_for_manual_open");
+      if (onPrepared) {
+        if (await gitCommand(["status", "--porcelain=v1", "--untracked-files=all"], operation.public.destination)) throw new RepositoryError("clone_identity_changed");
+        const initialWorktreeFingerprint = await fingerprintCheckout(operation.public.destination, signal);
+        access.assertCurrent();
+        if (signal.aborted) throw new RepositoryError("clone_cancelled");
+        await onPrepared({
+          operationId: operation.public.operationId,
+          repositoryId: source.repository.id,
+          originIdentity: remote,
+          defaultRef: source.repository.defaultBranch,
+          sourceCommit: head,
+          destination: await realpath2(operation.public.destination),
+          gitCommonDirectory: gitDirectory,
+          branch: `refs/heads/${branch}`,
+          initialWorktreeFingerprint
+        });
+      } else {
+        const metadataDirectory = join3(canonicalHome, ".speckit-canvas", "preparations");
+        await ensureParents(metadataDirectory);
+        await writeFile(join3(metadataDirectory, `${operation.public.operationId}.json`), JSON.stringify({
+          schemaVersion: 1,
+          operationId: operation.public.operationId,
+          kind: "sdd-prepared-repository",
+          gitDirectory,
+          checkout: operation.public.destination,
+          remote,
+          repositoryId: source.repository.id,
+          initialCommit: head,
+          initialBranch: branch,
+          createdAt: new Date(now()).toISOString()
+        }), { flag: "wx" });
+      }
+      operation.durable = true;
+      update(operation, onPrepared ? "prepared" : "prepared_for_manual_open");
     } catch (error) {
       const cancelled = controller.signal.aborted || deadline.aborted || error?.code === "clone_cancelled";
       update(operation, cancelled ? "cancelled" : "failed", cancelled ? "clone_cancelled" : "clone_conflict");
-      if (operation.root) await removeOwnedStage(operation.root, operation.public.operationId);
+      if (operation.root && !operation.durable) await removeOwnedStage(operation.root, operation.public.operationId);
     } finally {
       if (environment) {
         delete environment.GIT_CONFIG_VALUE_0;
@@ -11854,13 +12509,13 @@ function createCloneService({ review, connection, profile, workspacePath, homeDi
   return {
     async confirm(contextId) {
       if (disposed || active) throw new RepositoryError("clone_conflict");
-      const source = await review.source(contextId);
+      const source = await readSource(contextId);
       if (!COMMIT2.test(source.sourceVersion) || !source.repository.defaultBranch || source.repository.operationalState !== "active") throw new RepositoryError("source_unavailable");
       const access = await connection.access();
       if (source.generation !== access.generation) throw new RepositoryError("invalid_context");
-      const canonicalHome = await realpath(homeDirectory);
-      const operationId = randomBytes(16).toString("hex");
-      const confirmation = randomBytes(32).toString("base64url");
+      const canonicalHome = await realpath2(homeDirectory);
+      const operationId = randomBytes3(16).toString("hex");
+      const confirmation = randomBytes3(32).toString("base64url");
       const state = {
         operationId,
         state: "awaiting_confirmation",
@@ -11868,25 +12523,28 @@ function createCloneService({ review, connection, profile, workspacePath, homeDi
         sourceCommit: source.sourceVersion,
         branch: source.repository.defaultBranch,
         localBranch: `speckit/canvas-${operationId}`,
-        destination: join2(canonicalHome, "SpecKitCanvas", "repositories", operationId, "checkout")
+        destination: join3(canonicalHome, "SpecKitCanvas", "repositories", operationId, "checkout")
       };
       for (const [key, operation] of operations) if (!operation.completion && operation.expiresAt <= now()) operations.delete(key);
       if (operations.size >= 32) throw new RepositoryError("clone_conflict");
-      operations.set(operationId, { public: state, source, contextId, confirmation, account: identity2(access), expiresAt: now() + 12e4 });
+      operations.set(operationId, { public: state, source, contextId, confirmation: digest(confirmation), account: identity2(access), expiresAt: now() + 12e4 });
       return { ...state, confirmation, accountLabel: connection.snapshot().accountLabel ?? "Microsoft account" };
     },
     async start(operationId, confirmation) {
       if (disposed || !operationIdPattern.test(operationId)) throw new RepositoryError("clone_conflict");
       const operation = operations.get(operationId);
-      if (!operation || confirmation !== operation.confirmation) throw new RepositoryError("clone_conflict");
+      if (!operation || !sameSecret(confirmation, operation.confirmation)) throw new RepositoryError("clone_conflict");
       const access = await connection.access();
       if (operation.account !== identity2(access)) throw new RepositoryError("invalid_context");
       if (operation.completion) return { ...operation.public };
+      if (operation.public.state === "cancelled") throw new RepositoryError("clone_cancelled");
       if (active || operation.expiresAt <= now()) throw new RepositoryError("clone_conflict");
       operation.controller = new AbortController();
       active = operation;
       update(operation, "preparing");
       operation.completion = prepare(operation);
+      pending.add(operation.completion);
+      void operation.completion.finally(() => pending.delete(operation.completion));
       return { ...operation.public };
     },
     status(operationId) {
@@ -11897,15 +12555,15 @@ function createCloneService({ review, connection, profile, workspacePath, homeDi
     async completion(operationId) {
       await operations.get(operationId)?.completion;
     },
+    async settled() {
+      await Promise.all(pending);
+    },
     cancel(operationId) {
       const operation = operations.get(operationId);
       if (!operation) throw new RepositoryError("invalid_context");
-      if (operation.public.state === "prepared_for_manual_open") return;
+      if (operation.durable) return;
       operation.controller?.abort();
-      if (!operation.completion) {
-        operations.delete(operationId);
-        onChange();
-      }
+      if (!operation.completion) update(operation, "cancelled", "clone_cancelled");
     },
     clear() {
       active?.controller?.abort();
@@ -11918,14 +12576,154 @@ function createCloneService({ review, connection, profile, workspacePath, homeDi
     }
   };
 }
+function createEntryCloneService({ host, readSource, connection, profile, workspacePath, homeDirectory = homedir3(), now = Date.now, ...options }) {
+  const consents = /* @__PURE__ */ new Map();
+  const store = createPreparationStore({ homeDirectory });
+  const profileFingerprint = digest(JSON.stringify(profile));
+  let disposed = false;
+  let starting;
+  const identity2 = (access) => JSON.stringify([access.tenantId, access.accountId, access.connectionId, access.generation]);
+  const accountKey = (access) => digest(JSON.stringify([access.tenantId, access.accountId]));
+  function guard(snapshot, expected) {
+    if (disposed) throw new RepositoryError("invalid_context");
+    if (!supportsRepositoryCloning(snapshot)) throw new RepositoryError("activity_unknown");
+    if (snapshot.activity !== "idle") throw new RepositoryError(snapshot.activity === "busy" ? "session_busy" : "activity_unknown");
+    if (snapshot.sessionId !== expected.sessionId || snapshot.contextRevision !== expected.contextRevision || snapshot.workingDirectory !== expected.workingDirectory || snapshot.capabilityGeneration !== expected.capabilityGeneration || snapshot.activityRevision !== expected.activityRevision) throw new RepositoryError("context_changed");
+  }
+  const core = createCloneService({
+    ...options,
+    readSource,
+    connection,
+    profile,
+    workspacePath,
+    homeDirectory,
+    now,
+    onPrepared: async (target) => {
+      const consent = consents.get(target.operationId);
+      if (!consent) throw new RepositoryError("invalid_context");
+      await store.write({
+        ...target,
+        schemaVersion: 2,
+        kind: "sdd-prepared-repository",
+        profileFingerprint,
+        accountKey: consent.accountKey,
+        createdAt: consent.createdAt,
+        completedAt: now()
+      });
+    }
+  });
+  return {
+    async confirm(selectionId, expected) {
+      guard(await host.inspectCurrent(), expected);
+      if (starting || consents.size >= 32) throw new RepositoryError("clone_conflict");
+      const source = await readSource(selectionId);
+      const access = await connection.access();
+      const preview = await core.confirm(selectionId);
+      access.assertCurrent();
+      guard(await host.inspectCurrent(), expected);
+      if (source.generation !== access.generation || source.sourceVersion !== preview.sourceCommit || source.repository.defaultBranch !== preview.branch) throw new RepositoryError("source_changed");
+      for (const consent of consents.values()) if (!consent.start) consent.revoked = true;
+      const createdAt = now();
+      consents.set(preview.operationId, {
+        selectionId,
+        source,
+        expected: structuredClone(expected),
+        account: identity2(access),
+        accountKey: accountKey(access),
+        digest: digest(preview.confirmation),
+        createdAt,
+        expiresAt: createdAt + 12e4,
+        revoked: false
+      });
+      return { ...preview, expiresAt: createdAt + 12e4 };
+    },
+    async start(operationId, confirmation, requestId) {
+      const consent = consents.get(operationId);
+      if (disposed || !consent || !requestId || requestId.length > 256 || !sameSecret(confirmation, consent.digest)) throw new RepositoryError("clone_conflict");
+      const access = await connection.access();
+      if (identity2(access) !== consent.account) throw new RepositoryError("invalid_context");
+      if (consent.start) {
+        if (consent.requestId !== requestId) throw new RepositoryError("clone_conflict");
+        await consent.start;
+        return core.status(operationId);
+      }
+      if (consent.revoked || now() >= consent.expiresAt) throw new RepositoryError("confirmation_expired");
+      if (starting) throw new RepositoryError("clone_conflict");
+      starting = operationId;
+      consent.requestId = requestId;
+      consent.start = (async () => {
+        try {
+          const source = await readSource(consent.selectionId);
+          access.assertCurrent();
+          if (source.sourceVersion !== consent.source.sourceVersion || source.repository.id !== consent.source.repository.id || source.repository.defaultBranch !== consent.source.repository.defaultBranch || source.generation !== consent.source.generation) throw new RepositoryError("source_changed");
+          const snapshot = await host.inspectCurrent();
+          guard(snapshot, consent.expected);
+          if (now() >= consent.expiresAt) throw new RepositoryError("confirmation_expired");
+          try {
+            await lstat3(dirname3(core.status(operationId).destination));
+            throw new RepositoryError("clone_conflict");
+          } catch (error) {
+            if (error.code !== "ENOENT") throw error;
+          }
+          const state = await host.admitPreparation({
+            operationId,
+            expectedSource: { sessionId: snapshot.sessionId, contextRevision: snapshot.contextRevision },
+            capabilityGeneration: snapshot.capabilityGeneration,
+            activityRevision: snapshot.activityRevision
+          }, async () => {
+            access.assertCurrent();
+            if (disposed || consent.revoked) throw new RepositoryError("confirmation_expired");
+            return core.start(operationId, confirmation);
+          });
+          return state;
+        } catch (error) {
+          consent.revoked = true;
+          throw knownRepositoryError(error?.code);
+        } finally {
+          if (starting === operationId) starting = void 0;
+        }
+      })();
+      return consent.start;
+    },
+    status: core.status,
+    completion: core.completion,
+    settled: core.settled,
+    cancel(operationId) {
+      const consent = consents.get(operationId);
+      if (consent) consent.revoked = true;
+      core.cancel(operationId);
+    },
+    async authorized(operationId) {
+      const consent = consents.get(operationId);
+      if (disposed || !consent) throw new RepositoryError("resource_unavailable");
+      try {
+        if (accountKey(await connection.access()) !== consent.accountKey) throw new Error();
+      } catch {
+        throw new RepositoryError("resource_unavailable");
+      }
+      return core.status(operationId);
+    },
+    invalidate() {
+      if (disposed) return;
+      for (const [operationId, consent] of consents) {
+        consent.revoked = true;
+        if (["preparing", "verifying"].includes(core.status(operationId).state)) core.cancel(operationId);
+      }
+    },
+    dispose() {
+      disposed = true;
+      core.dispose();
+    }
+  };
+}
 
 // src/artifact-clock.ts
 var ARTIFACT = /^specs\/[a-z0-9][a-z0-9-]*\/(?:spec|plan|tasks)\.md$/;
-var blobHash = (bytes) => createHash("sha1").update(`blob ${bytes.length}\0`).update(bytes).digest("hex");
-async function createPreparedArtifactClock({ workspacePath, binding, executable, runner = runGit, homeDirectory = homedir3() }) {
+var blobHash = (bytes) => createHash2("sha1").update(`blob ${bytes.length}\0`).update(bytes).digest("hex");
+async function createPreparedArtifactClock({ workspacePath, binding, executable, runner = runGit, homeDirectory = homedir4() }) {
   const entries = /* @__PURE__ */ new Map();
   if (binding.state !== "verified") return void 0;
-  const root = await realpath2(workspacePath);
+  const root = await realpath3(workspacePath);
   try {
     const git = executable ?? await findGitExecutable(root);
     const empty = process.platform === "win32" ? "NUL" : "/dev/null";
@@ -11955,12 +12753,12 @@ async function createPreparedArtifactClock({ workspacePath, binding, executable,
     try {
       let path3 = root;
       for (const segment2 of relativePath.split("/")) {
-        path3 = join3(path3, segment2);
+        path3 = join4(path3, segment2);
         if (lstatSync(path3).isSymbolicLink()) return filesystemTime;
       }
       const actual = realpathSync(path3);
       const within = relative2(root, actual);
-      if (isAbsolute3(within) || within === ".." || within.startsWith(`..${sep2}`) || actual !== resolve3(path3)) return filesystemTime;
+      if (isAbsolute5(within) || within === ".." || within.startsWith(`..${sep2}`) || actual !== resolve4(path3)) return filesystemTime;
       const stat = lstatSync(path3);
       if (!stat.isFile() || stat.size > 1048576) return filesystemTime;
       const bytes = readFileSync(path3);
@@ -11976,10 +12774,10 @@ async function createPreparedArtifactClock({ workspacePath, binding, executable,
 }
 
 // src/auth.ts
-import { randomBytes as randomBytes3 } from "node:crypto";
+import { randomBytes as randomBytes5 } from "node:crypto";
 
 // src/oauth-callback.ts
-import { randomBytes as randomBytes2, timingSafeEqual } from "node:crypto";
+import { randomBytes as randomBytes4, timingSafeEqual as timingSafeEqual2 } from "node:crypto";
 import { createServer } from "node:http";
 var CALLBACK_PATH = "/speckit-canvas/oauth/callback";
 var COMPLETION_PATH = "/speckit-canvas/oauth/complete";
@@ -11991,8 +12789,8 @@ async function startOAuthCallback({ state, signal, timeoutMs = 12e4 }) {
   if (signal?.aborted) throw new RepositoryError("connection_required");
   let accept;
   let reject;
-  const result = new Promise((resolve5, fail) => {
-    accept = resolve5;
+  const result = new Promise((resolve6, fail) => {
+    accept = resolve6;
     reject = fail;
   });
   void result.catch(() => void 0);
@@ -12045,7 +12843,7 @@ async function startOAuthCallback({ state, signal, timeoutMs = 12e4 }) {
       }
     }
     const actualState = Buffer.from(url.searchParams.get("state") ?? "");
-    if (actualState.length !== expectedState.length || !timingSafeEqual(actualState, expectedState)) {
+    if (actualState.length !== expectedState.length || !timingSafeEqual2(actualState, expectedState)) {
       respond(res, 400);
       return;
     }
@@ -12056,7 +12854,7 @@ async function startOAuthCallback({ state, signal, timeoutMs = 12e4 }) {
       return;
     }
     settled = true;
-    const nonce = randomBytes2(24).toString("base64");
+    const nonce = randomBytes4(24).toString("base64");
     res.writeHead(200, {
       ...securityHeaders,
       "Content-Type": "text/html; charset=utf-8",
@@ -12072,11 +12870,11 @@ async function startOAuthCallback({ state, signal, timeoutMs = 12e4 }) {
   server.setTimeout(5e3, (socket) => socket.destroy());
   server.maxConnections = 8;
   server.on("clientError", (_error, socket) => socket.destroy());
-  await new Promise((resolve5, fail) => {
+  await new Promise((resolve6, fail) => {
     server.once("error", fail);
     server.listen(0, "127.0.0.1", () => {
       server.removeListener("error", fail);
-      resolve5();
+      resolve6();
     });
   }).catch(() => {
     close();
@@ -12143,8 +12941,8 @@ function createRepositoryConnection(profile, dependencies) {
     if (disposed || epoch !== generation || signal.aborted) throw new RepositoryError("invalid_context");
   }
   async function perform(client, controller, epoch) {
-    const state = randomBytes3(32).toString("base64url");
-    const nonce = randomBytes3(32).toString("base64url");
+    const state = randomBytes5(32).toString("base64url");
+    const nonce = randomBytes5(32).toString("base64url");
     const timeout = setTimeout(() => controller.abort(), 12e4);
     timeout.unref();
     let callback;
@@ -12177,7 +12975,7 @@ function createRepositoryConnection(profile, dependencies) {
       current(epoch, controller.signal);
       const account = validateResult(result, profile, void 0, nonce);
       const accountLabel = (account.username || account.name || "Microsoft account").replace(/[\p{Cc}\p{Cf}]/gu, "").slice(0, 256);
-      const connectionId = randomBytes3(24).toString("base64url");
+      const connectionId = randomBytes5(24).toString("base64url");
       pending = void 0;
       active = { client, controller, account, connectionId };
       publish({ state: "connected", accountLabel, connectionId });
@@ -12202,7 +13000,7 @@ function createRepositoryConnection(profile, dependencies) {
       if (pending) return { transactionId: pending.id, completion: pending.completion };
       invalidate();
       const epoch = generation;
-      const id = randomBytes3(24).toString("base64url");
+      const id = randomBytes5(24).toString("base64url");
       const controller = new AbortController();
       const client = dependencies.createClient(profile, controller.signal);
       publish({ state: "connecting", transactionId: id });
@@ -12251,17 +13049,17 @@ function createRepositoryConnection(profile, dependencies) {
 }
 
 // src/discovery.ts
-var import_yaml = __toESM(require_dist(), 1);
-import { createHash as createHash3 } from "node:crypto";
+var import_yaml3 = __toESM(require_dist(), 1);
+import { createHash as createHash4 } from "node:crypto";
 
 // src/continuations.ts
-import { createHash as createHash2, createHmac, randomBytes as randomBytes4, timingSafeEqual as timingSafeEqual2 } from "node:crypto";
+import { createHash as createHash3, createHmac, randomBytes as randomBytes6, timingSafeEqual as timingSafeEqual3 } from "node:crypto";
 function bindingHash(binding) {
   const ordered = Object.entries(binding).sort(([left], [right]) => left.localeCompare(right, "en"));
-  return createHash2("sha256").update(JSON.stringify(ordered)).digest("hex");
+  return createHash3("sha256").update(JSON.stringify(ordered)).digest("hex");
 }
 function createContinuations({ now = Date.now, ttlMs = 6e5 } = {}) {
-  const key = randomBytes4(32);
+  const key = randomBytes6(32);
   let disposed = false;
   return {
     issue(kind, binding, position) {
@@ -12276,7 +13074,7 @@ function createContinuations({ now = Date.now, ttlMs = 6e5 } = {}) {
       const [encoded, signature] = cursor.split(".");
       const expected = createHmac("sha256", key).update(encoded).digest();
       const actual = Buffer.from(signature, "base64url");
-      if (actual.length !== expected.length || !timingSafeEqual2(actual, expected)) throw new RepositoryError("invalid_context");
+      if (actual.length !== expected.length || !timingSafeEqual3(actual, expected)) throw new RepositoryError("invalid_context");
       let payload;
       try {
         payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
@@ -12295,8 +13093,8 @@ function createContinuations({ now = Date.now, ttlMs = 6e5 } = {}) {
 }
 
 // src/discovery.ts
-var fingerprint = (value) => createHash3("sha256").update(JSON.stringify(value)).digest("hex");
-var object = (value) => value && typeof value === "object" && !Array.isArray(value) ? value : {};
+var fingerprint = (value) => createHash4("sha256").update(JSON.stringify(value)).digest("hex");
+var object2 = (value) => value && typeof value === "object" && !Array.isArray(value) ? value : {};
 function normalizeSearch(input) {
   if (typeof input !== "string") throw new RepositoryError("invalid_request");
   const normalized = input.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase("en-US");
@@ -12324,25 +13122,25 @@ function normalizeArea(value) {
   return parts.join("\\");
 }
 function unsafeYaml(node, depth = 0) {
-  if (depth > 40 || (0, import_yaml.isAlias)(node)) return true;
-  if (typeof object(node).tag === "string" && String(object(node).tag).startsWith("!")) return true;
-  if ((0, import_yaml.isPair)(node)) return (0, import_yaml.isScalar)(node.key) && node.key.value === "<<" || unsafeYaml(node.key, depth + 1) || unsafeYaml(node.value, depth + 1);
-  if ((0, import_yaml.isMap)(node) || (0, import_yaml.isSeq)(node)) return node.items.some((child) => unsafeYaml(child, depth + 1));
+  if (depth > 40 || (0, import_yaml3.isAlias)(node)) return true;
+  if (typeof object2(node).tag === "string" && String(object2(node).tag).startsWith("!")) return true;
+  if ((0, import_yaml3.isPair)(node)) return (0, import_yaml3.isScalar)(node.key) && node.key.value === "<<" || unsafeYaml(node.key, depth + 1) || unsafeYaml(node.value, depth + 1);
+  if ((0, import_yaml3.isMap)(node) || (0, import_yaml3.isSeq)(node)) return node.items.some((child) => unsafeYaml(child, depth + 1));
   return false;
 }
 function manifestArea(bytes, profile) {
   if (!bytes.length || bytes.length > 65536) return null;
   try {
-    const parsed = (0, import_yaml.parseAllDocuments)(new TextDecoder("utf-8", { fatal: true }).decode(bytes), { strict: true, uniqueKeys: true, prettyErrors: false });
+    const parsed = (0, import_yaml3.parseAllDocuments)(new TextDecoder("utf-8", { fatal: true }).decode(bytes), { strict: true, uniqueKeys: true, prettyErrors: false });
     if (parsed.length !== 1 || parsed[0].errors.length || parsed[0].warnings.length || unsafeYaml(parsed[0].contents)) return null;
-    const root = object(parsed[0].toJS({ maxAliasCount: 0 }));
+    const root = object2(parsed[0].toJS({ maxAliasCount: 0 }));
     let metadata = root;
     if (root.schemaVersion === "1.0.0") {
-      const providers = Array.isArray(root.providers) ? root.providers.map(object).filter((provider) => provider.provider === "InventoryAsCode") : [];
+      const providers = Array.isArray(root.providers) ? root.providers.map(object2).filter((provider) => provider.provider === "InventoryAsCode") : [];
       if (providers.length !== 1) return null;
-      metadata = object(providers[0].metadata);
+      metadata = object2(providers[0].metadata);
     } else if (root.schemaVersion !== "0.0.1") return null;
-    const area = object(object(metadata.routing).defaultAreaPath);
+    const area = object2(object2(metadata.routing).defaultAreaPath);
     if (typeof area.org !== "string" || area.org.normalize("NFKC").trim().toLowerCase() !== profile.organization.toLowerCase() || typeof area.path !== "string") return null;
     const path3 = normalizeArea(area.path);
     return path3.split("\\")[0] === profile.project.toLowerCase() ? path3 : null;
@@ -12377,7 +13175,7 @@ async function teamAreas(operation, profile) {
     const page = await operation.json(["_apis", "projects", profile.project, "teams"], { $mine: "true", $top: "100", $skip: String(offset) }, { personalization: true, maximumBytes: 2 * 1024 * 1024 });
     if (!Array.isArray(page.value) || page.value.length > 100) throw new RepositoryError("upstream_unavailable");
     for (const value of page.value) {
-      const team = object(value);
+      const team = object2(value);
       if (typeof team.id !== "string" || !UUID.test(team.id) || typeof team.projectId !== "string" || !UUID.test(team.projectId)) throw new RepositoryError("upstream_unavailable");
       teams.add(team.id.toLowerCase());
     }
@@ -12386,9 +13184,9 @@ async function teamAreas(operation, profile) {
   const merged = /* @__PURE__ */ new Map();
   await boundedMap([...teams], async (team) => {
     const values = await operation.json([profile.project, team, "_apis", "work", "teamsettings", "teamfieldvalues"], {}, { personalization: true, maximumBytes: 2 * 1024 * 1024 });
-    if (object(values.field).referenceName !== "System.AreaPath" || !Array.isArray(values.values)) throw new RepositoryError("upstream_unavailable");
+    if (object2(values.field).referenceName !== "System.AreaPath" || !Array.isArray(values.values)) throw new RepositoryError("upstream_unavailable");
     for (const value of values.values) {
-      const area = object(value);
+      const area = object2(value);
       if (typeof area.value !== "string" || typeof area.includeChildren !== "boolean") throw new RepositoryError("upstream_unavailable");
       const path3 = normalizeArea(area.value);
       if (path3.split("\\")[0] !== profile.project.toLowerCase()) throw new RepositoryError("upstream_unavailable");
@@ -12419,7 +13217,7 @@ function createRepositoryDiscovery({ client, profile, now = Date.now }) {
       const commit = await client.commit(operation, repository);
       if (!commit) return null;
       const item = await client.item(operation, id, commit, "/es-metadata.yml");
-      if (item.path !== "/es-metadata.yml" || item.isFolder || typeof item.objectId !== "string" || !/^[a-f0-9]{40}$/i.test(item.objectId) || object(item.contentMetadata).isBinary) return null;
+      if (item.path !== "/es-metadata.yml" || item.isFolder || typeof item.objectId !== "string" || !/^[a-f0-9]{40}$/i.test(item.objectId) || object2(item.contentMetadata).isBinary) return null;
       const bytes = await client.blob(operation, id, item.objectId, 65536);
       const path3 = manifestArea(bytes, profile);
       return path3 && areas.some((area) => areaMatches(area, path3)) ? repository : null;
@@ -12449,15 +13247,15 @@ function createRepositoryDiscovery({ client, profile, now = Date.now }) {
       for (const [key, run2] of runs) if (run2.expiresAt <= now()) runs.delete(key);
       const operation = await client.open();
       const areas = await teamAreas(operation, profile);
-      const digest = fingerprint(areas);
-      const context = { ...binding(operation, 4), associationFingerprint: digest };
+      const digest2 = fingerprint(areas);
+      const context = { ...binding(operation, 4), associationFingerprint: digest2 };
       let run;
       if (cursor) {
         cursors.verify(cursor, "relevant", context);
         const previous = runs.get(cursor);
-        if (!previous || previous.fingerprint !== digest) throw new RepositoryError("expired_cursor");
+        if (!previous || previous.fingerprint !== digest2) throw new RepositoryError("expired_cursor");
         run = { ...previous, areas, queue: [...previous.queue], seen: new Set(previous.seen) };
-      } else run = { areas, fingerprint: digest, areaOffset: 0, searchOffset: 0, queue: [], seen: /* @__PURE__ */ new Set(), returned: 0, expiresAt: now() + 6e5 };
+      } else run = { areas, fingerprint: digest2, areaOffset: 0, searchOffset: 0, queue: [], seen: /* @__PURE__ */ new Set(), returned: 0, expiresAt: now() + 6e5 };
       if (!areas.length) return { items: [], hasMore: false, cursor: null, outcome: "no_associations" };
       const items = [];
       let examined = 0;
@@ -12488,9 +13286,9 @@ function createRepositoryDiscovery({ client, profile, now = Date.now }) {
           rawCandidates += raw.length;
           if (!raw.length && response.count > run.searchOffset) throw new RepositoryError("upstream_unavailable");
           for (const value of raw) {
-            const hit = object(value);
-            const id = object(hit.repository).id;
-            if (hit.path !== "/es-metadata.yml" || String(object(hit.project).name).toLowerCase() !== profile.project.toLowerCase() || typeof id !== "string" || !UUID.test(id)) continue;
+            const hit = object2(value);
+            const id = object2(hit.repository).id;
+            if (hit.path !== "/es-metadata.yml" || String(object2(hit.project).name).toLowerCase() !== profile.project.toLowerCase() || typeof id !== "string" || !UUID.test(id)) continue;
             const normalizedId = id.toLowerCase();
             if (!run.seen.has(normalizedId) && !run.queue.includes(normalizedId)) run.queue.push(normalizedId);
           }
@@ -14192,7 +14990,7 @@ function wasClockTurnedBack(cachedAt) {
   return cachedAtSec > nowSeconds();
 }
 function delay2(t, value) {
-  return new Promise((resolve5) => setTimeout(() => resolve5(value), t));
+  return new Promise((resolve6) => setTimeout(() => resolve6(value), t));
 }
 
 // node_modules/@azure/msal-common/dist/cache/utils/CacheHelpers.mjs
@@ -19867,7 +20665,7 @@ var CryptoProvider = class {
 };
 
 // node_modules/@azure/msal-node/dist/cache/CacheHelpers.mjs
-import { createHash as createHash4 } from "crypto";
+import { createHash as createHash5 } from "crypto";
 function computeAdditionalCacheKeyHash(components) {
   const sortedKeys = Object.keys(components).sort();
   let input = "";
@@ -19875,7 +20673,7 @@ function computeAdditionalCacheKeyHash(components) {
     const value = components[key];
     input += `${Buffer.byteLength(key, "utf8")}:${key}${Buffer.byteLength(value, "utf8")}:${value}`;
   }
-  return createHash4("sha256").update(input, "utf8").digest("base64url");
+  return createHash5("sha256").update(input, "utf8").digest("base64url");
 }
 function generateCredentialKey(credential, hash) {
   const familyId = credential.credentialType === Constants_exports.CredentialType.REFRESH_TOKEN && credential.familyId || credential.clientId;
@@ -21199,7 +21997,7 @@ var LoopbackClient = class {
     if (this.server) {
       throw NodeAuthError.createLoopbackServerAlreadyExistsError();
     }
-    return new Promise((resolve5, reject) => {
+    return new Promise((resolve6, reject) => {
       this.server = http.createServer((req, res) => {
         const method = req.method?.toUpperCase();
         if (method !== "GET" && method !== "POST") {
@@ -21216,7 +22014,7 @@ var LoopbackClient = class {
           return;
         } else if (url === Constants_exports.FORWARD_SLASH) {
           if (method === "POST") {
-            this.handlePostRequest(req, res, resolve5, successTemplate, errorTemplate);
+            this.handlePostRequest(req, res, resolve6, successTemplate, errorTemplate);
             return;
           }
           res.end(successTemplate || "Auth code was successfully acquired. You can close this window now.");
@@ -21240,7 +22038,7 @@ var LoopbackClient = class {
           if (authCodeResponse.error) {
             res.end(errorTemplate || `Error occurred: ${authCodeResponse.error}`);
           }
-          resolve5(authCodeResponse);
+          resolve6(authCodeResponse);
         } else {
           res.writeHead(200);
           res.end();
@@ -21260,7 +22058,7 @@ var LoopbackClient = class {
   /**
    * Handles POST requests for form_post response mode
    */
-  handlePostRequest(req, res, resolve5, successTemplate, errorTemplate) {
+  handlePostRequest(req, res, resolve6, successTemplate, errorTemplate) {
     const contentType = req.headers["content-type"]?.split(";")[0]?.trim();
     if (contentType !== "application/x-www-form-urlencoded") {
       res.writeHead(415);
@@ -21291,7 +22089,7 @@ var LoopbackClient = class {
         res.writeHead(200);
         res.end(successTemplate || "Auth code was successfully acquired. You can close this window now.");
       }
-      resolve5(authCodeResponse);
+      resolve6(authCodeResponse);
     });
   }
   /**
@@ -21732,7 +22530,7 @@ var PublicClientApplication = class extends ClientApplication {
    * @returns
    */
   async waitForRedirectUri(loopbackClient, correlationId) {
-    return new Promise((resolve5, reject) => {
+    return new Promise((resolve6, reject) => {
       let ticks = 0;
       const id = setInterval(() => {
         if (LOOPBACK_SERVER_CONSTANTS.TIMEOUT_MS / LOOPBACK_SERVER_CONSTANTS.INTERVAL_MS < ticks) {
@@ -21743,7 +22541,7 @@ var PublicClientApplication = class extends ClientApplication {
         try {
           const r = loopbackClient.getRedirectUri();
           clearInterval(id);
-          resolve5(r);
+          resolve6(r);
           return;
         } catch (e) {
           if (e instanceof AuthError && e.errorCode === NodeAuthErrorMessage.noLoopbackServerExists.code) {
@@ -22279,9 +23077,9 @@ executePowerShell2.escapeArgument = escapeArgument;
 executePowerShell2.createArguments = createArguments;
 
 // node_modules/define-lazy-prop/index.js
-function defineLazyProperty(object2, propertyName, valueGetter) {
-  const define = (value) => Object.defineProperty(object2, propertyName, { value, enumerable: true, writable: true });
-  Object.defineProperty(object2, propertyName, {
+function defineLazyProperty(object3, propertyName, valueGetter) {
+  const define = (value) => Object.defineProperty(object3, propertyName, { value, enumerable: true, writable: true });
+  Object.defineProperty(object3, propertyName, {
     configurable: true,
     enumerable: true,
     get() {
@@ -22293,7 +23091,7 @@ function defineLazyProperty(object2, propertyName, valueGetter) {
       define(value);
     }
   });
-  return object2;
+  return object3;
 }
 
 // node_modules/default-browser/index.js
@@ -22596,19 +23394,19 @@ var baseOpen = async (options) => {
   }
   const subprocess = childProcess4.spawn(command, cliArguments, childProcessOptions);
   if (options.wait) {
-    return new Promise((resolve5, reject) => {
+    return new Promise((resolve6, reject) => {
       subprocess.once("error", reject);
       subprocess.once("close", (exitCode) => {
         if (!options.allowNonzeroExitCode && exitCode !== 0) {
           reject(new Error(`Exited with code ${exitCode}`));
           return;
         }
-        resolve5(subprocess);
+        resolve6(subprocess);
       });
     });
   }
   if (isFallbackAttempt) {
-    return new Promise((resolve5, reject) => {
+    return new Promise((resolve6, reject) => {
       subprocess.once("error", reject);
       subprocess.once("spawn", () => {
         subprocess.once("close", (exitCode) => {
@@ -22618,21 +23416,21 @@ var baseOpen = async (options) => {
             return;
           }
           subprocess.unref();
-          resolve5(subprocess);
+          resolve6(subprocess);
         });
       });
     });
   }
   subprocess.unref();
-  return new Promise((resolve5, reject) => {
+  return new Promise((resolve6, reject) => {
     subprocess.once("error", reject);
     subprocess.once("spawn", () => {
       subprocess.off("error", reject);
-      resolve5(subprocess);
+      resolve6(subprocess);
     });
   });
 };
-var open = (target, options) => {
+var open3 = (target, options) => {
   if (typeof target !== "string") {
     throw new TypeError("Expected a `target`");
   }
@@ -22702,7 +23500,7 @@ defineLazyProperty(apps, "edge", () => detectPlatformBinary({
 defineLazyProperty(apps, "safari", () => detectPlatformBinary({
   darwin: "Safari"
 }));
-var open_default = open;
+var open_default = open3;
 
 // src/msal-client.ts
 function createIdentityNetwork(signal, request = fetch) {
@@ -22785,7 +23583,7 @@ function nativeAuthDependencies(onChange) {
 }
 
 // src/remote-review.ts
-import { createHash as createHash5, randomBytes as randomBytes5 } from "node:crypto";
+import { createHash as createHash6, randomBytes as randomBytes7 } from "node:crypto";
 import { posix } from "node:path";
 var ROOTS = ["/.specify", "/specs"];
 var identity = (operation) => JSON.stringify([operation.access.tenantId, operation.access.accountId, operation.access.connectionId, operation.access.generation]);
@@ -22854,7 +23652,7 @@ function createRemoteReview({ client, now = Date.now }) {
     if (typeof raw.objectId !== "string" || !/^[a-f0-9]{40}$/i.test(raw.objectId) || raw.gitObjectType === "commit") throw new RepositoryError("unsupported_file");
     const objectId = raw.objectId.toLowerCase();
     const kind = raw.isFolder === true ? "folder" : "file";
-    const id = `remote_${createHash5("sha256").update(JSON.stringify([state.context.contextId, path3, objectId, kind])).digest("base64url")}`;
+    const id = `remote_${createHash6("sha256").update(JSON.stringify([state.context.contextId, path3, objectId, kind])).digest("base64url")}`;
     return { id, path: path3, objectId, kind, label: posix.basename(path3) };
   }
   async function read(state, operation, item) {
@@ -22869,7 +23667,7 @@ function createRemoteReview({ client, now = Date.now }) {
     operation.access.assertCurrent();
     return {
       artifact: { id: item.id, relativePath: item.path.slice(1), label: item.label, role: "reference", availability: "available" },
-      revision: `sha256:${createHash5("sha256").update(bytes).digest("hex")}`,
+      revision: `sha256:${createHash6("sha256").update(bytes).digest("hex")}`,
       content,
       byteSize: bytes.length,
       sourceKind: "git-commit",
@@ -22892,7 +23690,7 @@ function createRemoteReview({ client, now = Date.now }) {
       const repository = await repositoryDetail(client, operation, repositoryId);
       if (!repository.sourceVersion || repository.operationalState !== "active") throw new RepositoryError("source_unavailable");
       const context = {
-        contextId: `remote-context_${randomBytes5(24).toString("base64url")}`,
+        contextId: `remote-context_${randomBytes7(24).toString("base64url")}`,
         repository,
         sourceVersion: repository.sourceVersion,
         generation: operation.access.generation,
@@ -22996,27 +23794,228 @@ function createRemoteReview({ client, now = Date.now }) {
 }
 
 // src/workspace-binding.ts
-import { lstat as lstat3, readFile as readFile3, readdir as readdir2, realpath as realpath3 } from "node:fs/promises";
-import { homedir as homedir4 } from "node:os";
-import { isAbsolute as isAbsolute4, join as join4, relative as relative3, resolve as resolve4, sep as sep3 } from "node:path";
+import { lstat as lstat4, readFile as readFile3, readdir as readdir2, realpath as realpath4 } from "node:fs/promises";
+import { homedir as homedir5 } from "node:os";
+import { dirname as dirname4, isAbsolute as isAbsolute6, join as join5, relative as relative3, resolve as resolve5, sep as sep3 } from "node:path";
 function inside2(root, path3) {
   const part = relative3(root, path3);
-  return part !== ".." && !part.startsWith(`..${sep3}`) && !isAbsolute4(part);
+  return part !== ".." && !part.startsWith(`..${sep3}`) && !isAbsolute6(part);
 }
-async function inspectWorkspaceBinding({ workspacePath, homeDirectory = homedir4(), runner = runGit, executable, previous }) {
+async function inspectCurrentRepository({ workspacePath, homeDirectory = homedir5(), runner = runGit, executable, signal: cancellation }) {
+  try {
+    if (!isAbsolute6(workspacePath) || /[\p{Cc}\p{Cf}]/u.test(workspacePath)) throw new Error();
+    for (let directory = resolve5(workspacePath); ; directory = dirname4(directory)) {
+      const info = await lstat4(directory);
+      if (!info.isDirectory() || info.isSymbolicLink()) throw new Error();
+      if (dirname4(directory) === directory) break;
+    }
+    const workingDirectory = await realpath4(workspacePath);
+    let repositoryRoot = workingDirectory;
+    for (; ; ) {
+      try {
+        const marker = await lstat4(join5(repositoryRoot, ".git"));
+        if (marker.isSymbolicLink() || !marker.isFile() && !marker.isDirectory()) throw new Error();
+        break;
+      } catch (error) {
+        if (error.code !== "ENOENT") throw error;
+        const parent = dirname4(repositoryRoot);
+        if (parent === repositoryRoot) return null;
+        repositoryRoot = parent;
+      }
+    }
+    const home = await realpath4(homeDirectory);
+    const git = executable ?? await findGitExecutable(workingDirectory);
+    const env = cloneEnvironment({ token: "", remote: "https://unused.invalid", home, emptyFile: process.platform === "win32" ? "NUL" : "/dev/null" });
+    delete env.GIT_CONFIG_KEY_0;
+    delete env.GIT_CONFIG_VALUE_0;
+    env.GIT_CONFIG_COUNT = "0";
+    env.GIT_OPTIONAL_LOCKS = "0";
+    const signal = AbortSignal.any([AbortSignal.timeout(1e4), ...cancellation ? [cancellation] : []]);
+    const execute = (args) => runner({ executable: git, args: ["-c", "core.fsmonitor=false", "-c", "core.hooksPath=", ...args], cwd: workingDirectory, env, signal });
+    const root = await execute(["rev-parse", "--path-format=absolute", "--show-toplevel"]);
+    const common = await execute(["rev-parse", "--path-format=absolute", "--git-common-dir"]);
+    if (!isAbsolute6(root) || !isAbsolute6(common)) throw new Error();
+    const worktreeRoot = await realpath4(root);
+    const gitCommonDirectory = await realpath4(common);
+    if (worktreeRoot !== await realpath4(repositoryRoot) || !inside2(worktreeRoot, workingDirectory)) throw new Error();
+    const optional = async (args) => {
+      try {
+        return await execute(args);
+      } catch (error) {
+        if (signal.aborted) throw error;
+        return null;
+      }
+    };
+    const head = await optional(["rev-parse", "--verify", "HEAD"]);
+    const branch = await optional(["symbolic-ref", "--quiet", "HEAD"]);
+    const rawOrigin = await optional(["remote", "get-url", "origin"]);
+    if (head !== null && !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/i.test(head)) throw new Error();
+    if (branch !== null && (!branch.startsWith("refs/heads/") || branch.length > 1024 || /[\p{Cc}\p{Cf}]/u.test(branch))) throw new Error();
+    let origin2 = null;
+    if (rawOrigin && rawOrigin.length <= 4096 && !/[\p{Cc}\p{Cf}]/u.test(rawOrigin)) {
+      try {
+        const address = new URL(rawOrigin);
+        if (["https:", "ssh:"].includes(address.protocol) && !address.password && !address.search && !address.hash && (!address.username || address.username === "git")) origin2 = address.href.replace(/\/$/, "");
+      } catch {
+        if (/^git@[a-z0-9.-]+:[^?#\s]+$/i.test(rawOrigin)) origin2 = rawOrigin;
+      }
+    }
+    if (signal.aborted) throw new Error();
+    return { workingDirectory, worktreeRoot, gitCommonDirectory, origin: origin2, head, branch };
+  } catch {
+    throw new RepositoryError("local_context_mismatch");
+  }
+}
+async function readOnlyGit(workspacePath, options, signal) {
+  const home = await realpath4(options.homeDirectory ?? homedir5());
+  const executable = options.executable ?? await findGitExecutable(workspacePath);
+  const env = cloneEnvironment({ token: "", remote: "https://unused.invalid", home, emptyFile: process.platform === "win32" ? "NUL" : "/dev/null" });
+  delete env.GIT_CONFIG_KEY_0;
+  delete env.GIT_CONFIG_VALUE_0;
+  env.GIT_CONFIG_COUNT = "0";
+  env.GIT_OPTIONAL_LOCKS = "0";
+  return (args) => (options.runner ?? runGit)({ executable, args: ["-c", "core.fsmonitor=false", "-c", "core.hooksPath=", ...args], cwd: workspacePath, env, signal });
+}
+async function verifyPreparedRepository(options) {
+  const { record: record3 } = options;
+  const signal = options.signal ?? AbortSignal.timeout(1e4);
+  try {
+    await createPreparationStore({ homeDirectory: options.homeDirectory }).verifyOwnership(record3);
+    const identity2 = await inspectCurrentRepository({ ...options, workspacePath: record3.destination, signal });
+    if (!identity2 || identity2.workingDirectory !== record3.destination || identity2.worktreeRoot !== record3.destination || identity2.gitCommonDirectory !== record3.gitCommonDirectory || identity2.origin !== record3.originIdentity || identity2.head !== record3.sourceCommit || identity2.branch !== record3.branch) throw new Error();
+    const execute = await readOnlyGit(record3.destination, options, signal);
+    if (await execute(["status", "--porcelain=v1", "--untracked-files=all"])) throw new Error();
+    if (await fingerprintCheckout(record3.destination, signal) !== record3.initialWorktreeFingerprint || signal.aborted) throw new Error();
+    return identity2;
+  } catch {
+    throw new RepositoryError("clone_identity_changed");
+  }
+}
+async function verifyActivatedRepository(options) {
+  const { record: record3, activation, snapshot } = options;
+  const signal = options.signal ?? AbortSignal.timeout(1e4);
+  try {
+    if (!activation.attemptId || snapshot.sessionId !== activation.sessionId || snapshot.contextRevision !== activation.contextRevision || snapshot.workingDirectory !== activation.workingDirectory || !activation.targetBranch.startsWith("refs/heads/")) throw new Error();
+    const original = await verifyPreparedRepository({ ...options, signal });
+    if (activation.targetKind === "prepared_checkout") {
+      if (activation.workingDirectory !== record3.destination || activation.targetBranch !== record3.branch) throw new Error();
+      return original;
+    }
+    if (activation.targetKind !== "host_worktree" || activation.workingDirectory === record3.destination) throw new Error();
+    const identity2 = await inspectCurrentRepository({ ...options, workspacePath: activation.workingDirectory, signal });
+    if (!identity2 || identity2.workingDirectory !== activation.workingDirectory || identity2.worktreeRoot !== activation.workingDirectory || identity2.gitCommonDirectory !== record3.gitCommonDirectory || identity2.origin !== record3.originIdentity || identity2.head !== record3.sourceCommit || identity2.branch !== activation.targetBranch) throw new Error();
+    const execute = await readOnlyGit(identity2.worktreeRoot, options, signal);
+    const registrations = (await execute(["worktree", "list", "--porcelain", "-z"])).split("\0\0").map((block) => block.split("\0"));
+    let matches = 0;
+    for (const fields2 of registrations) {
+      const path3 = fields2.find((field) => field.startsWith("worktree "))?.slice(9);
+      if (!path3 || !isAbsolute6(path3)) continue;
+      let canonical;
+      try {
+        canonical = await realpath4(path3);
+      } catch {
+        continue;
+      }
+      if (canonical !== identity2.worktreeRoot) continue;
+      if (fields2.some((field) => field === "bare" || field === "detached" || field.startsWith("prunable")) || !fields2.includes(`branch ${activation.targetBranch}`) || !fields2.includes(`HEAD ${record3.sourceCommit}`)) throw new Error();
+      matches++;
+    }
+    if (matches !== 1 || await execute(["status", "--porcelain=v1", "--untracked-files=all"]) || await fingerprintCheckout(identity2.worktreeRoot, signal) !== record3.initialWorktreeFingerprint || signal.aborted) throw new Error();
+    return identity2;
+  } catch {
+    throw new RepositoryError("clone_identity_changed");
+  }
+}
+async function verifyReadyRepository(options) {
+  const { record: record3, snapshot, providerId, instanceId } = options;
+  try {
+    const accepted = record3.acceptedTarget;
+    if (!accepted || record3.handoff?.status !== "canvas_ready" || accepted.sessionId !== snapshot.sessionId || accepted.contextRevision !== snapshot.contextRevision || accepted.workingDirectory !== snapshot.workingDirectory || accepted.providerId !== providerId || accepted.instanceId !== instanceId) throw new Error();
+    const identity2 = await inspectCurrentRepository({ ...options, workspacePath: snapshot.workingDirectory });
+    if (!identity2 || identity2.worktreeRoot !== accepted.workingDirectory || identity2.gitCommonDirectory !== record3.gitCommonDirectory || identity2.origin !== record3.originIdentity) throw new Error();
+    return identity2;
+  } catch {
+    throw new RepositoryError("clone_identity_changed");
+  }
+}
+async function createWorkflowBinding({ host, providerId, instanceId, homeDirectory = homedir5(), runner, executable }) {
+  const initial = await host.inspectCurrent();
+  const options = { homeDirectory, runner, executable };
+  const store = createPreparationStore({ homeDirectory });
+  const identity2 = await inspectCurrentRepository({ ...options, workspacePath: initial.workingDirectory });
+  const records = await store.list();
+  if (records.hasMore) throw new RepositoryError("entry_required");
+  const candidates = records.items.flatMap((item) => item.record && (item.record.gitCommonDirectory === identity2?.gitCommonDirectory || item.record.destination === identity2?.worktreeRoot || item.record.handoff?.activation?.workingDirectory === initial.workingDirectory) ? [item.record] : []);
+  if (candidates.length > 1) throw new RepositoryError("entry_required");
+  const prepared = candidates[0];
+  const managed = join5(await realpath4(homeDirectory), "SpecKitCanvas", "repositories");
+  if (!prepared && (inside2(managed, resolve5(initial.workingDirectory)) || identity2 && inside2(managed, identity2.gitCommonDirectory))) {
+    throw new RepositoryError("entry_required");
+  }
+  if (prepared && !prepared.acceptedTarget) {
+    const attempt = prepared.handoff;
+    if (!attempt?.activation || attempt.status !== "workspace_activated" || attempt.instanceId !== instanceId || !providerId) throw new RepositoryError("entry_required");
+    await verifyActivatedRepository({ ...options, record: prepared, activation: attempt.activation, snapshot: initial });
+    const current = await host.inspectCurrent();
+    if (current.sessionId !== initial.sessionId || current.contextRevision !== initial.contextRevision || current.workingDirectory !== initial.workingDirectory) {
+      throw new RepositoryError("context_changed");
+    }
+  }
+  return {
+    workspacePath: identity2?.worktreeRoot ?? initial.workingDirectory,
+    operationId: prepared?.operationId,
+    preparation: prepared ? {
+      state: "verified",
+      operationId: prepared.operationId,
+      repositoryId: prepared.repositoryId,
+      initialCommit: prepared.sourceCommit,
+      gitDirectory: prepared.gitCommonDirectory
+    } : void 0,
+    async ready() {
+      if (!prepared || prepared.acceptedTarget) return;
+      const current = await host.inspectCurrent();
+      const latest = await store.read(prepared.operationId);
+      const attempt = latest.handoff;
+      if (!attempt?.activation || attempt.instanceId !== instanceId || attempt.status !== "workspace_activated") throw new RepositoryError("entry_required");
+      await verifyActivatedRepository({ ...options, record: latest, activation: attempt.activation, snapshot: current });
+      const after = await host.inspectCurrent();
+      if (after.sessionId !== current.sessionId || after.contextRevision !== current.contextRevision || after.workingDirectory !== current.workingDirectory) {
+        throw new RepositoryError("context_changed");
+      }
+      await store.updateAttempt(prepared.operationId, { ...attempt, status: "canvas_ready", result: { ...attempt.activation, providerId, instanceId } });
+    },
+    async verify() {
+      const current = await host.inspectCurrent();
+      if (current.sessionId !== initial.sessionId || current.contextRevision !== initial.contextRevision || current.workingDirectory !== initial.workingDirectory) {
+        throw new RepositoryError("context_changed");
+      }
+      const local = await inspectCurrentRepository({ ...options, workspacePath: current.workingDirectory });
+      if (identity2?.worktreeRoot !== local?.worktreeRoot || identity2?.gitCommonDirectory !== local?.gitCommonDirectory || identity2?.origin !== local?.origin) {
+        throw new RepositoryError("local_context_mismatch");
+      }
+      if (prepared) {
+        const latest = await store.read(prepared.operationId);
+        if (!latest.acceptedTarget || latest.handoff?.status !== "canvas_ready" || latest.gitCommonDirectory !== local?.gitCommonDirectory || latest.originIdentity !== local?.origin) {
+          throw new RepositoryError("entry_required");
+        }
+      }
+    }
+  };
+}
+async function inspectWorkspaceBinding({ workspacePath, homeDirectory = homedir5(), runner = runGit, executable, previous }) {
   let entries;
-  const requiresPreparation = previous?.state === "verified" || inside2(join4(resolve4(homeDirectory), "SpecKitCanvas", "repositories"), resolve4(workspacePath));
+  const requiresPreparation = previous?.state === "verified" || inside2(join5(resolve5(homeDirectory), "SpecKitCanvas", "repositories"), resolve5(workspacePath));
   const unprepared = { state: requiresPreparation ? "mismatch" : "ordinary" };
   try {
-    const gitEntry = await lstat3(join4(workspacePath, ".git"));
+    const gitEntry = await lstat4(join5(workspacePath, ".git"));
     if (gitEntry.isSymbolicLink() || !gitEntry.isFile() && !gitEntry.isDirectory()) return { state: "unavailable" };
   } catch (error) {
     if (error.code === "ENOENT") return unprepared;
     return { state: "unavailable" };
   }
-  const directory = join4(homeDirectory, ".speckit-canvas", "preparations");
+  const directory = join5(homeDirectory, ".speckit-canvas", "preparations");
   try {
-    const info = await lstat3(directory);
+    const info = await lstat4(directory);
     if (!info.isDirectory() || info.isSymbolicLink()) return { state: "unavailable" };
     entries = await readdir2(directory, { withFileTypes: true });
   } catch (error) {
@@ -23025,17 +24024,17 @@ async function inspectWorkspaceBinding({ workspacePath, homeDirectory = homedir4
   if (entries.length > 256) return { state: "unavailable" };
   const records = [];
   try {
-    const home = await realpath3(homeDirectory);
+    const home = await realpath4(homeDirectory);
     for (const entry of entries) {
       if (!/^[a-f0-9]{32}\.json$/.test(entry.name) || !entry.isFile() || entry.isSymbolicLink()) continue;
-      const file = join4(directory, entry.name);
-      if ((await lstat3(file)).size > 4096) continue;
-      const record3 = JSON.parse(await readFile3(file, "utf8"));
-      const root = join4(home, "SpecKitCanvas", "repositories", entry.name.slice(0, -5));
-      if (record3.schemaVersion !== 1 || record3.kind !== "sdd-prepared-repository" || record3.operationId !== entry.name.slice(0, -5) || !/^[a-f0-9]{40}$/.test(record3.initialCommit) || record3.initialBranch !== `speckit/canvas-${record3.operationId}` || !isAbsolute4(record3.gitDirectory) || !inside2(root, record3.gitDirectory) || resolve4(record3.checkout) !== join4(root, "checkout")) continue;
-      const remote2 = new URL(record3.remote);
-      if (remote2.origin !== "https://dev.azure.com" || remote2.username || remote2.password || remote2.search || remote2.hash || !remote2.pathname.endsWith(`/_git/${record3.repositoryId}`)) continue;
-      records.push(record3);
+      const file = join5(directory, entry.name);
+      if ((await lstat4(file)).size > 4096) continue;
+      const record4 = JSON.parse(await readFile3(file, "utf8"));
+      const root = join5(home, "SpecKitCanvas", "repositories", entry.name.slice(0, -5));
+      if (record4.schemaVersion !== 1 || record4.kind !== "sdd-prepared-repository" || record4.operationId !== entry.name.slice(0, -5) || !/^[a-f0-9]{40}$/.test(record4.initialCommit) || record4.initialBranch !== `speckit/canvas-${record4.operationId}` || !isAbsolute6(record4.gitDirectory) || !inside2(root, record4.gitDirectory) || resolve5(record4.checkout) !== join5(root, "checkout")) continue;
+      const remote2 = new URL(record4.remote);
+      if (remote2.origin !== "https://dev.azure.com" || remote2.username || remote2.password || remote2.search || remote2.hash || !remote2.pathname.endsWith(`/_git/${record4.repositoryId}`)) continue;
+      records.push(record4);
     }
     if (!records.length) return unprepared;
     const git = executable ?? await findGitExecutable(workspacePath);
@@ -23046,26 +24045,26 @@ async function inspectWorkspaceBinding({ workspacePath, homeDirectory = homedir4
     env.GIT_CONFIG_COUNT = "0";
     const signal = AbortSignal.timeout(1e4);
     const execute = (args) => runner({ executable: git, args: ["-c", "core.fsmonitor=false", "-c", "core.hooksPath=", ...args], cwd: workspacePath, env, signal });
-    const common = await realpath3(await execute(["rev-parse", "--path-format=absolute", "--git-common-dir"]));
+    const common = await realpath4(await execute(["rev-parse", "--path-format=absolute", "--git-common-dir"]));
     const candidates = [];
-    for (const record3 of records) {
+    for (const record4 of records) {
       try {
-        if (await realpath3(record3.gitDirectory) === common) candidates.push(record3);
+        if (await realpath4(record4.gitDirectory) === common) candidates.push(record4);
       } catch {
         continue;
       }
     }
     if (!candidates.length) {
-      return requiresPreparation || records.some((record3) => inside2(record3.checkout, resolve4(workspacePath))) ? { state: "mismatch" } : { state: "ordinary" };
+      return requiresPreparation || records.some((record4) => inside2(record4.checkout, resolve5(workspacePath))) ? { state: "mismatch" } : { state: "ordinary" };
     }
     if (candidates.length !== 1) return { state: "mismatch" };
-    const record2 = candidates[0];
+    const record3 = candidates[0];
     const remote = await execute(["remote", "get-url", "origin"]);
     const head = await execute(["rev-parse", "HEAD"]);
     const branch = await execute(["symbolic-ref", "--short", "HEAD"]);
-    const alreadyAcknowledged = previous?.state === "verified" && previous.operationId === record2.operationId && previous.gitDirectory === common;
-    if (remote !== record2.remote || !/^[a-f0-9]{40}$/.test(head) || !branch || !alreadyAcknowledged && head !== record2.initialCommit) return { state: "mismatch" };
-    return { state: "verified", operationId: record2.operationId, repositoryId: record2.repositoryId, initialCommit: record2.initialCommit, gitDirectory: common };
+    const alreadyAcknowledged = previous?.state === "verified" && previous.operationId === record3.operationId && previous.gitDirectory === common;
+    if (remote !== record3.remote || !/^[a-f0-9]{40}$/.test(head) || !branch || !alreadyAcknowledged && head !== record3.initialCommit) return { state: "mismatch" };
+    return { state: "verified", operationId: record3.operationId, repositoryId: record3.repositoryId, initialCommit: record3.initialCommit, gitDirectory: common };
   } catch {
     return { state: "unavailable" };
   }
@@ -23075,10 +24074,10 @@ function assertWorkspaceBinding(binding) {
 }
 
 // src/repository-service.ts
-async function createRepositoryService({ workspacePath, profileStatus, dependencies, request, cloneOptions, bindingOptions, onChange = () => void 0 }) {
+async function createRepositoryService({ workspacePath, profileStatus, dependencies, request, cloneOptions, bindingOptions, workflowBinding, onChange = () => void 0 }) {
   const configuration = profileStatus ?? await loadRepositoryProfile();
-  const localContextId = `local_${randomBytes6(24).toString("base64url")}`;
-  let workspaceBinding = await inspectWorkspaceBinding({ workspacePath, ...bindingOptions });
+  const localContextId = `local_${randomBytes8(24).toString("base64url")}`;
+  let workspaceBinding = workflowBinding?.preparation ?? await inspectWorkspaceBinding({ workspacePath, ...bindingOptions });
   const artifactTime = await createPreparedArtifactClock({ workspacePath, binding: workspaceBinding, ...bindingOptions });
   let mode = "local";
   let selectedContextId;
@@ -23103,7 +24102,7 @@ async function createRepositoryService({ workspacePath, profileStatus, dependenc
   const client = profile && connection ? createAdoClient({ profile, connection, request }) : void 0;
   const discovery = client && profile ? createRepositoryDiscovery({ client, profile }) : void 0;
   const review = client ? createRemoteReview({ client }) : void 0;
-  const clones = review && profile && connection ? createCloneService({ review, profile, connection, workspacePath, ...cloneOptions, onChange }) : void 0;
+  const clones = review && profile && connection ? createCloneService({ readSource: (contextId) => review.source(contextId), profile, connection, workspacePath, ...cloneOptions, onChange }) : void 0;
   function available() {
     if (disposed || !connection || !discovery || !review) throw new RepositoryError("connection_required");
     return { connection, discovery, review };
@@ -23184,7 +24183,8 @@ async function createRepositoryService({ workspacePath, profileStatus, dependenc
     },
     async verifyLocal(contextId) {
       service.assertLocal(contextId);
-      workspaceBinding = await inspectWorkspaceBinding({ workspacePath, ...bindingOptions, previous: workspaceBinding });
+      await workflowBinding?.verify();
+      workspaceBinding = workflowBinding?.preparation ?? await inspectWorkspaceBinding({ workspacePath, ...bindingOptions, previous: workspaceBinding });
       service.assertLocal(contextId);
       assertWorkspaceBinding(workspaceBinding);
     },
@@ -23198,11 +24198,595 @@ async function createRepositoryService({ workspacePath, profileStatus, dependenc
   };
   return service;
 }
+async function createEntryCoordinator({
+  host,
+  profileStatus,
+  dependencies,
+  request,
+  cloneOptions,
+  handoffOptions,
+  inspectWorkspace = (workspacePath) => inspectCurrentRepository({ workspacePath }),
+  onChange = () => void 0
+}) {
+  const configuration = profileStatus ?? await loadRepositoryProfile();
+  const profile = configuration.state === "configured" ? configuration.profile : void 0;
+  let disposed = false;
+  let currentHost;
+  let localContextId = `local_${randomBytes8(24).toString("base64url")}`;
+  let localFingerprint;
+  let phase = "chooser";
+  let selectionGeneration = 0;
+  let selected;
+  let clones;
+  let activeOperationId;
+  let retainedOperation;
+  let activeRecord;
+  let handoffError;
+  const automatic = /* @__PURE__ */ new Map();
+  const pending = /* @__PURE__ */ new Set();
+  const retries = /* @__PURE__ */ new Map();
+  const transitions = /* @__PURE__ */ new Set();
+  const store = createPreparationStore({ homeDirectory: cloneOptions?.homeDirectory });
+  const localRequests = /* @__PURE__ */ new Map();
+  const adapter = dependencies ?? nativeAuthDependencies();
+  const connection = profile ? createRepositoryConnection(profile, { ...adapter, onChange: (snapshot) => {
+    if (disposed) return;
+    selectionGeneration++;
+    selected = void 0;
+    clones?.invalidate();
+    for (const eligibility of automatic.values()) eligibility.eligible = false;
+    retainedOperation = void 0;
+    activeRecord = void 0;
+    handoffError = void 0;
+    activeOperationId = void 0;
+    phase = "chooser";
+    discovery?.clear();
+    adapter.onChange?.(snapshot);
+    onChange();
+  } }) : void 0;
+  const client = profile && connection ? createAdoClient({ profile, connection, request }) : void 0;
+  const discovery = profile && client ? createRepositoryDiscovery({ profile, client }) : void 0;
+  function remoteAvailable() {
+    if (disposed || !profile || !connection || !discovery) throw new RepositoryError("connection_required");
+    return { profile, connection, discovery };
+  }
+  function remoteReason(snapshot) {
+    return !supportsRemotePreparation(snapshot) ? "host_handoff_unsupported" : snapshot.activity === "busy" ? "session_busy" : snapshot.activity === "unknown" ? "activity_unknown" : null;
+  }
+  function preparationReason(snapshot) {
+    return !supportsRepositoryCloning(snapshot) || snapshot.activity === "unknown" ? "activity_unknown" : snapshot.activity === "busy" ? "session_busy" : null;
+  }
+  const accountKey = (access) => createHash7("sha256").update(JSON.stringify([access.tenantId, access.accountId])).digest("hex");
+  const sameSource = (source, current) => source.sessionId === current.sessionId && source.contextRevision === current.contextRevision && source.workingDirectory === current.workingDirectory && source.capabilityGeneration === current.capabilityGeneration && source.activityRevision === current.activityRevision && current.activity === "idle";
+  function remember(record3, repositoryName) {
+    activeRecord = record3;
+    activeOperationId = record3.operationId;
+    retainedOperation = {
+      operationId: record3.operationId,
+      state: "prepared",
+      repositoryName: repositoryName ?? retainedOperation?.repositoryName ?? "Prepared repository",
+      branch: record3.defaultRef,
+      sourceCommit: record3.sourceCommit,
+      localBranch: record3.branch.slice(11),
+      destination: record3.destination
+    };
+  }
+  function operationView() {
+    if (!activeOperationId || connection?.snapshot().state !== "connected") return null;
+    let operation = retainedOperation;
+    if (!operation && clones) {
+      try {
+        operation = clones.status(activeOperationId);
+      } catch {
+        return null;
+      }
+    }
+    if (!operation || operation.state === "awaiting_confirmation") return null;
+    return { ...operation, ...handoffError ? { error: handoffError } : {} };
+  }
+  async function authorizedRecord(operationId) {
+    try {
+      const remote = remoteAvailable();
+      const access = await remote.connection.access();
+      const record3 = await store.read(operationId);
+      if (record3.accountKey !== accountKey(access) || record3.profileFingerprint !== createHash7("sha256").update(JSON.stringify(remote.profile)).digest("hex")) throw new Error();
+      const repository = await remote.discovery.detail(record3.repositoryId);
+      access.assertCurrent();
+      return { record: record3, repository, access };
+    } catch {
+      throw new RepositoryError("resource_unavailable");
+    }
+  }
+  async function outcomeFor(attemptId) {
+    let timer;
+    try {
+      return await Promise.race([host.getHandoffOutcome(attemptId), new Promise((_resolve, reject) => {
+        timer = setTimeout(() => reject(new RepositoryError("handoff_unknown")), 5e3);
+      })]);
+    } catch {
+      throw new RepositoryError("handoff_unknown");
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+  async function performHandoff(operationId, expected, reconcile) {
+    if (transitions.has(operationId)) throw new RepositoryError("handoff_in_progress");
+    transitions.add(operationId);
+    let attempt;
+    let submitted = false;
+    try {
+      const authorized = await authorizedRecord(operationId);
+      let record3 = authorized.record;
+      remember(record3, authorized.repository.name);
+      const reason = remoteReason(await readHost());
+      if (reason) throw new RepositoryError(reason);
+      let outcome;
+      attempt = record3.handoff;
+      if (attempt && reconcile) {
+        outcome = await outcomeFor(attempt.attemptId);
+        if (attempt.activation && !["workspace_activated", "canvas_ready"].includes(outcome.status)) throw new RepositoryError("handoff_unknown");
+        if (outcome.status === "unknown" || outcome.status === "in_progress") {
+          record3 = await store.updateAttempt(operationId, { ...attempt, status: outcome.status });
+          remember(record3, authorized.repository.name);
+          phase = outcome.status === "unknown" ? "handoff_unknown" : "handoff_pending";
+          throw new RepositoryError(outcome.status === "unknown" ? "handoff_unknown" : "handoff_in_progress");
+        }
+        if (outcome.status === "not_started" || outcome.status === "rejected") {
+          record3 = await store.updateAttempt(operationId, { ...attempt, status: "rejected" });
+          attempt = void 0;
+          outcome = void 0;
+        }
+      } else if (attempt) throw new RepositoryError("handoff_in_progress");
+      if (!record3.acceptedTarget) {
+        await (handoffOptions?.verifyPrepared ? handoffOptions.verifyPrepared(record3) : verifyPreparedRepository({ record: record3, ...cloneOptions }));
+      }
+      const current = await readHost();
+      const currentReason = remoteReason(current);
+      if (currentReason) throw new RepositoryError(currentReason);
+      if (record3.acceptedTarget) await verifyReadyRepository({
+        record: record3,
+        snapshot: current,
+        providerId: record3.acceptedTarget.providerId,
+        instanceId: record3.acceptedTarget.instanceId,
+        ...cloneOptions
+      });
+      if (!attempt) {
+        if (!sameSource(expected, current)) throw new RepositoryError("context_changed");
+        const attemptId = randomBytes8(16).toString("hex");
+        attempt = {
+          attemptId,
+          operationId,
+          expectedSource: { sessionId: current.sessionId, contextRevision: current.contextRevision },
+          instanceId: `entry-target-${attemptId}`,
+          status: "requested",
+          createdAt: (handoffOptions?.now ?? Date.now)()
+        };
+        record3 = await store.beginAttempt(operationId, attempt);
+      }
+      const submittedAttempt = attempt;
+      if (automatic.has(operationId)) automatic.get(operationId).eligible = false;
+      phase = "handoff_pending";
+      handoffError = void 0;
+      onChange();
+      submitted = true;
+      const result = await executeHostHandoff({
+        host,
+        outcome,
+        timeoutMs: handoffOptions?.timeoutMs,
+        request: {
+          attemptId: attempt.attemptId,
+          expectedSource: attempt.expectedSource,
+          target: record3,
+          canvasId: "sdd-canvas-direct",
+          instanceId: attempt.instanceId
+        },
+        persistActivation: async (activation) => {
+          const latest = await store.read(operationId);
+          if (latest.handoff?.attemptId !== submittedAttempt.attemptId) throw new RepositoryError("context_changed");
+          if (latest.handoff.activation) {
+            if (JSON.stringify(latest.handoff.activation) !== JSON.stringify(activation)) throw new RepositoryError("clone_identity_changed");
+          } else {
+            await store.updateAttempt(operationId, { ...submittedAttempt, status: "workspace_activated", activation });
+          }
+          if (!disposed) {
+            phase = "target_binding";
+            onChange();
+          }
+        },
+        readReadiness: async () => {
+          const latest = await store.read(operationId);
+          return latest.handoff?.attemptId === submittedAttempt.attemptId && latest.handoff.status === "canvas_ready" ? latest.acceptedTarget : void 0;
+        }
+      });
+      if (result.status !== "canvas_ready") {
+        const status = result.status === "not_started" ? "rejected" : result.status;
+        await store.updateAttempt(operationId, { ...submittedAttempt, status });
+        if (status === "unknown") throw new RepositoryError("handoff_unknown");
+        if (status === "in_progress") throw new RepositoryError("handoff_in_progress");
+        throw new RepositoryError("canvas_unavailable");
+      }
+      remember(await store.read(operationId), authorized.repository.name);
+      phase = "ready";
+      handoffError = void 0;
+      onChange();
+      return { ...retainedOperation };
+    } catch (error) {
+      const failure = knownRepositoryError(error?.code);
+      if (attempt) {
+        try {
+          const latest = await store.read(operationId);
+          if (latest.handoff?.attemptId === attempt.attemptId && latest.handoff.status !== "canvas_ready") {
+            const definite = ["session_busy", "activity_unknown", "context_changed", "host_handoff_unsupported"].includes(failure.code);
+            const status = latest.handoff.activation ? "workspace_activated" : failure.code === "handoff_unknown" ? "unknown" : failure.code === "handoff_in_progress" ? "in_progress" : latest.handoff.status === "rejected" || definite ? "rejected" : submitted ? "unknown" : latest.handoff.status;
+            remember(await store.updateAttempt(operationId, { ...latest.handoff, status, errorCode: failure.code }));
+          }
+        } catch {
+          handoffError = "handoff_unknown";
+        }
+      }
+      handoffError ??= failure.code;
+      phase = failure.code === "handoff_unknown" ? "handoff_unknown" : failure.code === "handoff_in_progress" ? "handoff_pending" : ["clone_identity_changed", "resource_unavailable", "context_changed"].includes(failure.code) ? "validation_blocked" : ["session_busy", "activity_unknown"].includes(failure.code) ? "waiting_user" : "handoff_failed";
+      if (!disposed) onChange();
+      throw failure;
+    } finally {
+      transitions.delete(operationId);
+    }
+  }
+  function continueAfterPreparation(operationId) {
+    const job = (async () => {
+      await clones.completion(operationId);
+      if (disposed || clones.status(operationId).state !== "prepared") return;
+      const authorized = await authorizedRecord(operationId);
+      remember(authorized.record, authorized.repository.name);
+      const eligibility = automatic.get(operationId);
+      const current = await readHost();
+      if (!eligibility || !supportsRemotePreparation(eligibility.source) || !supportsRemotePreparation(current)) {
+        phase = "prepared";
+        handoffError = void 0;
+        onChange();
+        return;
+      }
+      if (!eligibility?.eligible || !sameSource(eligibility.source, current)) {
+        phase = "waiting_user";
+        handoffError = remoteReason(current) ?? "context_changed";
+        onChange();
+        return;
+      }
+      await performHandoff(operationId, current, false);
+    })().catch((error) => {
+      if (!disposed && !["handoff_unknown", "handoff_pending", "handoff_failed", "validation_blocked", "waiting_user"].includes(phase)) {
+        phase = "validation_blocked";
+        handoffError = knownRepositoryError(error?.code).code;
+        onChange();
+      }
+    });
+    pending.add(job);
+    void job.finally(() => pending.delete(job));
+  }
+  async function readSelectionSource(selectionId) {
+    const remote = remoteAvailable();
+    const current = selected;
+    if (!current || current.selection.selectionId !== selectionId || current.selection.matchesCurrentWorkspace) throw new RepositoryError("context_changed");
+    const access = await remote.connection.access();
+    if (accountKey(access) !== current.selection.accountKey || access.generation !== current.selection.connectionGeneration) throw new RepositoryError("invalid_context");
+    const repository = await remote.discovery.detail(current.selection.repository.id);
+    access.assertCurrent();
+    if (selected !== current || !repository.sourceVersion || repository.sourceVersion !== current.selection.repository.sourceVersion || repository.defaultBranch !== current.selection.repository.defaultBranch) throw new RepositoryError("source_changed");
+    return { repository, sourceVersion: repository.sourceVersion, generation: access.generation };
+  }
+  function ensureClones(snapshot) {
+    const remote = remoteAvailable();
+    clones ??= createEntryCloneService({
+      host,
+      readSource: readSelectionSource,
+      connection: remote.connection,
+      profile: remote.profile,
+      workspacePath: snapshot.workingDirectory,
+      ...cloneOptions,
+      onChange: () => {
+        if (disposed) return;
+        if (activeOperationId) {
+          const state = clones.status(activeOperationId).state;
+          phase = state === "preparing" || state === "verifying" ? "preparing" : state === "prepared" ? "prepared" : state === "cancelled" ? "cancelled" : state === "failed" ? "failed" : phase;
+        }
+        onChange();
+      }
+    });
+    return clones;
+  }
+  async function readHost() {
+    if (disposed) throw new RepositoryError("invalid_context");
+    const snapshot = await host.inspectCurrent();
+    if (disposed) throw new RepositoryError("invalid_context");
+    for (const eligibility of automatic.values()) if (!sameSource(eligibility.source, snapshot)) eligibility.eligible = false;
+    if (currentHost && (currentHost.sessionId !== snapshot.sessionId || currentHost.contextRevision !== snapshot.contextRevision || currentHost.workingDirectory !== snapshot.workingDirectory)) localContextId = `local_${randomBytes8(24).toString("base64url")}`;
+    currentHost = snapshot;
+    return snapshot;
+  }
+  async function readLocal() {
+    const snapshot = await readHost();
+    const repository = await inspectWorkspace(snapshot.workingDirectory);
+    const current = await readHost();
+    if (current.sessionId !== snapshot.sessionId || current.contextRevision !== snapshot.contextRevision || current.workingDirectory !== snapshot.workingDirectory) throw new RepositoryError("context_changed");
+    const fingerprint2 = JSON.stringify([current.sessionId, current.contextRevision, current.workingDirectory, repository]);
+    if (localFingerprint !== void 0 && localFingerprint !== fingerprint2) {
+      localContextId = `local_${randomBytes8(24).toString("base64url")}`;
+      if (!activeOperationId) phase = "chooser";
+    }
+    localFingerprint = fingerprint2;
+    return { snapshot: current, repository };
+  }
+  async function openLocal(snapshot, instanceId) {
+    const opened = await host.openCurrentCanvas(snapshot, instanceId);
+    const after = await readHost();
+    if (disposed || opened.sessionId !== snapshot.sessionId || opened.contextRevision !== snapshot.contextRevision || opened.workingDirectory !== snapshot.workingDirectory || opened.instanceId !== instanceId || after.sessionId !== snapshot.sessionId || after.contextRevision !== snapshot.contextRevision || after.workingDirectory !== snapshot.workingDirectory) throw new RepositoryError("context_changed");
+  }
+  const service = {
+    snapshot() {
+      return { configuration: configuration.state, connection: connection?.snapshot() ?? { state: "disconnected", generation: 0, projectLabel: "" } };
+    },
+    async state() {
+      const localContext = { contextId: localContextId, label: "Current workspace", state: "unavailable" };
+      let snapshot;
+      let reason = null;
+      try {
+        const local = await readLocal();
+        snapshot = local.snapshot;
+        const repository = local.repository;
+        localContext.contextId = localContextId;
+        localContext.state = repository ? "repository" : "not_repository";
+        if (repository) localContext.label = basename(repository.worktreeRoot);
+        reason = preparationReason(snapshot);
+      } catch (error) {
+        reason = knownRepositoryError(error?.code).code;
+      }
+      return {
+        configuration: configuration.state,
+        connection: connection?.snapshot() ?? { state: "disconnected", generation: 0, projectLabel: "" },
+        phase,
+        localContext,
+        host: {
+          activity: snapshot?.activity ?? "unknown",
+          canOpenCurrent: Boolean(snapshot?.capabilities.localCanvas && localContext.state === "repository"),
+          canPrepareRemote: Boolean(snapshot && supportsRepositoryCloning(snapshot) && snapshot.activity === "idle"),
+          canHandoff: Boolean(snapshot && supportsRemotePreparation(snapshot)),
+          canRetryHandoff: Boolean(snapshot && supportsRemotePreparation(snapshot) && snapshot.activity === "idle" && activeOperationId && retainedOperation && !transitions.has(activeOperationId) && !automatic.get(activeOperationId)?.eligible && phase !== "ready"),
+          reason
+        },
+        operation: operationView()
+      };
+    },
+    async local(contextId, requestId) {
+      text(contextId);
+      text(requestId);
+      const { snapshot, repository } = await readLocal();
+      if (contextId !== localContextId) throw new RepositoryError("context_changed");
+      if (!repository) throw new RepositoryError("local_context_mismatch");
+      const existing = localRequests.get(requestId);
+      if (existing) {
+        if (existing.contextId !== contextId) throw new RepositoryError("context_changed");
+        return existing.completion;
+      }
+      if (localRequests.size >= 32) throw new RepositoryError("invalid_context");
+      const instanceId = `entry-local-${randomBytes8(16).toString("hex")}`;
+      const completion = (async () => {
+        await openLocal(snapshot, instanceId);
+        await readLocal();
+        if (contextId !== localContextId) throw new RepositoryError("context_changed");
+        phase = "ready";
+        onChange();
+        return { opened: true };
+      })();
+      localRequests.set(requestId, { contextId, completion });
+      return completion;
+    },
+    async direct(requestId) {
+      text(requestId);
+      const snapshot = await readHost();
+      await openLocal(snapshot, `entry-direct-${randomBytes8(16).toString("hex")}`);
+      return { opened: true };
+    },
+    async select(repositoryId, contextId) {
+      text(repositoryId);
+      text(contextId);
+      const remote = remoteAvailable();
+      if (transitions.size || activeRecord?.handoff && !["rejected", "canvas_ready"].includes(activeRecord.handoff.status)) throw new RepositoryError("handoff_in_progress");
+      if (activeOperationId && clones && ["preparing", "verifying"].includes(clones.status(activeOperationId).state)) throw new RepositoryError("clone_conflict");
+      activeOperationId = void 0;
+      retainedOperation = void 0;
+      activeRecord = void 0;
+      handoffError = void 0;
+      const generation = ++selectionGeneration;
+      selected = void 0;
+      const local = await readLocal();
+      if (contextId !== localContextId) throw new RepositoryError("context_changed");
+      const access = await remote.connection.access();
+      const repository = await remote.discovery.detail(repositoryId);
+      access.assertCurrent();
+      const after = await readHost();
+      if (generation !== selectionGeneration || contextId !== localContextId || after.contextRevision !== local.snapshot.contextRevision || after.sessionId !== local.snapshot.sessionId) throw new RepositoryError("context_changed");
+      const originIdentity = `https://dev.azure.com/${[remote.profile.organization, remote.profile.project, "_git", repository.id].map(encodeURIComponent).join("/")}`;
+      const namedOrigin = `https://dev.azure.com/${[remote.profile.organization, remote.profile.project, "_git", repository.name].map(encodeURIComponent).join("/")}`;
+      const currentOrigin = local.repository?.origin?.replace(/\/$/, "").toLowerCase();
+      const matchesCurrentWorkspace = currentOrigin === originIdentity.toLowerCase() || currentOrigin === namedOrigin.toLowerCase();
+      const profileFingerprint = createHash7("sha256").update(JSON.stringify(remote.profile)).digest("hex");
+      const selection = {
+        selectionId: `selection_${randomBytes8(24).toString("base64url")}`,
+        repository,
+        originIdentity,
+        accountKey: accountKey(access),
+        connectionGeneration: access.generation,
+        profileFingerprint,
+        expectedSource: { sessionId: after.sessionId, contextRevision: after.contextRevision },
+        matchesCurrentWorkspace
+      };
+      selected = { selection, snapshot: after, contextId };
+      const operationId = randomBytes8(16).toString("hex");
+      const home = await realpath5(cloneOptions?.homeDirectory ?? homedir6());
+      const reason = preparationReason(after) ?? (!repository.sourceVersion || !repository.defaultBranch || repository.operationalState !== "active" ? "source_unavailable" : null);
+      const current = selected;
+      if (!matchesCurrentWorkspace && !reason) current.preview = await ensureClones(after).confirm(selection.selectionId, after);
+      if (selected !== current || generation !== selectionGeneration) throw new RepositoryError("context_changed");
+      phase = "selected";
+      onChange();
+      return {
+        selectionId: selection.selectionId,
+        repository,
+        accountLabel: remote.connection.snapshot().accountLabel ?? "Microsoft account",
+        matchesCurrentWorkspace,
+        operationId: current.preview?.operationId ?? operationId,
+        destination: current.preview?.destination ?? join6(home, "SpecKitCanvas", "repositories", operationId, "checkout"),
+        confirmation: current.preview?.confirmation ?? null,
+        expiresAt: current.preview?.expiresAt ?? null,
+        reason
+      };
+    },
+    async clone(selectionId, confirmation, requestId) {
+      text(selectionId);
+      text(confirmation);
+      text(requestId);
+      const { snapshot } = await readLocal();
+      const reason = preparationReason(snapshot);
+      if (reason) throw new RepositoryError(reason);
+      const current = selected;
+      if (!current || current.selection.selectionId !== selectionId || current.contextId !== localContextId || !current.preview || !clones) throw new RepositoryError("context_changed");
+      activeOperationId = current.preview.operationId;
+      const first = !automatic.has(activeOperationId);
+      if (first) automatic.set(activeOperationId, { source: structuredClone(snapshot), eligible: supportsRemotePreparation(snapshot) });
+      try {
+        const started = await clones.start(activeOperationId, confirmation, requestId);
+        if (first) continueAfterPreparation(activeOperationId);
+        return started;
+      } catch (error) {
+        automatic.get(current.preview.operationId).eligible = false;
+        if (clones.status(current.preview.operationId).state === "awaiting_confirmation") {
+          activeOperationId = void 0;
+          phase = "selected";
+          onChange();
+        }
+        throw error;
+      }
+    },
+    async operation(operationId) {
+      text(operationId);
+      if (retainedOperation?.operationId === operationId) {
+        await authorizedRecord(operationId);
+        return { ...retainedOperation, ...handoffError ? { error: handoffError } : {} };
+      }
+      if (clones) return clones.authorized(operationId);
+      const authorized = await authorizedRecord(operationId);
+      return {
+        operationId,
+        state: "prepared",
+        repositoryName: authorized.repository.name,
+        branch: authorized.record.defaultRef,
+        sourceCommit: authorized.record.sourceCommit,
+        localBranch: authorized.record.branch.slice(11),
+        destination: authorized.record.destination
+      };
+    },
+    async cancel(operationId, requestId) {
+      text(operationId);
+      text(requestId);
+      if (!clones) throw new RepositoryError("resource_unavailable");
+      const before = await clones.authorized(operationId);
+      if (automatic.has(operationId)) automatic.get(operationId).eligible = false;
+      clones.cancel(operationId);
+      if (before.state === "awaiting_confirmation" && selected?.preview?.operationId === operationId) {
+        selected = void 0;
+        selectionGeneration++;
+        phase = "chooser";
+        onChange();
+      }
+      await clones.completion(operationId);
+      return clones.authorized(operationId);
+    },
+    async handoff(operationId, contextId, requestId) {
+      text(operationId);
+      text(contextId);
+      text(requestId);
+      const local = await readLocal();
+      if (contextId !== localContextId) throw new RepositoryError("context_changed");
+      const reason = remoteReason(local.snapshot);
+      if (reason) throw new RepositoryError(reason);
+      const existing = retries.get(requestId);
+      if (existing) {
+        if (existing.operationId !== operationId || existing.contextId !== contextId) throw new RepositoryError("context_changed");
+        return existing.completion;
+      }
+      if (retries.size >= 32) throw new RepositoryError("invalid_context");
+      if (automatic.has(operationId)) automatic.get(operationId).eligible = false;
+      const completion = performHandoff(operationId, local.snapshot, true);
+      retries.set(requestId, { operationId, contextId, completion });
+      return completion;
+    },
+    async preparations() {
+      const remote = remoteAvailable();
+      const access = await remote.connection.access();
+      const fingerprint2 = createHash7("sha256").update(JSON.stringify(remote.profile)).digest("hex");
+      const result = await store.list();
+      if (result.hasMore) throw new RepositoryError("clone_conflict");
+      const items = [];
+      for (const item of result.items) {
+        const record3 = item.record;
+        if (!record3 || record3.accountKey !== accountKey(access) || record3.profileFingerprint !== fingerprint2) continue;
+        try {
+          const repository = await remote.discovery.detail(record3.repositoryId);
+          access.assertCurrent();
+          items.push({
+            operationId: record3.operationId,
+            repositoryName: repository.name,
+            sourceCommit: record3.sourceCommit,
+            destination: record3.destination,
+            state: "prepared",
+            handoffState: record3.handoff?.status ?? null
+          });
+        } catch {
+          access.assertCurrent();
+        }
+      }
+      return { items };
+    },
+    connect() {
+      if (disposed || !connection) throw new RepositoryError("connection_required");
+      return connection.connect();
+    },
+    disconnect() {
+      connection?.disconnect();
+      discovery?.clear();
+      onChange();
+    },
+    search(query, cursor) {
+      if (disposed || !discovery) throw new RepositoryError("connection_required");
+      return discovery.search(query, cursor);
+    },
+    relevant(cursor) {
+      if (disposed || !discovery) throw new RepositoryError("connection_required");
+      return discovery.relevant(cursor);
+    },
+    detail(repositoryId) {
+      if (disposed || !discovery) throw new RepositoryError("connection_required");
+      return discovery.detail(repositoryId);
+    },
+    async settled() {
+      await clones?.settled();
+      await Promise.all(pending);
+    },
+    dispose() {
+      disposed = true;
+      clones?.dispose();
+      connection?.dispose();
+      discovery?.dispose();
+      host.dispose();
+    }
+  };
+  return service;
+}
 function text(input, maximum = 256) {
   if (typeof input !== "string" || !input || input.length > maximum || /[\p{Cc}]/u.test(input)) throw new RepositoryError("invalid_request");
   return input;
 }
-async function requestBody(req) {
+async function requestBody(req, strict = false) {
   if (!/^application\/json(?:;|$)/i.test(String(req.headers["content-type"] ?? ""))) throw new RepositoryError("invalid_request");
   let size = 0;
   const chunks = [];
@@ -23212,8 +24796,10 @@ async function requestBody(req) {
     chunks.push(chunk);
   }
   try {
-    const parsed = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    const raw = strict ? new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks)) : Buffer.concat(chunks).toString("utf8");
+    const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error();
+    if (strict && (0, import_yaml4.parseDocument)(raw, { schema: "json", uniqueKeys: true }).errors.length) throw new Error();
     return parsed;
   } catch {
     throw new RepositoryError("invalid_request");
@@ -23233,26 +24819,8 @@ async function handleRepositoryRequest(req, res, url, service) {
     if (req.method !== "GET" && req.method !== "POST") throw new RepositoryError("invalid_request");
     if (req.method === "POST" && req.headers.origin !== url.origin) throw new RepositoryError("invalid_request");
     const path3 = url.pathname.slice("/api/repositories/".length);
-    const queries = {
-      connection: [],
-      relevant: ["cursor"],
-      search: ["q", "cursor"],
-      detail: ["repositoryId"],
-      items: ["contextId", "root", "cursor"],
-      content: ["contextId", "itemId"],
-      clone: ["operationId"]
-    };
-    const bodies = {
-      connect: [],
-      disconnect: [],
-      context: ["repositoryId"],
-      reference: ["contextId", "itemId", "target"],
-      refresh: ["contextId"],
-      local: [],
-      "clone/confirm": ["contextId"],
-      clone: ["operationId", "confirmation"],
-      "clone/cancel": ["operationId"]
-    };
+    const queries = { connection: [], relevant: ["cursor"], search: ["q", "cursor"], detail: ["repositoryId"] };
+    const bodies = { connect: [], disconnect: [] };
     const allowed = req.method === "GET" ? queries[path3] : bodies[path3];
     if (!allowed) throw new RepositoryError("invalid_request");
     for (const key of url.searchParams.keys()) {
@@ -23271,27 +24839,9 @@ async function handleRepositoryRequest(req, res, url, service) {
     } else if (path3 === "disconnect") {
       service.disconnect();
       data = service.snapshot();
-    } else if (path3 === "local") data = service.selectLocal();
-    else if (path3 === "clone/confirm") data = await service.cloneConfirm(text(body.contextId));
-    else if (path3 === "clone" && req.method === "POST") {
-      data = await service.cloneStart(text(body.operationId), text(body.confirmation));
-      json(202, { ok: true, data });
-      return;
-    } else if (path3 === "clone") data = service.cloneStatus(query("operationId"));
-    else if (path3 === "clone/cancel") {
-      service.cloneCancel(text(body.operationId));
-      data = { cancelled: true };
     } else if (path3 === "search") data = await service.search(query("q"), cursor);
     else if (path3 === "relevant") data = await service.relevant(cursor);
     else if (path3 === "detail") data = await service.detail(query("repositoryId"));
-    else if (path3 === "context") data = await service.context(text(body.repositoryId));
-    else if (path3 === "items") {
-      const root = query("root");
-      if (root !== "/.specify" && root !== "/specs") throw new RepositoryError("invalid_request");
-      data = await service.items(query("contextId"), root, cursor);
-    } else if (path3 === "content") data = await service.content(query("contextId"), query("itemId"));
-    else if (path3 === "reference") data = await service.reference(text(body.contextId), text(body.itemId), text(body.target, 4096));
-    else if (path3 === "refresh") data = await service.refresh(text(body.contextId));
     else throw new RepositoryError("invalid_request");
     json(200, { ok: true, data });
   } catch (error) {
@@ -23300,9 +24850,68 @@ async function handleRepositoryRequest(req, res, url, service) {
     json(status, envelope);
   }
 }
+async function handleEntryRequest(req, res, url, entry) {
+  function json(status, payload) {
+    res.writeHead(status, {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+      "Referrer-Policy": "no-referrer",
+      "X-Content-Type-Options": "nosniff"
+    });
+    res.end(JSON.stringify(payload));
+  }
+  try {
+    if (!url.pathname.startsWith("/api/entry/") || !["GET", "POST"].includes(req.method ?? "")) throw new RepositoryError("invalid_request");
+    if (req.method === "POST" && req.headers.origin !== url.origin) throw new RepositoryError("invalid_request");
+    const path3 = url.pathname.slice("/api/entry/".length);
+    const operation = /^operations\/([a-f0-9]{32})(?:\/(cancel|handoff))?$/.exec(path3);
+    const route = operation ? operation[2] ? `operation-${operation[2]}` : "operation" : path3;
+    const queries = /* @__PURE__ */ new Map([["state", []], ["operation", []], ["preparations", []]]);
+    const bodies = /* @__PURE__ */ new Map([
+      ["local", ["contextId", "requestId"]],
+      ["direct", ["requestId"]],
+      ["selection", ["repositoryId", "contextId"]],
+      ["clone", ["selectionId", "confirmation", "requestId"]],
+      ["operation-cancel", ["requestId"]],
+      ["operation-handoff", ["contextId", "requestId"]]
+    ]);
+    const allowed = (req.method === "GET" ? queries : bodies).get(route);
+    if (!allowed) throw new RepositoryError("invalid_request");
+    for (const key of url.searchParams.keys()) {
+      if (key !== "cap" || url.searchParams.getAll(key).length !== 1) throw new RepositoryError("invalid_request");
+    }
+    const body = req.method === "POST" ? await requestBody(req, true) : {};
+    if (Object.keys(body).some((key) => !allowed.includes(key))) throw new RepositoryError("invalid_request");
+    let data;
+    let status = 200;
+    if (route === "state") data = await entry.state();
+    else if (route === "direct") {
+      if (!entry.direct) throw new RepositoryError("canvas_unavailable");
+      data = await entry.direct(text(body.requestId));
+    } else if (route === "selection" && entry.select) data = await entry.select(text(body.repositoryId), text(body.contextId));
+    else if (route === "clone" && entry.clone) {
+      data = await entry.clone(text(body.selectionId), text(body.confirmation), text(body.requestId));
+      status = 202;
+    } else if (route === "operation" && entry.operation) data = await entry.operation(operation[1]);
+    else if (route === "operation-cancel" && entry.cancel) data = await entry.cancel(operation[1], text(body.requestId));
+    else if (route === "operation-handoff" && entry.handoff) data = await entry.handoff(operation[1], text(body.contextId), text(body.requestId));
+    else if (route === "preparations" && entry.preparations) data = await entry.preparations();
+    else if (route === "local") data = await entry.local(text(body.contextId), text(body.requestId));
+    else throw new RepositoryError("invalid_request");
+    json(status, { ok: true, data });
+  } catch (error) {
+    const envelope = errorEnvelope(error);
+    json(repositoryErrorStatus(envelope.error.code), envelope);
+  }
+}
 export {
+  createEntryCoordinator,
+  createHostHandoffAdapter,
   createRepositoryService,
-  handleRepositoryRequest
+  createWorkflowBinding,
+  handleEntryRequest,
+  handleRepositoryRequest,
+  loadEntrySettings
 };
 /*! Bundled license information:
 

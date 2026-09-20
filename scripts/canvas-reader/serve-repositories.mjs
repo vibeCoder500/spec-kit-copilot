@@ -4,7 +4,7 @@ import { pathToFileURL } from "node:url";
 import { startFixture } from "./serve-fixture.mjs";
 
 export async function startRepositoryPreview() {
-    const fixture = await startFixture({ canvas: "sdd", repositories: true });
+    const fixture = await startFixture({ canvas: "sdd", repositories: true, repositoryEntry: true, cloneOnlyEntryHost: true });
     const target = new URL(fixture.url);
     target.searchParams.delete("readerProbe");
     let host = "";

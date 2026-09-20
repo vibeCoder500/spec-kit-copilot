@@ -16,6 +16,6 @@
 /plugins/spec-kit-copilot-sdd/extensions/sdd-canvas/vendor/artifact-clarifications.NOTICES.txt -text
 /plugins/spec-kit-copilot-sdd/extensions/sdd-canvas/ui/artifact-review.js -text
 /plugins/spec-kit-copilot-sdd/extensions/sdd-canvas/vendor/repository-browser/** -text
-/plugins/spec-kit-copilot-sdd/extensions/sdd-canvas/ui/repository-browser.js -text
-/plugins/spec-kit-copilot-sdd/extensions/sdd-canvas/ui/repository-browser.css -text
+/plugins/spec-kit-copilot-sdd/extensions/sdd-canvas/ui/repository-entry.js -text
+/plugins/spec-kit-copilot-sdd/extensions/sdd-canvas/ui/repository-entry.css -text
 /specs/001-integrated-markdown-review/evidence/staging-manifest*.json -text

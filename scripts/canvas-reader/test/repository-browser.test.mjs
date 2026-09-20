@@ -2,17 +2,15 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { test } from "node:test";
 import { createRepositoryApi } from "../../../plugins/spec-kit-copilot-sdd/extensions/sdd-canvas/repository-browser/src/ui/api.ts";
-import { createRemoteReader } from "../../../plugins/spec-kit-copilot-sdd/extensions/sdd-canvas/repository-browser/src/ui/remote-reader.ts";
-import { mountRepositoryBrowser } from "../../../plugins/spec-kit-copilot-sdd/extensions/sdd-canvas/repository-browser/src/ui/repository-browser.ts";
+import { mountRepositoryEntry } from "../../../plugins/spec-kit-copilot-sdd/extensions/sdd-canvas/repository-browser/src/ui/repository-entry.ts";
 
 const require = createRequire(new URL("../../../plugins/spec-kit-copilot-wizard/extensions/speckit-wizard-canvas/ui/markdown-reader/package.json", import.meta.url));
 const { JSDOM } = require("jsdom");
 
-function documentFixture() {
-    return { artifact: { id: "item-one", relativePath: "specs/spec.md", label: "spec.md", role: "reference", availability: "available" },
-        content: "# Synthetic", revision: `sha256:${"a".repeat(64)}`, byteSize: 11, sourceKind: "git-commit", format: "markdown",
-        source: { provider: "azure-devops", repositoryId: "11111111-1111-4111-8111-111111111111", repositoryName: "Synthetic", branch: "refs/heads/main", commit: "b".repeat(40), objectId: "c".repeat(40) },
-        contextId: "context-one", generation: 1 };
+function entryState() {
+    return { configuration: "unconfigured", phase: "chooser", connection: { state: "disconnected", generation: 0, projectLabel: "" },
+        localContext: { contextId: "local-synthetic", label: "Synthetic workspace", state: "repository" },
+        host: { activity: "busy", canOpenCurrent: true, canPrepareRemote: false, canHandoff: false, reason: "session_busy" } };
 }
 
 test("browser requests carry only the canvas capability and sanitize server errors", async () => {
@@ -35,77 +33,235 @@ test("browser requests carry only the canvas capability and sanitize server erro
     } finally { dom.window.close(); }
 });
 
-test("late remote content cannot mount after disconnect or return", async () => {
-    const dom = new JSDOM('<div id="scroll"><div id="reader"></div></div>');
-    const pending = Promise.withResolvers();
-    let mounts = 0;
-    const container = dom.window.document.getElementById("reader");
-    const reader = createRemoteReader({ container, scrollElement: container.parentElement, api: { call: () => pending.promise },
-        loadReader: async () => () => { mounts++; return { update() {}, unmount() {} }; }, onReturn() {} });
-    try {
-        const request = reader.open("context-one", "item-one");
-        reader.clear();
-        pending.resolve(documentFixture());
-        await request;
-        assert.equal(mounts, 0);
-        assert.equal(container.dataset.remoteDocumentState, "idle");
-        assert(!container.textContent.includes("# Synthetic"));
-    } finally { reader.dispose(); dom.window.close(); }
-});
-
-test("remote Markdown keeps repository return semantics and text files are literal", async () => {
-    const dom = new JSDOM('<div id="scroll"><div id="reader"></div></div>');
-    const container = dom.window.document.getElementById("reader");
-    let next = documentFixture();
-    let options;
-    let returns = 0;
-    const reader = createRemoteReader({ container, scrollElement: container.parentElement, api: { call: async () => next },
-        loadReader: async () => (_container, supplied) => { options = supplied; return { update() {}, unmount() {} }; }, onReturn: () => returns++ });
-    try {
-        await reader.open("context-one", "item-one");
-        assert.equal(options.returnLabel, "Back to repository");
-        assert.equal(options.onClarification, undefined);
-        options.onReturnToWorkflow();
-        assert.equal(returns, 1);
-        next = { ...next, format: "text", content: "<script>untrusted text</script>" };
-        await reader.open("context-one", "item-one");
-        assert.equal(container.querySelectorAll("script").length, 0);
-        assert(container.querySelector("pre").textContent.includes("<script>"));
-    } finally { reader.dispose(); dom.window.close(); }
-});
-
-test("repository dropdown expands artifacts in place and preserves the existing local draft", async () => {
-    const dom = new JSDOM('<div id="repositories" hidden></div><header id="localHeader"><h1>Local SDD</h1></header><div id="localLayout"><textarea id="draft">Keep this draft</textarea></div>', { url: "http://127.0.0.1:32001/?cap=synthetic-capability", pretendToBeVisual: true });
+test("Entry local continuation is explicit and never reparents the original workflow", async () => {
+    const dom = new JSDOM('<main id="entry"></main><div id="original"><textarea id="draft">Keep this draft</textarea></div>', { url: "http://127.0.0.1:32001/?cap=synthetic-capability", pretendToBeVisual: true });
     const prior = Object.getOwnPropertyDescriptor(globalThis, "document");
     Object.defineProperty(globalThis, "document", { configurable: true, value: dom.window.document });
-    const repository = { id: "11111111-1111-4111-8111-111111111111", name: "Synthetic repository", defaultBranch: "refs/heads/main", operationalState: "active" };
-    const detail = { ...repository, sourceVersion: "b".repeat(40), speckitStatus: "enabled" };
-    const context = { contextId: "context-one", repository: detail, sourceVersion: detail.sourceVersion, generation: 1, roots: ["/specs"] };
-    const state = { configuration: "configured", connection: { state: "connected", generation: 1, accountLabel: "synthetic@example.invalid" }, localContext: { contextId: "local-test", label: "Local fixture" }, mode: "local", capabilities: { browse: true, clone: false } };
-    let readerOptions;
+    const calls = [];
     let instance;
     const tick = () => new Promise((resolve) => setImmediate(resolve));
     try {
-        instance = await mountRepositoryBrowser({ container: dom.window.document.getElementById("repositories"), localHeader: dom.window.document.getElementById("localHeader"), localLayout: dom.window.document.getElementById("localLayout"),
-            loadReader: async () => (_element, options) => { readerOptions = options; return { update() {}, unmount() {} }; },
-            request: async (input) => {
-                const path = new URL(input).pathname.split("/").at(-1);
-                const data = path === "connection" || path === "local" ? state : path === "relevant" ? { items: [repository], hasMore: false, cursor: null, outcome: "ready" } : path === "detail" ? detail : path === "context" ? context : path === "items" ? { items: [{ id: "item-one", path: "/specs/spec.md", label: "spec.md", kind: "file", objectId: "c".repeat(40) }], hasMore: false, cursor: null } : documentFixture();
+        instance = await mountRepositoryEntry({ container: dom.window.document.getElementById("entry"), request: async (input, options) => {
+                const path = new URL(input).pathname;
+                calls.push({ path, method: options.method });
+                assert.ok(["/api/entry/state", "/api/entry/local"].includes(path));
+                const data = path.endsWith("/state") ? entryState() : { opened: true };
                 return { ok: true, json: async () => ({ ok: true, data }) };
             } });
+        assert.deepEqual(calls.map(call => call.path), ["/api/entry/state"]);
+        const local = dom.window.document.querySelector('[data-action="local"]');
+        assert.equal(local.disabled, false);
+        local.click(); local.click();
         await tick();
-        const input = dom.window.document.querySelector('.repo-search'); input.focus();
-        const popup = dom.window.document.querySelector('.repo-popup');
-        assert.equal(popup.hidden, false);
-        popup.querySelector('[data-kind="repository"]').click(); await tick();
-        popup.querySelector('[data-kind="root"]').click(); await tick();
-        assert.equal(popup.querySelector('[data-kind="file"]').textContent, "spec.md");
-        popup.querySelector('[data-kind="file"]').click(); await tick();
-        assert.equal(popup.hidden, true);
-        assert.equal(readerOptions.document.sourceKind, "git-commit");
-        readerOptions.onReturnToWorkflow();
-        assert.equal(popup.hidden, false);
+        assert.equal(calls.filter(call => call.path === "/api/entry/local").length, 1);
+        assert.equal(dom.window.document.getElementById("draft").parentElement.id, "original");
         assert.equal(dom.window.document.getElementById("draft").value, "Keep this draft");
+        assert.equal(dom.window.document.querySelectorAll(".repo-rail,.repo-preview,.md-reader").length, 0);
+        assert.match(dom.window.document.getElementById("entry").textContent, /canvas opened/i);
+    } finally {
+        instance?.dispose();
+        if (prior) Object.defineProperty(globalThis, "document", prior); else Reflect.deleteProperty(globalThis, "document");
+        dom.window.close();
+    }
+});
+
+test("Entry failure offers direct opening without exposing raw server output", async () => {
+    const dom = new JSDOM('<main id="entry"></main>', { url: "http://127.0.0.1:32001/?cap=synthetic-capability" });
+    const prior = Object.getOwnPropertyDescriptor(globalThis, "document");
+    Object.defineProperty(globalThis, "document", { configurable: true, value: dom.window.document });
+    let instance;
+    try {
+        instance = await mountRepositoryEntry({ container: dom.window.document.getElementById("entry"), request: async () => { throw new Error("private-server-value"); } });
+        assert.doesNotMatch(dom.window.document.body.textContent, /private-server-value/);
+        assert.ok(dom.window.document.querySelector('[data-action="direct"]'));
+        assert.equal(dom.window.document.querySelector('[data-action="local"]').disabled, true);
+    } finally {
+        instance?.dispose();
+        if (prior) Object.defineProperty(globalThis, "document", prior); else Reflect.deleteProperty(globalThis, "document");
+        dom.window.close();
+    }
+});
+
+test("Entry dropdown restores suggestions, selects by keyboard, and requires explicit clone consent", async () => {
+    const dom = new JSDOM('<main id="entry"></main><textarea id="original">Preserved</textarea>', { url: "http://127.0.0.1:32001/?cap=synthetic-capability", pretendToBeVisual: true });
+    const prior = Object.getOwnPropertyDescriptor(globalThis, "document");
+    Object.defineProperty(globalThis, "document", { configurable: true, value: dom.window.document });
+    const tick = () => new Promise(resolve => setImmediate(resolve));
+    const calls = [];
+    const state = { ...entryState(), configuration: "configured", connection: { state: "connected", generation: 1, accountLabel: "synthetic@example.invalid", projectLabel: "Synthetic" },
+        host: { activity: "idle", canOpenCurrent: true, canPrepareRemote: true, reason: null } };
+    const repository = { id: "33333333-3333-4333-8333-333333333333", name: "Team repository", defaultBranch: "refs/heads/main", operationalState: "active", specKitStatus: "present", sourceVersion: "a".repeat(40) };
+    const timers = [];
+    dom.window.setTimeout = (callback, delay) => { timers.push({ callback, delay }); return timers.length; };
+    dom.window.clearTimeout = () => undefined;
+    let instance;
+    try {
+        instance = await mountRepositoryEntry({ container: dom.window.document.getElementById("entry"), request: async (input, options) => {
+            const url = new URL(input); calls.push(url.pathname);
+            let data;
+            if (url.pathname.endsWith("/state")) data = state;
+            else if (url.pathname.endsWith("/preparations")) data = { items: [] };
+            else if (url.pathname.endsWith("/relevant")) data = { items: [repository], hasMore: false, outcome: "ready" };
+            else if (url.pathname.endsWith("/search")) data = { items: [{ ...repository, name: "Project match" }], hasMore: false };
+            else if (url.pathname.endsWith("/selection")) data = { selectionId: "selected", repository, accountLabel: "synthetic@example.invalid", matchesCurrentWorkspace: false,
+                confirmation: "consent", operationId: "a".repeat(32), destination: "C:/Synthetic/SpecKitCanvas/repositories/owned/checkout", expiresAt: Date.now() + 120000, reason: null };
+            else if (url.pathname.endsWith("/clone")) { assert.equal(JSON.parse(options.body).confirmation, "consent"); data = { operationId: "a".repeat(32), state: "preparing" }; }
+            else if (url.pathname.includes("/operations/")) data = { operationId: "a".repeat(32), state: "preparing" };
+            else assert.fail(`Unexpected entry request ${url.pathname}`);
+            return { ok: true, json: async () => ({ ok: true, data }) };
+        } });
+        const search = dom.window.document.querySelector('[role="combobox"]');
+        assert.equal(search.disabled, false);
+        search.focus(); await tick();
+        assert.match(dom.window.document.querySelector('[role="listbox"]').textContent, /Team repository/);
+        search.value = "project"; search.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+        const debounce = timers.findLast(timer => timer.delay === 1000);
+        assert.ok(debounce); debounce.callback(); await tick();
+        assert.match(dom.window.document.querySelector('[role="listbox"]').textContent, /Project match/);
+        dom.window.document.querySelector('[data-action="clear-search"]').click(); await tick();
+        assert.match(dom.window.document.querySelector('[role="listbox"]').textContent, /Team repository/);
+        search.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+        search.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+        await tick();
+        assert.match(dom.window.document.body.textContent, /synthetic@example.invalid/);
+        assert.match(dom.window.document.body.textContent, new RegExp("a".repeat(40)));
+        assert.equal(calls.filter(path => path.endsWith("/clone")).length, 0);
+        dom.window.document.querySelector('[data-action="cancel-selection"]').click();
+        await tick();
+        assert.equal(calls.filter(path => path.endsWith("/clone")).length, 0);
+        assert.equal(dom.window.document.activeElement, search);
+        search.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+        search.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Enter", bubbles: true })); await tick();
+        const confirm = dom.window.document.querySelector('[data-action="confirm-clone"]');
+        confirm.click(); confirm.click(); await tick();
+        assert.equal(calls.filter(path => path.endsWith("/clone")).length, 1);
+        assert.equal(dom.window.document.querySelectorAll('.repo-rail,.repo-preview,.md-reader').length, 0);
+        assert.equal(dom.window.document.getElementById("original").value, "Preserved");
+    } finally {
+        instance?.dispose();
+        if (prior) Object.defineProperty(globalThis, "document", prior); else Reflect.deleteProperty(globalThis, "document");
+        dom.window.close();
+    }
+});
+
+test("Late dropdown responses and idle events cannot replace suggestions or submit commands", async () => {
+    const dom = new JSDOM('<main id="entry"></main>', { url: "http://127.0.0.1:32001/?cap=synthetic-capability", pretendToBeVisual: true });
+    const prior = Object.getOwnPropertyDescriptor(globalThis, "document");
+    Object.defineProperty(globalThis, "document", { configurable: true, value: dom.window.document });
+    const tick = () => new Promise(resolve => setImmediate(resolve));
+    const timers = [];
+    dom.window.setTimeout = (callback, delay) => { timers.push({ callback, delay }); return timers.length; };
+    dom.window.clearTimeout = () => undefined;
+    let finishSearch;
+    const late = new Promise(resolve => { finishSearch = resolve; });
+    const state = { ...entryState(), configuration: "configured", connection: { state: "connected", generation: 1, accountLabel: "synthetic@example.invalid" },
+        host: { activity: "idle", canOpenCurrent: true, canPrepareRemote: true, reason: null } };
+    const repository = { id: "33333333-3333-4333-8333-333333333333", name: "Retained suggestion", defaultBranch: "refs/heads/main", sourceVersion: "a".repeat(40), operationalState: "active" };
+    const requests = [];
+    let instance;
+    try {
+        instance = await mountRepositoryEntry({ container: dom.window.document.getElementById("entry"), request: async input => {
+            const path = new URL(input).pathname; requests.push(path);
+            let data;
+            if (path.endsWith("/state")) data = state;
+            else if (path.endsWith("/preparations")) data = { items: [] };
+            else if (path.endsWith("/relevant")) data = { items: [repository], hasMore: false };
+            else if (path.endsWith("/search")) data = await late;
+            else if (path.endsWith("/selection")) data = { selectionId: "selection", repository, accountLabel: "synthetic@example.invalid", confirmation: "nonce",
+                destination: "C:/Synthetic/checkout", expiresAt: Date.now() + 120000, matchesCurrentWorkspace: false, reason: null };
+            else assert.fail("An event must not submit a mutation");
+            return { ok: true, json: async () => ({ ok: true, data }) };
+        } });
+        const search = dom.window.document.querySelector('[role="combobox"]');
+        search.focus(); await tick();
+        search.value = "late"; search.dispatchEvent(new dom.window.Event("input"));
+        timers.findLast(timer => timer.delay === 1000).callback(); await tick();
+        dom.window.document.querySelector('[data-action="clear-search"]').click();
+        finishSearch({ items: [{ ...repository, name: "Obsolete result" }], hasMore: false }); await tick();
+        assert.match(dom.window.document.querySelector('[role="listbox"]').textContent, /Retained suggestion/);
+        assert.doesNotMatch(dom.window.document.querySelector('[role="listbox"]').textContent, /Obsolete result/);
+        search.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Escape" }));
+        assert.equal(search.getAttribute("aria-expanded"), "false");
+        search.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "ArrowDown" }));
+        search.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Enter" })); await tick();
+        instance.receive({ ...state, host: { ...state.host, activity: "busy", canPrepareRemote: false, reason: "session_busy" } });
+        instance.receive(state);
+        assert.equal(dom.window.document.querySelector('[data-action="confirm-clone"]').disabled, true);
+        assert.equal(dom.window.document.querySelector('[data-action="local"]').disabled, false);
+        assert.ok(requests.every(path => !path.endsWith("/clone") && !path.endsWith("/local")));
+    } finally {
+        instance?.dispose();
+        if (prior) Object.defineProperty(globalThis, "document", prior); else Reflect.deleteProperty(globalThis, "document");
+        dom.window.close();
+    }
+});
+
+for (const restored of [false, true]) {
+    test(`Clone-only completion exposes a copyable checkout without handoff controls${restored ? " after reload" : ""}`, async () => {
+        const dom = new JSDOM('<main id="entry"></main>', { url: "http://127.0.0.1:32001/?cap=synthetic-capability", pretendToBeVisual: true });
+        const prior = Object.getOwnPropertyDescriptor(globalThis, "document");
+        Object.defineProperty(globalThis, "document", { configurable: true, value: dom.window.document });
+        const copied = [];
+        Object.defineProperty(dom.window.navigator, "clipboard", { value: { writeText: async path => { copied.push(path); } } });
+        const operation = { operationId: "a".repeat(32), state: "prepared", repositoryName: "Cloned repository",
+            destination: "C:/Synthetic/SpecKitCanvas/repositories/owned/checkout", sourceCommit: "a".repeat(40), localBranch: "speckit/canvas-owned" };
+        const state = { ...entryState(), configuration: "configured", phase: restored ? "chooser" : "prepared",
+            connection: { state: "connected", generation: 1, accountLabel: "synthetic@example.invalid" },
+            host: { activity: "idle", canOpenCurrent: true, canPrepareRemote: true, canHandoff: false, canRetryHandoff: false, reason: null },
+            operation: restored ? null : operation };
+        const calls = [];
+        let instance;
+        try {
+            instance = await mountRepositoryEntry({ container: dom.window.document.getElementById("entry"), request: async (input, options) => {
+                const path = new URL(input).pathname;
+                calls.push({ path, method: options.method });
+                assert.ok(["/api/entry/state", "/api/entry/preparations"].includes(path));
+                const data = path.endsWith("/state") ? state : { items: restored ? [{ ...operation, handoffState: null }] : [] };
+                return { ok: true, json: async () => ({ ok: true, data }) };
+            } });
+            await new Promise(resolve => setImmediate(resolve));
+            const document = dom.window.document;
+            assert.match(document.body.textContent, restored ? /Cloned repositories/ : /Clone complete\./);
+            if (!restored) assert.match(document.body.textContent, /Current workspace unchanged/);
+            assert.equal(document.querySelector('[aria-label="Retry handoff"]'), null);
+            assert.equal(document.querySelector('[data-action="local"]').disabled, false);
+            const copy = document.querySelector('[data-action="copy-checkout-path"]');
+            assert.equal(copy.disabled, false);
+            copy.click();
+            await new Promise(resolve => setImmediate(resolve));
+            assert.deepEqual(copied, [operation.destination]);
+            assert.match(document.body.textContent, /Checkout path copied/);
+            instance.receive({ ...state, host: { ...state.host, activity: "busy", canPrepareRemote: false } });
+            instance.receive(state);
+            assert.equal(calls.filter(call => call.method === "POST").length, 0);
+            assert.equal(document.querySelector('[aria-label="Retry handoff"]'), null);
+        } finally {
+            instance?.dispose();
+            if (prior) Object.defineProperty(globalThis, "document", prior); else Reflect.deleteProperty(globalThis, "document");
+            dom.window.close();
+        }
+    });
+}
+
+test("Broken entry state still permits explicit direct opening without remote setup or dispatch", async () => {
+    const dom = new JSDOM('<main id="entry"></main>', { url: "http://127.0.0.1:32001/?cap=synthetic-capability", pretendToBeVisual: true });
+    const prior = Object.getOwnPropertyDescriptor(globalThis, "document");
+    Object.defineProperty(globalThis, "document", { configurable: true, value: dom.window.document });
+    const calls = [];
+    let instance;
+    try {
+        instance = await mountRepositoryEntry({ container: dom.window.document.getElementById("entry"), request: async (input, options) => {
+            const path = new URL(input).pathname; calls.push(path);
+            if (path.endsWith("/state")) throw new Error("synthetic-private-diagnostic");
+            assert.equal(path, "/api/entry/direct");
+            assert.deepEqual(Object.keys(JSON.parse(options.body)), ["requestId"]);
+            return { ok: true, json: async () => ({ ok: true, data: { opened: true } }) };
+        } });
+        dom.window.document.querySelector('[data-action="direct"]').click();
+        await new Promise(resolve => setImmediate(resolve));
+        assert.deepEqual(calls, ["/api/entry/state", "/api/entry/direct"]);
+        assert.match(dom.window.document.body.textContent, /canvas opened/i);
+        assert.doesNotMatch(dom.window.document.body.textContent, /synthetic-private-diagnostic/);
     } finally {
         instance?.dispose();
         if (prior) Object.defineProperty(globalThis, "document", prior); else Reflect.deleteProperty(globalThis, "document");

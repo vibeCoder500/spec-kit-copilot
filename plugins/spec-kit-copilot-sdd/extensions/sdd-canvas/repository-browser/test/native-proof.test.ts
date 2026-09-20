@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createNativeProofServer } from "../src/native-proof.ts";
+import * as nativeProof from "../src/native-proof.ts";
 
 test("Native proof starts offline and guards every request with its own capability and origin", async () => {
     let attemptedAuth = 0;
@@ -38,4 +39,27 @@ test("Native proof starts offline and guards every request with its own capabili
         assert(document.includes("SDD Repository Connection Proof"));
         assert(!document.includes("accessToken"));
     } finally { await proof.close(); }
+});
+
+test("Entry evidence cannot promote synthetic or manual opening to native automatic acceptance", () => {
+    const summarize = Reflect.get(nativeProof, "summarizeEntryAcceptance");
+    assert.equal(typeof summarize, "function");
+    const report = { schemaVersion: 1, scope: "synthetic", hostProof: "synthetic", appVersion: "1.1.20", sdkProtocol: 3, payloadSha256: "a".repeat(64),
+        current: { repositoryIdentity: "b".repeat(64), viewed: true, cloneCount: 0, workflowCount: 0, sourcePreserved: true },
+        clone: { repositoryIdentity: "c".repeat(64), beforeConsentWrites: 0, cloneCount: 1, retryCloneCount: 0, workflowCount: 0,
+            sourcePreserved: true, originalBranchPreserved: true, targetVerified: true,
+            phases: ["workspace_activated", "guarded_canvas_open", "target_verified", "canvas_ready"] } };
+    assert.equal(summarize(report).nativeAcceptance, "blocked");
+    assert.equal(summarize({ ...report, scope: "native", hostProof: "manual" }).nativeAcceptance, "blocked");
+    assert.equal(summarize({ ...report, scope: "native", hostProof: "verified-native" }).nativeAcceptance, "passed");
+    for (const clone of [{ ...report.clone, phases: ["workspace_activated", "canvas_ready"] }, { ...report.clone, retryCloneCount: 1 },
+        { ...report.clone, sourcePreserved: false }, { ...report.clone, beforeConsentWrites: 1 }, { ...report.clone, repositoryIdentity: report.current.repositoryIdentity }]) {
+        assert.equal(summarize({ ...report, scope: "native", hostProof: "verified-native", clone }).nativeAcceptance, "failed");
+    }
+    for (const secret of [{ accessToken: "synthetic-secret" }, { capability: "synthetic-secret" }, { confirmation: "synthetic-secret" },
+        { screenshotUrl: "http://localhost/?cap=synthetic-secret" }, { clone: { ...report.clone, privatePath: "C:/private" } }]) {
+        assert.throws(() => summarize({ ...report, ...secret }), error => {
+            assert.doesNotMatch(String(error), /synthetic-secret|C:\/private/); return true;
+        });
+    }
 });

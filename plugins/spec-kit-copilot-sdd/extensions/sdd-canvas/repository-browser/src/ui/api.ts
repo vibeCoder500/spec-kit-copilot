@@ -10,12 +10,14 @@ export interface BrowserSnapshot {
     capabilities: { browse: boolean; clone: boolean };
 }
 
-export function createRepositoryApi({ document, request = globalThis.fetch }: { document: Document; request?: typeof fetch }) {
+export function createRepositoryApi({ document, request = globalThis.fetch, namespace = "repositories" }: {
+    document: Document; request?: typeof fetch; namespace?: "repositories" | "entry";
+}) {
     const base = new URL(document.location.href);
     const controllers = new Set<AbortController>();
     return {
         async call<Result>(path: string, parameters: Record<string, string> = {}, body?: Record<string, unknown>, signal?: AbortSignal): Promise<Result> {
-            const url = new URL(`/api/repositories/${path}`, base);
+            const url = new URL(`/api/${namespace}/${path}`, base);
             const capability = base.searchParams.get("cap");
             if (!capability) throw new RepositoryError("invalid_context");
             url.searchParams.set("cap", capability);

@@ -66,3 +66,45 @@ test("SDD related artifacts, references, and history preserve the selected featu
         expect(fixture.workspaceChanged()).toBe(false);
     } finally { await page.close(); expect((await fixture.stop()).cleaned).toBe(true); }
 });
+
+for (const route of ["current", "prepared"]) {
+    test(`SDD ${route} entry preserves original workflow controls and artifact navigation`, async ({ page }) => {
+        const baseline = await startFixture({ canvas: "sdd" });
+        const fixture = await startFixture({ canvas: "sdd", repositoryEntry: true, repositories: route === "prepared", supportedEntryHost: route === "prepared" });
+        try {
+            await page.goto(baseline.url);
+            await expect(page.getByTitle("View spec.md", { exact: true })).toBeVisible();
+            const expected = await page.locator("#cards").textContent();
+            await page.goto(fixture.url);
+            if (route === "current") {
+                await page.getByRole("button", { name: "Use current workspace", exact: true }).click();
+                await expect(page.getByRole("status").filter({ hasText: "canvas opened" })).toBeVisible();
+                expect(fixture.currentUrl()).toBeTruthy();
+                await page.goto(fixture.currentUrl());
+            } else {
+                await page.getByRole("button", { name: "Connect Microsoft account", exact: true }).click();
+                const search = page.getByRole("combobox", { name: "Search readable project repositories", exact: true });
+                await expect(search).toBeEnabled(); await search.focus();
+                await page.getByRole("option", { name: /Synthetic repository 1/ }).click();
+                await page.getByRole("button", { name: "Confirm and clone", exact: true }).click();
+                await expect(page.getByRole("status").filter({ hasText: "Spec Kit canvas ready." })).toBeVisible();
+                expect(fixture.targetUrl()).toBeTruthy();
+                await page.goto(fixture.targetUrl());
+            }
+            await expect(page.getByTitle("View spec.md", { exact: true })).toBeVisible();
+            expect(await page.locator("#cards").textContent()).toBe(expected);
+            await expect(page.locator('#repositoryEntry,.entry-flow,.repo-rail,link[href*="repository-entry"]')).toHaveCount(0);
+            await page.getByTitle("View spec.md", { exact: true }).click();
+            await expect(page.getByRole("heading", { name: "Canvas review fixture", exact: true })).toBeVisible();
+            await page.getByRole("combobox", { name: "Artifacts", exact: true }).selectOption({ label: "research.md" });
+            await expect(page.getByRole("heading", { name: "Fixture research", exact: true })).toBeVisible();
+            await page.locator("#closeArt").click();
+            expect(await page.locator("#cards").textContent()).toBe(expected);
+            expect(fixture.dispatchCount()).toBe(0); expect(fixture.workspaceChanged()).toBe(false);
+            if (route === "current") expect(fixture.entryHost.counts().starts).toBe(0);
+            else expect(fixture.repositories.cloneCount()).toBe(1);
+        } finally {
+            await page.close(); expect((await baseline.stop()).cleaned).toBe(true); expect((await fixture.stop()).cleaned).toBe(true);
+        }
+    });
+}

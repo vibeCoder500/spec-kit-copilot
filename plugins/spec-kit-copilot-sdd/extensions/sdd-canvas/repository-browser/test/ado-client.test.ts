@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { mock, test } from "node:test";
 import type { RepositoryConnection } from "../src/auth.ts";
 import { createAdoClient, readRepositoryProof } from "../src/ado-client.ts";
 import { parseRepositoryProfile } from "../src/profile.ts";
@@ -71,4 +71,30 @@ test("Production listing excludes disabled repositories and validates the config
     assert.equal(repositories[0]?.name, "Visible");
     values[0]!.project.name = "AnotherProject";
     await assert.rejects(client.list(await client.open()), { code: "resource_unavailable" });
+});
+
+test("Discovery and individual requests enforce their configured abort deadlines", async () => {
+    for (const budget of [10_000, 35_000]) {
+        const original = AbortSignal.timeout;
+        const deadline = new AbortController();
+        const budgets: number[] = [];
+        let entered: () => void = () => undefined;
+        const started = new Promise<void>(resolve => { entered = resolve; });
+        const mocked = mock.method(AbortSignal, "timeout", (milliseconds: number) => {
+            budgets.push(milliseconds); return milliseconds === budget ? deadline.signal : original(milliseconds);
+        });
+        try {
+            const client = createAdoClient({ profile, connection: accessConnection(), request: async (_input, options) => {
+                entered();
+                return new Promise<Response>((_resolve, reject) => {
+                    const cancel = () => reject(new Error("Synthetic timeout"));
+                    if (options?.signal?.aborted) cancel(); else options?.signal?.addEventListener("abort", cancel, { once: true });
+                });
+            } });
+            const request = client.list(await client.open());
+            await started; deadline.abort();
+            await assert.rejects(request, { code: "upstream_unavailable" });
+            assert.ok(budgets.includes(10_000)); assert.ok(budgets.includes(35_000));
+        } finally { mocked.mock.restore(); }
+    }
 });

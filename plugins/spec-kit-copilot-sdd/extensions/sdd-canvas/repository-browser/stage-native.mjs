@@ -21,9 +21,9 @@ export async function stageRepositoryCanvas({ profile, initializeGit = true }) {
     await mkdir(join(owner.workspace, ".github/extensions"), { recursive: true });
     await cp(join(source, "extensions/sdd-canvas"), extension, { recursive: true, errorOnExist: true, force: false });
     const original = await readFile(join(extension, "extension.mjs"), "utf8");
-    const marker = "entry = await startServer();";
+    const marker = "entry = await startServer(options);";
     if (original.split(marker).length !== 2) throw new Error("Native configuration injection site changed; test fixture preserved.");
-    const adapter = original.replace(marker, `entry = await startServer({ profileStatus: { state: "configured", profile: ${JSON.stringify(validated)} } });`);
+    const adapter = original.replace(marker, `entry = await startServer({ ...options, profileStatus: { state: "configured", profile: ${JSON.stringify(validated)} } });`);
     await writeFile(join(extension, "extension.mjs"), adapter);
     await writeFile(join(owner.workspace, ".gitattributes"), "* -text\n", { flag: "wx" });
     const record = { schemaVersion: 1, kind: "sdd-repository-full-native-fixture", ownerId: owner.id, workspace: owner.workspace,

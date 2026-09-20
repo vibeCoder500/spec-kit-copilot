@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Spec-Driven Development</title>
+</head>
+<body>
+  <main id="repositoryEntry"><h1>Choose a repository</h1><p role="status">Loading repository entry...</p></main>
+  <script type="module">
+    const capability = new URLSearchParams(location.search).get("cap") || "";
+    const endpoint = path => `${path}?${new URLSearchParams({ cap: capability })}`;
+    const css = document.createElement("link");
+    css.rel = "stylesheet";
+    css.href = endpoint("/ui/repository-entry.css");
+    document.head.append(css);
+    let controller;
+    let events;
+    try {
+      const module = await import(endpoint("/ui/repository-entry.js"));
+      controller = await module.mountRepositoryEntry({ container: document.getElementById("repositoryEntry") });
+        events = new EventSource(endpoint("/events"));
+        events.addEventListener("entry", event => {
+          try { controller.receive(JSON.parse(event.data)); } catch { return; }
+        });
+    } catch {
+      const container = document.getElementById("repositoryEntry");
+      container.replaceChildren();
+      const heading = document.createElement("h1"); heading.textContent = "Repository entry unavailable";
+      const direct = document.createElement("button"); direct.type = "button"; direct.textContent = "Open canvas directly";
+      direct.addEventListener("click", async () => {
+        direct.disabled = true;
+        try {
+          const response = await fetch(endpoint("/api/entry/direct"), { method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ requestId: crypto.randomUUID() }), cache: "no-store", referrerPolicy: "no-referrer" });
+          direct.textContent = response.ok ? "Spec Kit canvas opened" : "Direct canvas unavailable";
+        } catch { direct.textContent = "Direct canvas unavailable"; }
+        direct.disabled = false;
+      });
+      container.append(heading, direct);
+    }
+    addEventListener("pagehide", () => { events?.close(); controller?.dispose(); }, { once: true });
+  </script>
+</body>
+</html>

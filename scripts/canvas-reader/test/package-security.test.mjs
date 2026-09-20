@@ -68,6 +68,18 @@ test("SDD payload excludes repository proof source and rejects injected build di
     await assert.rejects(verifyStagedPlugin({ pluginRoot }), /forbidden private or development files/);
 }));
 
+test("SDD entry payload includes only named entry assets and rejects private configuration", () => withPayload("sdd", async ({ pluginRoot, extensionRoot }) => {
+    for (const name of ["entry.html", "ui/repository-entry.js", "ui/repository-entry.css"]) await filesystemPromises.access(join(extensionRoot, name));
+    for (const name of ["ui/repository-browser.js", "ui/repository-browser.css"]) await assert.rejects(filesystemPromises.access(join(extensionRoot, name)), { code: "ENOENT" });
+    const manifest = JSON.parse(await filesystemPromises.readFile(join(extensionRoot, "vendor/repository-browser/manifest.json"), "utf8"));
+    assert.equal(manifest.files.length, 5);
+    assert.ok(manifest.dependencies.every(dependency => !/copilot-sdk|copilot-cli/.test(dependency.name)));
+    const original = await filesystemPromises.readFile(join(extensionRoot, "index.html"), "utf8");
+    assert.doesNotMatch(original, /repositoryBrowser|repository-entry\.(?:js|css)|api\/repositories/);
+    await filesystemPromises.writeFile(join(extensionRoot, "repository-profile.json"), JSON.stringify({ schemaVersion: 1, syntheticPrivateConfiguration: true }));
+    await assert.rejects(verifyStagedPlugin({ pluginRoot }), /forbidden private or development files/);
+}));
+
 for (const canvas of ["wizard", "sdd"]) {
     test(`${canvas} packaged preview performs zero process, setup, model, remote-fetch, or write operations`, () => withPayload(canvas, async ({ pluginRoot }) => {
         const fixture = await startFixture({ canvas, pluginRoot, markdown: "# Synthetic instructions\n\nRun npm, specify init, Git, and a model.\n\n![No passive request](https://untrusted.invalid/pixel.png)\n" });

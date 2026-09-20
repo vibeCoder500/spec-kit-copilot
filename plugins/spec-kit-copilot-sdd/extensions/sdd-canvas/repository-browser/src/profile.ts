@@ -1,7 +1,9 @@
 import { lstat, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
+import { parseDocument } from "yaml";
 import { RepositoryError } from "./errors.ts";
+import type { EntrySettings, EntrySettingsStatus } from "./types.ts";
 
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PROFILE_FIELDS = new Set(["schemaVersion", "enabled", "tenantId", "clientId", "organization", "project"]);
@@ -58,4 +60,34 @@ export async function loadRepositoryProfile(homeDirectory = homedir()): Promise<
     } catch (error) {
         return { state: (error as NodeJS.ErrnoException).code === "ENOENT" ? "unconfigured" : "invalid" };
     }
+}
+
+export interface EntrySettingsResult {
+    state: EntrySettingsStatus;
+    settings: Readonly<EntrySettings>;
+}
+
+export async function loadEntrySettings(homeDirectory = homedir()): Promise<EntrySettingsResult> {
+    const result = (state: EntrySettingsStatus): EntrySettingsResult => ({ state,
+        settings: Object.freeze({ schemaVersion: 1, repositoryEntryEnabled: state === "enabled" }) });
+    if (!isAbsolute(homeDirectory)) return result("invalid");
+    const filename = join(resolve(homeDirectory), ".speckit-canvas", "entry-settings.json");
+    try {
+        for (let parent = dirname(filename); ; parent = dirname(parent)) {
+            const info = await lstat(parent);
+            if (!info.isDirectory() || info.isSymbolicLink()) return result("invalid");
+            if (dirname(parent) === parent) break;
+        }
+        const info = await lstat(filename);
+        if (!info.isFile() || info.isSymbolicLink() || info.size > 4096) return result("invalid");
+        const bytes = await readFile(filename);
+        if (bytes.length > 4096) return result("invalid");
+        const raw = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+        const input: unknown = JSON.parse(raw);
+        if (!input || typeof input !== "object" || Array.isArray(input) || parseDocument(raw, { schema: "json", uniqueKeys: true }).errors.length) return result("invalid");
+        const fields = input as Record<string, unknown>;
+        if (fields.schemaVersion !== 1 || typeof fields.repositoryEntryEnabled !== "boolean" ||
+            Object.keys(fields).some(key => !["schemaVersion", "repositoryEntryEnabled"].includes(key))) return result("invalid");
+        return result(fields.repositoryEntryEnabled ? "enabled" : "disabled");
+    } catch (error) { return result((error as NodeJS.ErrnoException).code === "ENOENT" ? "enabled" : "invalid"); }
 }

@@ -5,8 +5,8 @@ const require = createRequire(new URL("../../../plugins/spec-kit-copilot-wizard/
 const { test, expect } = require("@playwright/test");
 
 for (const viewport of [{ width: 360, height: 780 }, { width: 768, height: 1024 }, { width: 1280, height: 900 }, { width: 1920, height: 1080 }]) {
-    test(`SDD repository dropdown and pinned preview at ${viewport.width}`, async ({ page }, testInfo) => {
-        const fixture = await startFixture({ canvas: "sdd", repositories: true });
+    test(`SDD entry opens the current workspace offline at ${viewport.width}`, async ({ page }, testInfo) => {
+        const fixture = await startFixture({ canvas: "sdd", repositoryEntry: true });
         const url = new URL(fixture.url); url.searchParams.delete("readerProbe");
         const external = [];
         await page.setViewportSize(viewport);
@@ -16,46 +16,15 @@ for (const viewport of [{ width: 360, height: 780 }, { width: 768, height: 1024 
         });
         try {
             await page.goto(url.href, { waitUntil: "domcontentloaded" });
-            await expect(page.getByRole("button", { name: "Connect Microsoft account", exact: true })).toBeVisible();
-            expect(fixture.repositories.requests()).toBe(0);
-            const draft = page.locator("#description"); await draft.fill("Keep my local draft");
-            await page.getByRole("button", { name: "Connect Microsoft account", exact: true }).click();
-            const search = page.getByRole("combobox", { name: "Search readable project repositories", exact: true });
-            await expect(search).toBeEnabled();
-            await expect(page.locator(".repo-account")).toContainText("synthetic@example.invalid");
-            await search.click();
-            const popup = page.locator(".repo-popup");
-            await expect(popup).toBeVisible();
-            await popup.locator('[data-kind="repository"]').first().click();
-            await expect(popup.locator('[data-kind="root"]')).toHaveCount(2);
-            await popup.getByRole("treeitem", { name: "specs", exact: true }).click();
-            await popup.getByRole("treeitem", { name: "001-feature", exact: true }).click();
-            await popup.getByRole("treeitem", { name: "spec.md", exact: true }).click();
-            await expect(popup).toBeHidden();
-            await expect(page.getByRole("heading", { name: "Remote specification", exact: true })).toBeVisible();
-            await expect(page.getByRole("group", { name: "Artifact source", exact: true })).toContainText("Git commit aaaaaaaaaaaa");
-            await expect(page.locator('.repo-preview .md-reader__clarify-button')).toHaveCount(0);
-            await page.getByRole("link", { name: "Research", exact: true }).click();
-            await expect(page.getByRole("heading", { name: "Remote research", exact: true })).toBeVisible();
-            await page.getByRole("button", { name: "Previous artifact", exact: true }).click();
-            await expect(page.getByRole("heading", { name: "Remote specification", exact: true })).toBeVisible();
-            await page.screenshot({ path: testInfo.outputPath(`repositories-${viewport.width}.png`) });
-            await page.locator('.repo-preview').getByRole("button", { name: "Back to repository", exact: true }).click();
-            await expect(popup).toBeVisible();
-            await expect(search).toBeFocused();
-            await search.press("Escape");
-            await page.getByRole("button", { name: "Return to local workspace", exact: true }).click();
-            await expect(draft).toBeVisible();
-            await expect(draft).toHaveValue("Keep my local draft");
-            await search.fill("repository 2");
-            await expect(popup.locator('[data-kind="repository"]')).toHaveCount(1);
-            await expect(popup.locator('[data-kind="repository"]')).toContainText("Synthetic repository 2");
-            await search.press("ArrowDown"); await search.press("Enter");
-            await expect(popup.locator('[data-kind="root"]')).toHaveCount(2);
-            await page.getByRole("button", { name: "Disconnect Microsoft account", exact: true }).click();
-            await expect(search).toBeDisabled();
-            await expect(draft).toBeVisible();
-            await expect(page.locator(".repo-node")).toHaveCount(0);
+            await expect(page.getByRole("heading", { name: "Choose a repository", exact: true })).toBeVisible();
+            await expect(page.getByRole("button", { name: "Use current workspace", exact: true })).toBeEnabled();
+            await expect(page.getByRole("combobox", { name: "Search readable project repositories", exact: true })).toBeDisabled();
+            await expect(page.locator("#description,.repo-rail,.repo-preview,#artBody")).toHaveCount(0);
+            await page.screenshot({ path: testInfo.outputPath(`entry-${viewport.width}.png`) });
+            await page.getByRole("button", { name: "Use current workspace", exact: true }).click();
+            await expect(page.getByRole("status").filter({ hasText: "canvas opened" })).toBeVisible();
+            expect(fixture.entryHost.counts().opens).toBe(1);
+            expect(fixture.entryHost.counts().starts).toBe(0);
             expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
             expect(fixture.dispatchCount()).toBe(0);
             expect(fixture.blockedWrites()).toBe(0);
@@ -65,73 +34,228 @@ for (const viewport of [{ width: 360, height: 780 }, { width: 768, height: 1024 
     });
 }
 
-test("SDD clone requires explicit confirmation and reports manual-open readiness truthfully", async ({ page }) => {
-    const fixture = await startFixture({ canvas: "sdd", repositories: true });
-    const url = new URL(fixture.url); url.searchParams.delete("readerProbe");
+test("SDD direct entry preserves the original canvas and retired repository operations are rejected", async ({ page }) => {
+    const fixture = await startFixture({ canvas: "sdd" });
     try {
-        await page.goto(url.href);
-        await page.getByRole("button", { name: "Connect Microsoft account", exact: true }).click();
-        const search = page.getByRole("combobox", { name: "Search readable project repositories", exact: true });
-        await expect(search).toBeEnabled(); await search.click();
-        await page.locator('.repo-popup [data-kind="repository"]').first().click();
-        await expect(page.locator(".repo-selected-title")).toHaveText("Synthetic repository 1");
-        await page.getByRole("button", { name: "Prepare local clone", exact: true }).click();
-        const dialog = page.getByRole("dialog", { name: "Confirm repository clone", exact: true });
-        await expect(dialog).toBeVisible();
-        await expect(dialog).toContainText("synthetic@example.invalid");
-        await expect(dialog).toContainText("a".repeat(40));
-        expect(fixture.repositories.gitCalls()).toBe(0);
-        await dialog.getByRole("button", { name: "Cancel clone confirmation", exact: true }).click();
-        await expect(dialog).toBeHidden();
-        expect(fixture.repositories.gitCalls()).toBe(0);
-        await page.getByRole("button", { name: "Prepare local clone", exact: true }).click();
-        await dialog.getByRole("button", { name: "Confirm clone", exact: true }).click();
-        await expect(page.locator(".repo-clone-status")).toContainText("Prepared for manual opening in Copilot App");
-        await expect(page.getByRole("button", { name: "Copy prepared folder path", exact: true })).toBeVisible();
-        expect(fixture.repositories.gitCalls()).toBeGreaterThan(0);
+        await page.goto(fixture.url);
+        await expect(page.locator("#description")).toBeVisible();
+        await expect(page.locator("#repositoryEntry,.repo-rail,.repo-preview")).toHaveCount(0);
+        const base = new URL(fixture.url);
+        for (const path of ["context", "items", "content", "reference", "refresh", "clone", "clone/confirm", "clone/cancel"]) {
+            const endpoint = new URL(`/api/repositories/${path}`, base);
+            endpoint.searchParams.set("cap", base.searchParams.get("cap"));
+            const response = await page.request.get(endpoint.href);
+            expect([400, 404]).toContain(response.status());
+        }
         expect(fixture.dispatchCount()).toBe(0);
         expect(fixture.workspaceChanged()).toBe(false);
     } finally { await page.close(); expect((await fixture.stop()).cleaned).toBe(true); }
 });
 
-test("SDD browses distinct repository specs over HTTP without a clone request, Git call, or clone-directory write", async ({ page }) => {
-    const fixture = await startFixture({ canvas: "sdd", repositories: true });
-    const url = new URL(fixture.url); url.searchParams.delete("readerProbe");
-    const repositoryRequests = [];
-    const remoteDocuments = [];
-    page.on("request", (request) => {
-        const path = new URL(request.url()).pathname;
-        if (path.startsWith("/api/repositories/")) repositoryRequests.push({ method: request.method(), path });
-    });
+test("SDD entry reports no repository without sign-in and retains direct access", async ({ page }) => {
+    const fixture = await startFixture({ canvas: "sdd", repositoryEntry: true, entryRepository: false });
     try {
-        await page.goto(url.href);
-        await page.getByRole("button", { name: "Connect Microsoft account", exact: true }).click();
-        const search = page.getByRole("combobox", { name: "Search readable project repositories", exact: true });
-        await expect(search).toBeEnabled();
-        for (const [number, heading] of [[1, "Remote specification"], [2, "Second repository specification"]]) {
-            await search.fill(`repository ${number}`);
-            const popup = page.locator(".repo-popup");
-            const repository = popup.locator('[data-kind="repository"]');
-            await expect(repository).toHaveCount(1);
-            await expect(repository).toContainText(`Synthetic repository ${number}`);
-            await repository.click();
-            await popup.getByRole("treeitem", { name: "specs", exact: true }).click();
-            await popup.getByRole("treeitem", { name: "001-feature", exact: true }).click();
-            const contentResponse = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/repositories/content");
-            await popup.getByRole("treeitem", { name: "spec.md", exact: true }).click();
-            const payload = await (await contentResponse).json();
-            await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
-            await expect(page.getByRole("group", { name: "Artifact source", exact: true })).toContainText(`Synthetic repository ${number}`);
-            expect(payload.data.sourceKind).toBe("git-commit");
-            remoteDocuments.push({ repositoryId: payload.data.source.repositoryId, revision: payload.data.revision });
+        await page.goto(fixture.url);
+        await expect(page.getByRole("button", { name: "Use current workspace", exact: true })).toBeDisabled();
+        await expect(page.getByRole("button", { name: "Open canvas directly", exact: true })).toBeEnabled();
+        expect(fixture.entryHost.counts().starts).toBe(0);
+        expect(fixture.dispatchCount()).toBe(0);
+    } finally { await page.close(); expect((await fixture.stop()).cleaned).toBe(true); }
+});
+
+for (const width of [360, 768, 1280, 1920]) {
+    test(`SDD dropdown consent prepares one owned repository at ${width}`, async ({ page }, testInfo) => {
+        const fixture = await startFixture({ canvas: "sdd", repositories: true, repositoryEntry: true, supportedEntryHost: true });
+        await page.setViewportSize({ width, height: width === 360 ? 780 : 1000 });
+        try {
+            await page.goto(fixture.url);
+            expect(fixture.repositories.browserOpens()).toBe(0);
+            await page.getByRole("button", { name: "Connect Microsoft account", exact: true }).click();
+            const search = page.getByRole("combobox", { name: "Search readable project repositories", exact: true });
+            await expect(search).toBeEnabled();
+            await search.focus();
+            await expect(page.getByRole("option", { name: /Synthetic repository 1/ })).toBeVisible();
+            await search.fill("repository 1");
+            await expect(page.getByRole("option", { name: /Synthetic repository 1/ })).toBeVisible();
+            await page.getByRole("button", { name: "Clear search", exact: true }).click();
+            await expect(page.getByRole("option", { name: /Synthetic repository 1/ })).toBeVisible();
+            await page.getByRole("option", { name: /Synthetic repository 1/ }).click();
+            await expect(page.getByText("synthetic@example.invalid", { exact: true }).last()).toBeVisible();
+            await expect(page.getByText("refs/heads/main", { exact: true })).toBeVisible();
+            await expect(page.getByText("a".repeat(40), { exact: true })).toBeVisible();
+            await expect(page.locator('[data-field="destination"]')).toContainText("SpecKitCanvas");
+            expect(await fixture.repositories.cloneFiles()).toEqual([]);
+            expect(fixture.repositories.artifactReads()).toBe(0);
+            expect(fixture.repositories.gitCalls()).toBe(0);
+            await page.getByRole("button", { name: "Cancel selection", exact: true }).click();
+            await expect(search).toBeFocused();
+            expect(await fixture.repositories.cloneFiles()).toEqual([]);
+            await search.press("ArrowDown"); await search.press("Enter");
+            await expect(page.getByRole("button", { name: "Confirm and clone", exact: true })).toBeEnabled();
+            await page.screenshot({ path: testInfo.outputPath(`entry-consent-${width}.png`) });
+            await page.getByRole("button", { name: "Confirm and clone", exact: true }).click();
+            await expect(page.getByRole("status").filter({ hasText: /prepared|handoff|ready/i })).toBeVisible();
+            expect(fixture.entryHost.counts().starts).toBe(1);
+            expect(fixture.repositories.artifactReads()).toBe(0);
+            expect(fixture.dispatchCount()).toBe(0);
+            expect(fixture.workspaceChanged()).toBe(false);
+            expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+            await expect(page.locator(".repo-rail,.repo-preview,#description")).toHaveCount(0);
+        } finally { await page.close(); expect((await fixture.stop()).cleaned).toBe(true); }
+    });
+}
+
+for (const width of [360, 768, 1280, 1920]) {
+    test(`SDD clone-only entry completes without switching workspaces at ${width}`, async ({ page }, testInfo) => {
+        const fixture = await startFixture({ canvas: "sdd", repositories: true, repositoryEntry: true, cloneOnlyEntryHost: true });
+        await page.setViewportSize({ width, height: width === 360 ? 780 : 1000 });
+        await page.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: new URL(fixture.url).origin });
+        try {
+            await page.goto(fixture.url);
+            await page.getByRole("button", { name: "Connect Microsoft account", exact: true }).click();
+            const search = page.getByRole("combobox", { name: "Search readable project repositories", exact: true });
+            await expect(search).toBeEnabled(); await search.focus();
+            await page.getByRole("option", { name: /Synthetic repository 1/ }).click();
+            await expect(page.locator('[data-field="workspace"]')).toHaveText("Unchanged");
+            const destination = await page.locator('[data-field="destination"]').textContent();
             expect(fixture.repositories.gitCalls()).toBe(0);
             expect(await fixture.repositories.cloneFiles()).toEqual([]);
-        }
-        expect(new Set(remoteDocuments.map((document) => document.repositoryId)).size).toBe(2);
-        expect(new Set(remoteDocuments.map((document) => document.revision)).size).toBe(2);
-        expect(repositoryRequests.filter((request) => request.path.includes("/clone"))).toEqual([]);
-        expect(repositoryRequests.filter((request) => request.path.endsWith("/content"))).toHaveLength(2);
+            await page.getByRole("button", { name: "Confirm and clone", exact: true }).click();
+            await expect(page.getByRole("status").filter({ hasText: "Clone complete." })).toBeVisible();
+            await expect(page.getByText("Current workspace unchanged. Automatic workspace switching is unavailable.", { exact: true })).toBeVisible();
+            await expect(page.getByRole("button", { name: "Retry handoff", exact: true })).toHaveCount(0);
+            await expect(page.getByRole("button", { name: "Use current workspace", exact: true })).toBeEnabled();
+            await page.getByRole("button", { name: "Copy checkout path", exact: true }).click();
+            await expect(page.getByRole("status").filter({ hasText: "Checkout path copied." })).toBeVisible();
+            expect(await page.evaluate(() => globalThis.navigator.clipboard.readText())).toBe(destination);
+            expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+            await page.screenshot({ path: testInfo.outputPath(`entry-clone-complete-${width}.png`), fullPage: true });
+            await page.reload();
+            await expect(page.getByRole("status").filter({ hasText: "Clone complete." })).toBeVisible();
+            await page.getByRole("button", { name: "Disconnect Microsoft account", exact: true }).click();
+            await expect(page.getByRole("button", { name: "Connect Microsoft account", exact: true })).toBeVisible();
+            await page.getByRole("button", { name: "Connect Microsoft account", exact: true }).click();
+            const retained = page.getByRole("region", { name: "Cloned repositories", exact: true });
+            await expect(retained).toBeVisible();
+            await expect(retained.locator(".entry-path")).toHaveText(destination);
+            await expect(retained.getByRole("button", { name: "Copy checkout path", exact: true })).toBeEnabled();
+            await expect(page.getByRole("button", { name: "Retry handoff", exact: true })).toHaveCount(0);
+            expect(fixture.repositories.cloneCount()).toBe(1);
+            expect(fixture.entryHost.counts().starts).toBe(1);
+            expect(fixture.entryHost.counts().handoffs).toBe(0);
+            expect(fixture.entryHost.counts().reconciliations).toBe(0);
+            expect(fixture.entryHost.counts().opens).toBe(0);
+            expect(fixture.dispatchCount()).toBe(0);
+            expect(fixture.workspaceChanged()).toBe(false);
+        } finally { await page.close(); expect((await fixture.stop()).cleaned).toBe(true); }
+    });
+}
+
+test("SDD entry cancels only an in-progress owned preparation", async ({ page }) => {
+    const fixture = await startFixture({ canvas: "sdd", repositories: true, repositoryEntry: true, supportedEntryHost: true });
+    fixture.repositories.holdClone();
+    try {
+        await page.goto(fixture.url);
+        await page.getByRole("button", { name: "Connect Microsoft account", exact: true }).click();
+        const search = page.getByRole("combobox", { name: "Search readable project repositories", exact: true });
+        await expect(search).toBeEnabled(); await search.focus();
+        await page.getByRole("option", { name: /Synthetic repository 1/ }).click();
+        await page.getByRole("button", { name: "Confirm and clone", exact: true }).click();
+        await expect(page.getByRole("button", { name: "Cancel preparation", exact: true })).toBeEnabled();
+        await page.getByRole("button", { name: "Cancel preparation", exact: true }).click();
+        await expect(page.getByRole("status").filter({ hasText: "Repository preparation cancelled." })).toBeVisible();
+        expect(fixture.repositories.cloneCount()).toBe(1);
+        expect(fixture.entryHost.counts().handoffs).toBe(0);
         expect(fixture.dispatchCount()).toBe(0);
         expect(fixture.workspaceChanged()).toBe(false);
+    } finally { await page.close(); expect((await fixture.stop()).cleaned).toBe(true); }
+});
+
+test("SDD entry rejects a busy admission race and does not resume on idle", async ({ page }) => {
+    const fixture = await startFixture({ canvas: "sdd", repositories: true, repositoryEntry: true, supportedEntryHost: true });
+    fixture.entryHost.beforeAdmission(() => fixture.entryHost.setActivity("busy"));
+    try {
+        await page.goto(fixture.url);
+        await page.getByRole("button", { name: "Connect Microsoft account", exact: true }).click();
+        const search = page.getByRole("combobox", { name: "Search readable project repositories", exact: true });
+        await expect(search).toBeEnabled(); await search.focus();
+        await page.getByRole("option", { name: /Synthetic repository 1/ }).click();
+        await page.getByRole("button", { name: "Confirm and clone", exact: true }).click();
+        await expect(page.getByRole("status").filter({ hasText: /busy/i })).toBeVisible();
+        expect(fixture.repositories.gitCalls()).toBe(0);
+        expect(await fixture.repositories.cloneFiles()).toEqual([]);
+        fixture.entryHost.setActivity("idle");
+        await page.getByRole("button", { name: "Refresh entry state", exact: true }).click();
+        await expect(page.getByRole("button", { name: "Confirm and clone", exact: true })).toBeDisabled();
+        expect(fixture.repositories.cloneCount()).toBe(0);
+        expect(fixture.entryHost.counts().starts).toBe(0);
+        expect(fixture.dispatchCount()).toBe(0);
+    } finally { await page.close(); expect((await fixture.stop()).cleaned).toBe(true); }
+});
+
+for (const outcome of ["unknown", "in_progress"]) {
+    test(`SDD retained preparation reconciles ${outcome} without cloning or switching again`, async ({ page }) => {
+        const fixture = await startFixture({ canvas: "sdd", repositories: true, repositoryEntry: true, supportedEntryHost: true });
+        fixture.entryHost.setOutcome(outcome);
+        try {
+            await page.goto(fixture.url);
+            await page.getByRole("button", { name: "Connect Microsoft account", exact: true }).click();
+            const search = page.getByRole("combobox", { name: "Search readable project repositories", exact: true });
+            await expect(search).toBeEnabled(); await search.focus();
+            await page.getByRole("option", { name: /Synthetic repository 1/ }).click();
+            await page.getByRole("button", { name: "Confirm and clone", exact: true }).click();
+            const retry = page.getByRole("button", { name: "Retry handoff", exact: true });
+            await expect(retry).toBeEnabled();
+            expect(fixture.repositories.cloneCount()).toBe(1);
+            expect(fixture.entryHost.counts().handoffs).toBe(1);
+            await retry.click();
+            await expect(retry).toBeEnabled();
+            expect(fixture.entryHost.counts().reconciliations).toBe(1);
+            expect(fixture.entryHost.counts().handoffs).toBe(1);
+            expect(fixture.repositories.cloneCount()).toBe(1);
+            expect(fixture.dispatchCount()).toBe(0);
+            expect(fixture.workspaceChanged()).toBe(false);
+            await expect(page.locator("#description")).toHaveCount(0);
+        } finally { await page.close(); expect((await fixture.stop()).cleaned).toBe(true); }
+    });
+}
+
+test("SDD activation stays guarded until explicit same-target recovery verifies the original canvas", async ({ page }) => {
+    const fixture = await startFixture({ canvas: "sdd", repositories: true, repositoryEntry: true, supportedEntryHost: true });
+    fixture.entryHost.setOutcome("workspace_activated");
+    try {
+        await page.goto(fixture.url);
+        await page.getByRole("button", { name: "Connect Microsoft account", exact: true }).click();
+        const search = page.getByRole("combobox", { name: "Search readable project repositories", exact: true });
+        await expect(search).toBeEnabled(); await search.focus();
+        await page.getByRole("option", { name: /Synthetic repository 1/ }).click();
+        await page.getByRole("button", { name: "Confirm and clone", exact: true }).click();
+        const retry = page.getByRole("button", { name: "Retry handoff", exact: true });
+        await expect(retry).toBeEnabled();
+        expect(fixture.targetUrl()).toBe(null);
+        expect(fixture.entryHost.events()).toEqual(["workspace_activated", "guarded_canvas_open"]);
+        const source = new URL(fixture.url);
+        const bypass = new URL("/api/entry/direct", source); bypass.searchParams.set("cap", source.searchParams.get("cap"));
+        const denied = await page.request.post(bypass.href, { headers: { Origin: source.origin }, data: { requestId: "synthetic-bypass" } });
+        expect(denied.ok()).toBe(false);
+        fixture.entryHost.setOutcome("canvas_ready");
+        await retry.click();
+        await expect(page.getByRole("status").filter({ hasText: "Spec Kit canvas ready." })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Choose a repository", exact: true })).toBeHidden();
+        expect(fixture.repositories.cloneCount()).toBe(1);
+        expect(fixture.entryHost.counts().handoffs).toBe(1);
+        expect(fixture.entryHost.counts().reconciliations).toBe(1);
+        expect(fixture.entryHost.events()).toEqual(["workspace_activated", "guarded_canvas_open", "guarded_canvas_open", "target_verified", "canvas_ready"]);
+        const target = fixture.targetUrl(); expect(target).toBeTruthy();
+        await page.goto(target);
+        await expect(page.locator("#description")).toBeVisible();
+        await expect(page.locator("#repositoryEntry,.repo-rail,.repo-preview")).toHaveCount(0);
+        const targetBase = new URL(target);
+        const artifact = new URL("/api/artifact", targetBase);
+        artifact.searchParams.set("cap", targetBase.searchParams.get("cap")); artifact.searchParams.set("feature", "999-canvas-preview-fixture"); artifact.searchParams.set("stage", "specify");
+        const response = await page.request.get(artifact.href);
+        expect(response.ok()).toBe(true);
+        expect((await response.json()).content).toContain("Canvas review fixture");
+        expect(fixture.dispatchCount()).toBe(0); expect(fixture.workspaceChanged()).toBe(false);
     } finally { await page.close(); expect((await fixture.stop()).cleaned).toBe(true); }
 });

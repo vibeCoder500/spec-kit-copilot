@@ -112,3 +112,44 @@ test("Status and candidate verification work never exceeds four concurrent reque
     assert.equal(peak, 4);
     assert.equal(results.length, 13);
 });
+
+test("Preparation metadata rechecks the default revision without reading repository artifacts", async () => {
+    let revision = "a".repeat(40);
+    let accessDenied = false;
+    const visited: string[] = [];
+    const operation = { access: { assertCurrent() {} } } as unknown as AdoOperation;
+    const client = {
+        open: async () => operation,
+        repository: async () => {
+            if (accessDenied) throw new RepositoryError("resource_unavailable");
+            return { id: repositoryId, name: "Synthetic", defaultBranch: "refs/heads/main", operationalState: "active" };
+        },
+        commit: async () => revision,
+        item: async (_operation: unknown, _repository: string, _commit: string, path: string) => {
+            visited.push(path); assert.equal(path, "/.specify"); return { path, isFolder: true };
+        },
+        blob: async () => assert.fail("Selection metadata must not read content"),
+        tree: async () => assert.fail("Selection metadata must not enumerate artifacts"),
+    } as unknown as AdoClient;
+    const service = createRepositoryDiscovery({ client, profile });
+    try {
+        assert.equal((await service.detail(repositoryId)).sourceVersion, revision);
+        revision = "b".repeat(40);
+        assert.equal((await service.detail(repositoryId)).sourceVersion, revision);
+        assert.deepEqual(visited, ["/.specify", "/.specify"]);
+        accessDenied = true;
+        await assert.rejects(service.detail(repositoryId), { code: "resource_unavailable" });
+    } finally { service.dispose(); }
+});
+
+test("Search does not replace the independent team suggestion collection", async () => {
+    const proof = fixture();
+    try {
+        const initial = await proof.service.relevant();
+        const found = await proof.service.search("spec 10");
+        assert.ok(found.items.length > 0);
+        const restored = await proof.service.relevant();
+        assert.deepEqual(restored.items, initial.items);
+        assert.equal(proof.lists(), 1);
+    } finally { proof.service.dispose(); }
+});

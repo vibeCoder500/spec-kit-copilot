@@ -20,7 +20,6 @@ export async function verifyStagedPlugin({ pluginRoot: input } = {}) {
     if (!PLUGINS.includes(manifest.name)) throw new Error("Only the two existing canvas plugin identities are allowed.");
     const wizard = manifest.name.endsWith("wizard");
     const extensionPath = `extensions/${wizard ? "speckit-wizard-canvas" : "sdd-canvas"}`;
-    const extensionRoot = join(pluginRoot, extensionPath);
     const files = [];
     async function visit(directory) {
         if ((await lstat(directory)).isSymbolicLink()) throw new Error("Payload path redirects outside its boundary.");
@@ -30,6 +29,8 @@ export async function verifyStagedPlugin({ pluginRoot: input } = {}) {
             const dependency = filename.includes("/node_modules/");
             if ((!dependency && EXCLUDED.has(entry.name) && entry.name !== "node_modules") || /^\.env|\.(?:map|log|tmp|pem|key)$/i.test(entry.name) ||
                 filename === REPOSITORY_BUILD_PATH || filename.startsWith(`${REPOSITORY_BUILD_PATH}/`) ||
+                ["repository-profile.json", "entry-settings.json"].includes(entry.name) || /(?:^|\/)(?:private-evidence|repository-proof|repository-entry)\//.test(filename) ||
+                /\/ui\/repository-browser\.(?:js|css)$/.test(filename) || /\/node_modules\/@github\/copilot-sdk\//.test(filename) ||
                 filename.includes("ui/markdown-reader/") || /(?:^|\/)\.canvas-reader/.test(filename)) throw new Error("Payload contains forbidden private or development files.");
             if (entry.isSymbolicLink()) throw new Error("Payload contains a redirecting path.");
             if (entry.isDirectory()) await visit(target);
@@ -69,7 +70,8 @@ export async function verifyStagedPlugin({ pluginRoot: input } = {}) {
     if (!wizard) {
         const repositoryPrefix = `${extensionPath}/vendor/repository-browser`;
         const repositoryManifest = JSON.parse(required(`${repositoryPrefix}/manifest.json`).content.toString("utf8"));
-        const expected = ["vendor/repository-browser/server.mjs", "vendor/repository-browser/xdg-open", "vendor/repository-browser/THIRD_PARTY_NOTICES.txt", "ui/repository-browser.js", "ui/repository-browser.css"];
+        const expected = ["vendor/repository-browser/server.mjs", "vendor/repository-browser/xdg-open", "vendor/repository-browser/THIRD_PARTY_NOTICES.txt", "ui/repository-entry.js", "ui/repository-entry.css"];
+        required(`${extensionPath}/entry.html`);
         if (repositoryManifest.schemaVersion !== 1 || repositoryManifest.kind !== "sdd-repository-browser" ||
             JSON.stringify(repositoryManifest.files.map((file) => file.path).sort()) !== JSON.stringify(expected.sort())) throw new Error("Repository runtime manifest is invalid.");
         for (const expectedFile of repositoryManifest.files) {
@@ -104,7 +106,7 @@ export async function verifyStagedPlugin({ pluginRoot: input } = {}) {
     }
 
     function browserAsset(route) {
-        if (route === "/ui/repository-browser.js" && !wizard) return `${extensionPath}/ui/repository-browser.js`;
+        if (route === "/ui/repository-entry.js" && !wizard) return `${extensionPath}/ui/repository-entry.js`;
         if (route === "/ui/artifact-review.js") return `${extensionPath}/ui/artifact-review.js`;
         if (route === "/ui/vendor/markdown-reader/markdown-reader.js") return `${assetPath}/markdown-reader.js`;
         throw new Error("Dynamic browser import is not an allowlisted reader asset.");
@@ -147,7 +149,7 @@ export async function verifyStagedPlugin({ pluginRoot: input } = {}) {
                 if (argument && typescript.isStringLiteralLike(argument)) resolveImport(argument.text, owner);
                 else if (argument && typescript.isCallExpression(argument) && typescript.isIdentifier(argument.expression) &&
                     ["urlFor", "endpoint"].includes(argument.expression.text) && typescript.isStringLiteralLike(argument.arguments[0]) &&
-                    ["ui/artifact-review.js", "index.html"].some((suffix) => owner === `${extensionPath}/${suffix}`)) {
+                    ["ui/artifact-review.js", "index.html", "entry.html"].some((suffix) => owner === `${extensionPath}/${suffix}`)) {
                     required(browserAsset(argument.arguments[0].text));
                 } else if (owner === `${extensionPath}/ui/modals.js` && argument && typescript.isPropertyAccessExpression(argument) && argument.name.text === "href" &&
                     typescript.isNewExpression(argument.expression) && typescript.isIdentifier(argument.expression.expression) && argument.expression.expression.text === "URL" &&

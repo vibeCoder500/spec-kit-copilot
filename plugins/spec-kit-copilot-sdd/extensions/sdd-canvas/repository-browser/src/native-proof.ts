@@ -8,6 +8,33 @@ import { RepositoryError, errorEnvelope } from "./errors.ts";
 import { nativeAuthDependencies } from "./msal-client.ts";
 import { parseRepositoryProfile } from "./profile.ts";
 
+export function summarizeEntryAcceptance(input: unknown) {
+    function shape(value: unknown, fields: string[]) {
+        if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).length !== fields.length ||
+            fields.some(field => !Object.hasOwn(value, field))) throw new RepositoryError("invalid_request");
+        return value as Record<string, unknown>;
+    }
+    const evidence = shape(input, ["schemaVersion", "scope", "hostProof", "appVersion", "sdkProtocol", "payloadSha256", "current", "clone"]);
+    const current = shape(evidence.current, ["repositoryIdentity", "viewed", "cloneCount", "workflowCount", "sourcePreserved"]);
+    const clone = shape(evidence.clone, ["repositoryIdentity", "beforeConsentWrites", "cloneCount", "retryCloneCount", "workflowCount", "sourcePreserved", "originalBranchPreserved", "targetVerified", "phases"]);
+    if (evidence.schemaVersion !== 1 || !["synthetic", "native"].includes(String(evidence.scope)) ||
+        !["synthetic", "manual", "unverified", "verified-native"].includes(String(evidence.hostProof)) ||
+        typeof evidence.appVersion !== "string" || !/^\d{1,4}\.\d{1,4}\.\d{1,4}(?:-[a-z0-9.-]{1,32})?$/i.test(evidence.appVersion) ||
+        !Number.isSafeInteger(evidence.sdkProtocol) || Number(evidence.sdkProtocol) < 1 || Number(evidence.sdkProtocol) > 100 ||
+        ![evidence.payloadSha256, current.repositoryIdentity, clone.repositoryIdentity].every(value => typeof value === "string" && /^[a-f0-9]{64}$/.test(value)) ||
+        ![current.viewed, current.sourcePreserved, clone.sourcePreserved, clone.originalBranchPreserved, clone.targetVerified].every(value => typeof value === "boolean") ||
+        ![current.cloneCount, current.workflowCount, clone.cloneCount, clone.retryCloneCount, clone.workflowCount, clone.beforeConsentWrites].every(value => Number.isSafeInteger(value) && Number(value) >= 0 && Number(value) <= 100) ||
+        !Array.isArray(clone.phases) || clone.phases.length > 8 || clone.phases.some(value => !["workspace_activated", "guarded_canvas_open", "target_verified", "canvas_ready", "manual_open"].includes(value))) {
+        throw new RepositoryError("invalid_request");
+    }
+    const checksPassed = current.viewed && current.sourcePreserved && current.cloneCount === 0 && current.workflowCount === 0 &&
+        clone.sourcePreserved && clone.originalBranchPreserved && clone.targetVerified && clone.beforeConsentWrites === 0 && clone.cloneCount === 1 &&
+        clone.retryCloneCount === 0 && clone.workflowCount === 0 && current.repositoryIdentity !== clone.repositoryIdentity &&
+        JSON.stringify(clone.phases) === JSON.stringify(["workspace_activated", "guarded_canvas_open", "target_verified", "canvas_ready"]);
+    return { schemaVersion: 1, scope: evidence.scope, payloadSha256: evidence.payloadSha256, checksPassed,
+        nativeAcceptance: evidence.scope !== "native" || evidence.hostProof !== "verified-native" ? "blocked" : checksPassed ? "passed" : "failed" };
+}
+
 const HTML = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SDD Repository Connection Proof</title><style>
 :root{color-scheme:light dark;font-family:"Segoe UI",sans-serif;letter-spacing:0}body{margin:0;padding:24px;max-width:960px}h1{font-size:20px;margin:0 0 20px}button{font:inherit;padding:8px 12px;border-radius:4px;cursor:pointer}nav{display:flex;flex-wrap:wrap;gap:8px}dt{font-weight:600;margin-top:12px}dd{margin:4px 0;overflow-wrap:anywhere}pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:55vh;overflow:auto;border:1px solid #888;padding:16px}#error{color:#c63d42}button:disabled{cursor:default;opacity:.6}

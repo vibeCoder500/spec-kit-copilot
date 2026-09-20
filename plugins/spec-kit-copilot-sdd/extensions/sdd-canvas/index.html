@@ -130,7 +130,6 @@
 </style>
 </head>
 <body>
-<div id="repositoryBrowser" hidden></div>
 <header>
   <h1>Spec-Driven Development</h1>
   <div class="muted" id="root">…</div>
@@ -223,36 +222,6 @@ let STATE = null;
 let PENDING_STAGE = null;
 let PENDING_CLARIFICATION = null;
 let clarificationSubmitting = false;
-let repositoryBrowser = null;
-let repositorySnapshot = null;
-let localContextId;
-
-async function initializeRepositoryBrowser() {
-  try {
-    const response = await fetch(endpoint("/api/repositories/connection"));
-    const payload = await response.json();
-    if (!response.ok || !payload.ok || payload.data.configuration !== "configured") return;
-    repositorySnapshot = repositorySnapshot || payload.data;
-    localContextId = repositorySnapshot.localContext.contextId;
-    if (PAGE_PARAMS.has("artifact")) return;
-    const style = document.createElement("link");
-    style.rel = "stylesheet"; style.href = endpoint("/ui/repository-browser.css"); document.head.append(style);
-    const module = await import(endpoint("/ui/repository-browser.js"));
-    repositoryBrowser = await module.mountRepositoryBrowser({
-      container: document.getElementById("repositoryBrowser"), localHeader: document.querySelector("body > header"), localLayout: document.querySelector("body > .layout"),
-      onLocalContext: (id) => { localContextId = id; },
-      loadReader: async () => {
-        if (!document.querySelector("link[data-artifact-reader-css]")) {
-          const css = document.createElement("link"); css.rel = "stylesheet"; css.href = endpoint("/ui/vendor/markdown-reader/markdown-reader.css"); css.dataset.artifactReaderCss = "true"; document.head.append(css);
-        }
-        const reader = await import(endpoint("/ui/vendor/markdown-reader/markdown-reader.js"));
-        return reader.mountMarkdownReader;
-      },
-    });
-    if (repositorySnapshot) repositoryBrowser.receive(repositorySnapshot);
-  } catch { toast("Repository browser is unavailable. Local SDD remains available."); }
-}
-
 function toast(msg) {
   const t = document.getElementById("toast");
   t.textContent = msg; t.classList.add("show");
@@ -419,7 +388,7 @@ async function run(payload) {
     const r = await fetch(endpoint("/api/run"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...payload, ...(localContextId ? { localContextId } : {}) }),
+      body: JSON.stringify(payload),
     });
     const j = await r.json();
     if (j.ok) toast("Sent to chat — watch the transcript"); else toast("Error: " + (j.error || "failed"));
@@ -505,7 +474,7 @@ document.getElementById("setupBtn").onclick = async () => {
     const r = await fetch(endpoint("/api/setup"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(localContextId ? { localContextId } : {}),
+      body: JSON.stringify({}),
     });
     const j = await r.json();
     if (j.ok) toast("Setup sent to chat"); else toast("Error: " + (j.error || "failed"));
@@ -798,7 +767,7 @@ document.getElementById("confirmClarify").onclick = async () => {
     const response = await fetch(endpoint("/api/clarify"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...pending, answer, ...(localContextId ? { localContextId } : {}) }),
+      body: JSON.stringify({ ...pending, answer }),
     });
     const result = await response.json();
     if (!result.ok) { toast("Error: " + (result.error || "failed")); return; }
@@ -881,7 +850,7 @@ document.getElementById("closeArt").onclick = () => {
   if (document.body.classList.contains("artifact-view")) window.location.assign(endpoint("/"));
   else document.getElementById("aside").classList.remove("open");
 };
-window.addEventListener("pagehide", () => { repositoryBrowser?.dispose(); artifactReview?.close({ restore: false }); disposeReaderProbe(); });
+window.addEventListener("pagehide", () => { artifactReview?.close({ restore: false }); disposeReaderProbe(); });
 
 async function initializeArtifactView(feature, stage, title) {
   try {
@@ -907,9 +876,6 @@ if (artifactParam && PREVIEWABLE.has(artifactStage)) {
   try {
     const es = new EventSource(endpoint("/events"));
     es.addEventListener("state", (e) => { try { render(JSON.parse(e.data)); } catch (_) {} });
-    es.addEventListener("repositories", (event) => {
-      try { repositorySnapshot = JSON.parse(event.data); repositoryBrowser?.receive(repositorySnapshot); } catch (_) {}
-    });
     es.addEventListener("review", (event) => {
       try {
         const review = JSON.parse(event.data);
@@ -921,7 +887,6 @@ if (artifactParam && PREVIEWABLE.has(artifactStage)) {
   } catch (e) { /* fall back to one-shot fetch */ }
   fetch(endpoint("/api/state")).then((r) => r.json()).then(render).catch(() => {});
 }
-void initializeRepositoryBrowser();
 </script>
 </body>
 </html>

@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "kind": "sdd-repository-browser",
-  "sourceHash": "68ce645cdb3503527e0a9c37a4580e7bdbdbb5e865d4538da4a2ea2a851c308f",
-  "buildHash": "96b76fe3bdc207baec066b76aae3dcb9e4ba0fc6e82b7228639073011ae39844",
+  "sourceHash": "abdcaafbb0e728cd853d96986d2b7dc993881b4bae0a3c304abbaf2b47f5abcc",
+  "buildHash": "cabf0dee4a929de80f61e1f07b7e21cd59a51570f894a75a008fa34d0e9ce8ea",
   "sources": [
     {
       "path": "build-runtime.mjs",
-      "sha256": "c8859bfe78c9125e2bf06859efd7b460b15244eec90bdf786d96c004cb18d96c"
+      "sha256": "ed1e0519858d5ccbb82403552dad7b33dbcd6b44d392e77e10fe9398551f9d93"
     },
     {
       "path": "package-lock.json",
@@ -26,7 +26,7 @@
     },
     {
       "path": "src/clone.ts",
-      "sha256": "cbd46e3f76d6682b3d8859f43e458a69429719f62c773459a7cc17abc4d2785b"
+      "sha256": "4a398813d121d68ad1303e7dddd6830e01c131ed9d29366c199fa01107da7a9c"
     },
     {
       "path": "src/continuations.ts",
@@ -38,7 +38,11 @@
     },
     {
       "path": "src/errors.ts",
-      "sha256": "16a67d5edc746d0952dd562034a2fbe1650e1f0f0052f85e7384702a7fadbbc2"
+      "sha256": "94b115134aaa829a86fc71ab376bbce3953c6a018d79aeb1d6770d5020aa78a1"
+    },
+    {
+      "path": "src/host-handoff.ts",
+      "sha256": "4507a7510540c8fe28a604dc1d46d196b686253a762762c40a122ae91635f2b6"
     },
     {
       "path": "src/msal-client.ts",
@@ -49,8 +53,12 @@
       "sha256": "18e1d146ebdd40ccc0192e0c841fd72e4001b9df4d6de5dd1497bbe295901da3"
     },
     {
+      "path": "src/preparation-store.ts",
+      "sha256": "556e3bc80d8a97885e5691458694ab6136320f9f0d39831860a27a5962f803fc"
+    },
+    {
       "path": "src/profile.ts",
-      "sha256": "591bba17e05da093eb446c9d1cbe37e966ac216225b2c08044fd78f0f0d9d8f4"
+      "sha256": "20974b796a3e5c077b15a0ffacf43bced5589c407d82fdf39f075490c9ae50f7"
     },
     {
       "path": "src/remote-review.ts",
@@ -58,31 +66,23 @@
     },
     {
       "path": "src/repository-service.ts",
-      "sha256": "c764356e8d56e507e2d73cb1e8fbc7a6f9fe1898726d758611bba82cffc59e77"
+      "sha256": "6e8f91e4aa8667d0e2666fcbd06b1d6695f617cde901f9d78e6b03380bcae8b3"
     },
     {
       "path": "src/ui/api.ts",
-      "sha256": "d41c5cc3056c9c77ec2557a0ed6748a60b71e27e8d9c55a9e6493b57fcb94562"
+      "sha256": "c9b163ade9d1f2ffb1e53a92786be454eb0cbed0501a261a2179b9d20cee2bb4"
     },
     {
-      "path": "src/ui/remote-reader.ts",
-      "sha256": "5b61b76d9fcb6c909b14011f48804f9223ad8130460049f6f0ad05e248e37c9d"
+      "path": "src/ui/repository-entry.css",
+      "sha256": "f8649e8f8a876621412031ecb3950fa1d9e9e7eb3804cba3b956ff8e8bc60951"
     },
     {
-      "path": "src/ui/repository-browser.css",
-      "sha256": "2c51c72c608d12b6c060619573483b7f5176e6da59510e0c68259464c79a16b0"
-    },
-    {
-      "path": "src/ui/repository-browser.ts",
-      "sha256": "1aff193c848edece3e325fa744d06106176d510cf04af86b5369b43342bb561c"
-    },
-    {
-      "path": "src/ui/tree.ts",
-      "sha256": "405751a206444d601e24af446286a8cb9275388ee03cf9f4b596ef4e2db1a452"
+      "path": "src/ui/repository-entry.ts",
+      "sha256": "34c416bf3ba90fbba6ee4a965236227bcd2edfe52a78f57593b989eac9fb1b25"
     },
     {
       "path": "src/workspace-binding.ts",
-      "sha256": "dbfc4a4f00d5f83d2f07d3d9ae7f5917253fc5cd2e7260e89a5b0a3044eb163a"
+      "sha256": "72d69112cb5dbf5c373b30d42a71344905272e4d2b7e21a65cc2bf10adc10457"
     }
   ],
   "dependencies": [
@@ -249,19 +249,19 @@
   ],
   "files": [
     {
-      "path": "ui/repository-browser.css",
-      "bytes": 7681,
-      "sha256": "2c51c72c608d12b6c060619573483b7f5176e6da59510e0c68259464c79a16b0"
+      "path": "ui/repository-entry.css",
+      "bytes": 5863,
+      "sha256": "f8649e8f8a876621412031ecb3950fa1d9e9e7eb3804cba3b956ff8e8bc60951"
     },
     {
-      "path": "ui/repository-browser.js",
-      "bytes": 49468,
-      "sha256": "d15589e823b733c2a44e143fce01726b286121297809f459654db2fb9462dc5b"
+      "path": "ui/repository-entry.js",
+      "bytes": 36150,
+      "sha256": "98581c8044d2d3017f9dca248d05b6318468d92df51593d53ad664074d4a935a"
     },
     {
       "path": "vendor/repository-browser/server.mjs",
-      "bytes": 906526,
-      "sha256": "2249c31cd61dedf46762c7fdf099b68425d299c649275ff8be79c49cdae15f39"
+      "bytes": 992379,
+      "sha256": "e4d17c795caf0decca1d61aae8517027a4d784933a2091ddc2f4cf9fb12fa11a"
     },
     {
       "path": "vendor/repository-browser/THIRD_PARTY_NOTICES.txt",

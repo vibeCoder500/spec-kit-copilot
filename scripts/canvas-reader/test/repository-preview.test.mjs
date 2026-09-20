@@ -14,11 +14,16 @@ test("Synthetic repository preview opens the actual SDD shell without exposing a
         assert.equal(target.searchParams.has("readerProbe"), false);
         assert(target.searchParams.has("cap"));
         const html = await (await fetch(target)).text();
-        assert(html.includes('id="repositoryBrowser"'));
-        const state = new URL("/api/repositories/connection", target); state.search = target.search;
+        assert(html.includes('id="repositoryEntry"'));
+        assert(!html.includes('id="repositoryBrowser"'));
+        const state = new URL("/api/entry/state", target); state.search = target.search;
         const response = await (await fetch(state)).json();
         assert.equal(response.data.connection.state, "disconnected");
         assert.equal(response.data.configuration, "configured");
+        assert.equal(response.data.phase, "chooser");
+        assert.equal(response.data.host.canPrepareRemote, true);
+        assert.equal(response.data.host.canHandoff, false);
+        assert.equal(response.data.host.canRetryHandoff, false);
         assert.equal((await fetch(preview.url, { method: "POST" })).status, 404);
         assert.equal((await fetch(preview.url, { headers: { Origin: "https://untrusted.invalid" } })).status, 404);
     } finally { await preview.stop(); }

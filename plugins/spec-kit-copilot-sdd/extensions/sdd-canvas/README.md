@@ -28,7 +28,9 @@ skills through the agent.
    ```
 2. Ask Copilot in chat: **"Open Spec-Driven Development"**.
 
-The agent opens the dashboard in a side panel. See
+The development build opens a repository chooser first. Choose **Use current
+workspace**, or ask for **Spec-Driven Development (Current Workspace)** to open
+the original dashboard directly without remote authentication. See
 [Opening the dashboard](#opening-the-dashboard) for details.
 
 ## What it does
@@ -69,33 +71,47 @@ The agent opens the dashboard in a side panel. See
 - **Live updates** — the panel refreshes automatically (SSE) as the core
   commands write new artifacts.
 
-Artifact browsing never writes spec files. Optional repository browsing adds an
-explicitly confirmed clone into a new owned local folder; it never overwrites an
-existing checkout. Workflow edits still run through the core commands and the
-current Copilot session's permissions.
+Artifact browsing never writes spec files. Repository entry does not initialize
+projects or dispatch workflows. Workflow edits still run through the original
+core commands and the current Copilot session's permissions.
 
-## Optional Repository Browser
+## Repository Entry
 
-This unreleased development build includes an Azure DevOps repository search
-dropdown with expandable `.specify` and `specs` trees, a personalized team rail,
-commit-pinned Markdown previews, and confirmed clone preparation. It requires a
-trusted per-user connection profile. Without that profile, the existing local
-SDD experience remains unchanged and no remote connection is attempted.
+Normal `sdd-canvas` launch is chooser-first. **Use current workspace** verifies the
+actual local repository and opens the original canvas without a connection
+profile, sign-in, clone, or supported remote handoff. The unconditional
+`sdd-canvas-direct` provider retains the original canvas and explicit prerequisites.
+Separate user-local entry settings can disable the chooser; invalid settings fall
+back to direct entry. Remote configuration never controls the local route.
 
-The connected Microsoft account determines repository access. GitHub Copilot
-sign-in is not reused as an Azure DevOps token. Authentication uses the system
-browser and delegated Microsoft Entra access; tokens stay in the extension's
-memory and are discarded on disconnect or close.
+Configured Azure DevOps discovery offers team suggestions and typed project
+search inside one dropdown, without an embedded rail or pre-clone artifact
+reader. Connection is explicit and uses delegated Microsoft access through the
+system browser. GitHub Copilot sign-in is not reused as an Azure DevOps token.
+Tokens stay in memory and are discarded on disconnect or close.
 
-After cloning, open the prepared folder in a new App session. The canvas verifies
-the actual Git workspace and initial source before local workflows can run.
-Project-local skills and the canvas provider still need to be present in that
-session; cloning does not install them or run project initialization. Verified,
-unchanged cloned artifacts use committed times so checkout order does not create
-false stale-stage warnings. Local modifications retain the normal freshness rules.
+**Cloning is independent of automatic handoff.** Explicit **Confirm and clone**
+creates one checkout at the displayed managed destination after fresh account,
+source, workspace and activity checks. These are observations, not an atomic App
+reservation. Busy, unknown or stale observations reject without queued retry.
+Completion shows **Clone complete** and a copyable path; completed checkouts
+remain available after reconnecting. The current App workspace is not changed.
 
-See the [repository browser guide](../../../../docs/sdd-repository-browser.md)
-for configuration, permissions, native handoff, cancellation, and recovery.
+Automatic switching remains blocked because the installed public SDK does not
+supply the verified App activation and reconciliation contract. Unsupported
+handoff controls are hidden. Manual opening, private IPC or cwd-only mutation
+does not count as `workspace_activated` or independently verified `canvas_ready`.
+
+See the [repository entry guide](../../../../docs/sdd-repository-browser.md),
+[validation guide](../../../../specs/002-repository-entry-flow/quickstart.md), and
+[acceptance report](../../../../specs/002-repository-entry-flow/evidence/acceptance.md)
+for configuration, recovery, exact results and blocked requirements.
+
+The entry build ships five manifest-verified runtime files: the server bundle,
+its browser-opening helper and notices, and the named entry JavaScript/CSS.
+The separate `entry.html` is staged with the unchanged downstream canvas.
+Obsolete embedded browser assets, build sources, test adapters, private profiles,
+and a second SDK are excluded from installable output.
 
 ## Feature targeting
 
@@ -114,10 +130,11 @@ canvas; nothing opens automatically.
 To open it, ask Copilot in chat, e.g. **"Open Spec-Driven Development"** (or "open
 the SDD dashboard"). The agent matches your request to this canvas
 (`id: sdd-canvas`, displayName **"Spec-Driven Development"**) and opens it in a
-side panel. There is no slash command or menu entry — discovery is the agent
+side panel. In this development build it opens the chooser; continue locally or
+request `sdd-canvas-direct` for the original dashboard. There is no slash command or menu entry — discovery is the agent
 matching the canvas name/description.
 
-Once it is open you can drive it two ways:
+Once the original dashboard is open you can drive it two ways:
 
 - **Click the panel** — the constitution card, the New feature → specify form,
   and each card's stage pills, Run/Rerun, and Clarify buttons.
