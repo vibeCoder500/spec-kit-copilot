@@ -24,6 +24,11 @@ the isolated clone must never retarget or modify that work.
 - User decision: Complete standalone cloning even when automatic workspace
   switching is unavailable. Retain explicit consent, source preservation,
   current-state checks, and no queued or automatically resumed clone requests.
+- User decision: Start the configured Microsoft connection automatically once
+  when a fresh repository chooser opens. Do not repeat it on refresh, page reload,
+  state events, failure, or explicit Disconnect within that entry session. Keep
+  explicit retry and independent local/direct entry. Reuse browser SSO without
+  adding credential persistence or bypassing required Microsoft interaction.
 
 ### Session 2026-09-20
 
@@ -44,8 +49,8 @@ and can use its normal workflow in the same workspace.
 **Why this priority**: Existing users must not lose their working session or gain
 new sign-in and cloning prerequisites just to use the canvas they already have.
 
-**Independent Test**: Open a Spec Kit-enabled workspace, leave remote discovery
-disconnected, choose **Use current workspace**, and verify the original canvas
+**Independent Test**: Open a Spec Kit-enabled workspace with remote discovery
+unconfigured or disabled, choose **Use current workspace**, and verify the original canvas
 reads the current repository with no new checkout or repository-account request.
 
 **Acceptance Scenarios**:

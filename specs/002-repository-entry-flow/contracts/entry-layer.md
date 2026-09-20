@@ -26,7 +26,9 @@ kept distinct from the required, not-yet-available host contract in
 | --- | --- |
 | Valid current repository | Repository label and **Use current workspace**, available without sign-in. |
 | No current repository | Shortcut unavailable with a concise reason; remote search can still be used. |
-| Disconnected remote account | Explicit connect control; no automatic sign-in. |
+| Fresh configured entry, disconnected account, generation zero | One automatic connection attempt after the initial state read; no Connect click required. |
+| Already connected/connecting, failed, or explicitly disconnected account | No automatic restart; explicit retry remains available when disconnected or failed. |
+| Unconfigured, disabled, invalid, or unavailable remote state | No automatic sign-in; local/direct entry remains independent. |
 | Empty connected query | Team-linked suggestions inside the dropdown only. |
 | Nonblank query | Readable configured-project repository matches after 1-second debounce. |
 | Clear query | Restore independent team-suggestion state. |
@@ -46,6 +48,14 @@ The dropdown contains repositories only, not artifact roots/files. Use the
 existing accessible combobox/list semantics, keyboard selection, Escape, focus
 restoration, icon buttons with tooltips, and bounded responsive layout. No
 separate repository rail. Do not display provider/raw exception output.
+
+Automatic connection is scoped to the initial server-owned connection generation,
+not each renderer mount. Refresh, polling, SSE, and page reload cannot reconnect
+after an attempt or explicit Disconnect. The existing bounded PKCE/browser flow,
+tenant/account validation, in-memory-only cache, and close/disconnect invalidation
+remain unchanged. Browser SSO may avoid prompts; Microsoft consent, account
+selection, MFA, and tenant policy remain authoritative. Connection is never clone
+consent or authorization to open a different workspace.
 
 ## Loopback Security Boundary
 

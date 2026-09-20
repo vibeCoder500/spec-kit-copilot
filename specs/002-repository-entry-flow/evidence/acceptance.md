@@ -48,12 +48,46 @@ directory, not in tracked delivery artifacts.
   handoff controls remain hidden, and preparation that finishes while the App is
   busy remains a completed standalone clone.
 - The user reported successful manual cloning on 2026-09-21 and requested a
-  commit. No additional clone is needed to record that result. Automatic sign-in
-  is a separate follow-up and is not part of this implementation's behavior.
+  commit. No additional clone was needed to record that result. Commit `766a85d`
+  contains the standalone-clone delivery; automatic sign-in is the later follow-up
+  described below.
 
 This amendment supersedes the historical production-clone-disabled statements
 in the earlier checkpoints below. It does not waive G-HOST for automatic
 workspace switching or claim the original full native acceptance matrix passed.
+
+## Automatic Connection Follow-Up: 2026-09-21
+
+- The user approved automatically starting the existing Microsoft connection when
+  a fresh configured repository chooser opens, without a Connect click.
+- Startup checks the server-owned initial generation and disconnected state.
+  Already connected/connecting, failed, and previously disconnected instances
+  do not restart sign-in, including after page reload. Refresh/polling/SSE do not
+  initiate it. Failure and Disconnect retain explicit retry.
+- Current-workspace and direct actions stay independent of pending/failed remote
+  connection. Sign-in does not select or clone a repository, switch the App
+  workspace, or run a workflow.
+- The PKCE/nonce flow, tenant/account checks, scopes, app registration, and
+  in-memory token cache are unchanged. No credential persistence is added.
+  Existing browser SSO may avoid prompts; account selection, consent, or MFA may
+  still be required.
+- Existing controller and packaged-canvas browser tests cover one attempt,
+  state/configuration guards, explicit retry, Disconnect/reload, local access,
+  and unchanged clone consent. Tests use synthetic authentication; this follow-up
+  does not claim a new live Microsoft sign-in or private-repository clone.
+
+Final follow-up verification passed 626 automated tests: 94 entry-package,
+372 original-canvas, 34 shared-reader, 63 tooling/controller, and 63 actual-shell
+browser checks. Typechecking, package and changed-script lint, and both asset
+verifiers pass. An older prepared-entry test setup still clicked Connect; its
+setup was migrated without removing the original workflow/reader assertions,
+then the complete browser suite passed. Desktop and mobile captures were inspected.
+
+The five-asset entry runtime build is
+`e43522d57fb514f3ab148888a97133d6d24755f3506db48d0f1374e649d3afc1`.
+Shared-reader source/build hashes remain at the T001 baseline. The planning file
+was left untouched. These are local Windows results, not a hosted CI, Linux,
+or new native Microsoft SSO acceptance claim.
 
 ## T001: Baseline
 

@@ -82,9 +82,9 @@ for (const route of ["current", "prepared"]) {
                 expect(fixture.currentUrl()).toBeTruthy();
                 await page.goto(fixture.currentUrl());
             } else {
-                await page.getByRole("button", { name: "Connect Microsoft account", exact: true }).click();
                 const search = page.getByRole("combobox", { name: "Search readable project repositories", exact: true });
                 await expect(search).toBeEnabled(); await search.focus();
+                expect(fixture.repositories.browserOpens()).toBe(1);
                 await page.getByRole("option", { name: /Synthetic repository 1/ }).click();
                 await page.getByRole("button", { name: "Confirm and clone", exact: true }).click();
                 await expect(page.getByRole("status").filter({ hasText: "Spec Kit canvas ready." })).toBeVisible();

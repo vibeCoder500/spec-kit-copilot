@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "kind": "sdd-repository-browser",
-  "sourceHash": "abdcaafbb0e728cd853d96986d2b7dc993881b4bae0a3c304abbaf2b47f5abcc",
-  "buildHash": "cabf0dee4a929de80f61e1f07b7e21cd59a51570f894a75a008fa34d0e9ce8ea",
+  "sourceHash": "4c3ffdc79ec2cf8c29f62674f3f55fc744ef8a1145051daf32992721f7176a07",
+  "buildHash": "e43522d57fb514f3ab148888a97133d6d24755f3506db48d0f1374e649d3afc1",
   "sources": [
     {
       "path": "build-runtime.mjs",
@@ -78,7 +78,7 @@
     },
     {
       "path": "src/ui/repository-entry.ts",
-      "sha256": "34c416bf3ba90fbba6ee4a965236227bcd2edfe52a78f57593b989eac9fb1b25"
+      "sha256": "f69b42efe3f068b9dd12656ab71840fd7cbe96e9fb9ebe27b5f50873b526c392"
     },
     {
       "path": "src/workspace-binding.ts",
@@ -255,8 +255,8 @@
     },
     {
       "path": "ui/repository-entry.js",
-      "bytes": 36150,
-      "sha256": "98581c8044d2d3017f9dca248d05b6318468d92df51593d53ad664074d4a935a"
+      "bytes": 36348,
+      "sha256": "f1cd0a3ec15ffd0b5837cd35d0af1e351a21514217dea65048f25d33ffcf3f12"
     },
     {
       "path": "vendor/repository-browser/server.mjs",

@@ -63,16 +63,80 @@ test("SDD entry reports no repository without sign-in and retains direct access"
     } finally { await page.close(); expect((await fixture.stop()).cleaned).toBe(true); }
 });
 
+test("SDD entry connects automatically once and respects refresh and Disconnect", async ({ page }, testInfo) => {
+    const fixture = await startFixture({ canvas: "sdd", repositories: true, repositoryEntry: true, cloneOnlyEntryHost: true });
+    try {
+        await page.goto(fixture.url);
+        const search = page.getByRole("combobox", { name: "Search readable project repositories", exact: true });
+        await expect(search).toBeEnabled();
+        expect(fixture.repositories.browserOpens()).toBe(1);
+        await expect(page.getByRole("button", { name: "Connect Microsoft account", exact: true })).toBeHidden();
+        await search.focus();
+        await expect(page.getByRole("option", { name: /Synthetic repository 1/ })).toBeVisible();
+        await page.screenshot({ path: testInfo.outputPath("entry-auto-connected.png"), fullPage: true });
+        await page.getByRole("button", { name: "Refresh entry state", exact: true }).click();
+        await page.reload();
+        await expect(search).toBeEnabled();
+        expect(fixture.repositories.browserOpens()).toBe(1);
+        await page.getByRole("button", { name: "Disconnect Microsoft account", exact: true }).click();
+        await expect(search).toBeDisabled();
+        await page.getByRole("button", { name: "Refresh entry state", exact: true }).click();
+        await page.reload();
+        await expect(page.getByRole("button", { name: "Connect Microsoft account", exact: true })).toBeEnabled();
+        await expect(search).toBeDisabled();
+        expect(fixture.repositories.browserOpens()).toBe(1);
+        await page.getByRole("button", { name: "Connect Microsoft account", exact: true }).click();
+        await expect(search).toBeEnabled();
+        expect(fixture.repositories.browserOpens()).toBe(2);
+        expect(fixture.repositories.cloneCount()).toBe(0);
+        expect(fixture.entryHost.counts().opens).toBe(0);
+        expect(fixture.dispatchCount()).toBe(0);
+        expect(fixture.workspaceChanged()).toBe(false);
+    } finally { await page.close(); expect((await fixture.stop()).cleaned).toBe(true); }
+});
+
+test("SDD entry offers explicit retry after automatic sign-in fails", async ({ page }) => {
+    const fixture = await startFixture({ canvas: "sdd", repositories: true, repositoryEntry: true, cloneOnlyEntryHost: true });
+    let attempts = 0;
+    await page.route("**/api/repositories/connect?*", async route => {
+        attempts++;
+        if (attempts === 1) await route.fulfill({ status: 409, contentType: "application/json",
+            body: JSON.stringify({ ok: false, error: { code: "interaction_required", message: "private-provider-diagnostic" } }) });
+        else await route.continue();
+    });
+    try {
+        await page.goto(fixture.url);
+        const search = page.getByRole("combobox", { name: "Search readable project repositories", exact: true });
+        const retry = page.getByRole("button", { name: "Connect Microsoft account", exact: true });
+        await expect.poll(() => attempts).toBe(1);
+        await expect(page.getByRole("status")).not.toBeEmpty();
+        await expect(retry).toBeEnabled();
+        await expect(search).toBeDisabled();
+        await expect(page.getByRole("button", { name: "Use current workspace", exact: true })).toBeEnabled();
+        await expect(page.getByRole("button", { name: "Open canvas directly", exact: true })).toBeEnabled();
+        await expect(page.locator("body")).not.toContainText("private-provider-diagnostic");
+        await page.getByRole("button", { name: "Refresh entry state", exact: true }).click();
+        expect(attempts).toBe(1);
+        expect(fixture.repositories.browserOpens()).toBe(0);
+        await retry.click();
+        await expect(search).toBeEnabled();
+        expect(attempts).toBe(2);
+        expect(fixture.repositories.browserOpens()).toBe(1);
+        expect(fixture.repositories.cloneCount()).toBe(0);
+        expect(fixture.dispatchCount()).toBe(0);
+        expect(fixture.workspaceChanged()).toBe(false);
+    } finally { await page.close(); expect((await fixture.stop()).cleaned).toBe(true); }
+});
+
 for (const width of [360, 768, 1280, 1920]) {
     test(`SDD dropdown consent prepares one owned repository at ${width}`, async ({ page }, testInfo) => {
         const fixture = await startFixture({ canvas: "sdd", repositories: true, repositoryEntry: true, supportedEntryHost: true });
         await page.setViewportSize({ width, height: width === 360 ? 780 : 1000 });
         try {
             await page.goto(fixture.url);
-            expect(fixture.repositories.browserOpens()).toBe(0);
-            await page.getByRole("button", { name: "Connect Microsoft account", exact: true }).click();
             const search = page.getByRole("combobox", { name: "Search readable project repositories", exact: true });
             await expect(search).toBeEnabled();
+            expect(fixture.repositories.browserOpens()).toBe(1);
             await search.focus();
             await expect(page.getByRole("option", { name: /Synthetic repository 1/ })).toBeVisible();
             await search.fill("repository 1");
@@ -112,9 +176,9 @@ for (const width of [360, 768, 1280, 1920]) {
         await page.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: new URL(fixture.url).origin });
         try {
             await page.goto(fixture.url);
-            await page.getByRole("button", { name: "Connect Microsoft account", exact: true }).click();
             const search = page.getByRole("combobox", { name: "Search readable project repositories", exact: true });
             await expect(search).toBeEnabled(); await search.focus();
+            expect(fixture.repositories.browserOpens()).toBe(1);
             await page.getByRole("option", { name: /Synthetic repository 1/ }).click();
             await expect(page.locator('[data-field="workspace"]')).toHaveText("Unchanged");
             const destination = await page.locator('[data-field="destination"]').textContent();
@@ -156,7 +220,6 @@ test("SDD entry cancels only an in-progress owned preparation", async ({ page })
     fixture.repositories.holdClone();
     try {
         await page.goto(fixture.url);
-        await page.getByRole("button", { name: "Connect Microsoft account", exact: true }).click();
         const search = page.getByRole("combobox", { name: "Search readable project repositories", exact: true });
         await expect(search).toBeEnabled(); await search.focus();
         await page.getByRole("option", { name: /Synthetic repository 1/ }).click();
@@ -176,7 +239,6 @@ test("SDD entry rejects a busy admission race and does not resume on idle", asyn
     fixture.entryHost.beforeAdmission(() => fixture.entryHost.setActivity("busy"));
     try {
         await page.goto(fixture.url);
-        await page.getByRole("button", { name: "Connect Microsoft account", exact: true }).click();
         const search = page.getByRole("combobox", { name: "Search readable project repositories", exact: true });
         await expect(search).toBeEnabled(); await search.focus();
         await page.getByRole("option", { name: /Synthetic repository 1/ }).click();
@@ -199,7 +261,6 @@ for (const outcome of ["unknown", "in_progress"]) {
         fixture.entryHost.setOutcome(outcome);
         try {
             await page.goto(fixture.url);
-            await page.getByRole("button", { name: "Connect Microsoft account", exact: true }).click();
             const search = page.getByRole("combobox", { name: "Search readable project repositories", exact: true });
             await expect(search).toBeEnabled(); await search.focus();
             await page.getByRole("option", { name: /Synthetic repository 1/ }).click();
@@ -225,7 +286,6 @@ test("SDD activation stays guarded until explicit same-target recovery verifies 
     fixture.entryHost.setOutcome("workspace_activated");
     try {
         await page.goto(fixture.url);
-        await page.getByRole("button", { name: "Connect Microsoft account", exact: true }).click();
         const search = page.getByRole("combobox", { name: "Search readable project repositories", exact: true });
         await expect(search).toBeEnabled(); await search.focus();
         await page.getByRole("option", { name: /Synthetic repository 1/ }).click();

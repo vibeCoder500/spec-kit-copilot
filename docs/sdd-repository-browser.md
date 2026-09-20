@@ -66,11 +66,21 @@ Unknown fields, oversized files and redirected paths are rejected. Missing or
 invalid remote configuration does not block current-workspace or direct entry.
 Do not copy a complete environment file, token, PAT, secret, or credential cache.
 
-Reopen the chooser after configuration and select **Connect Microsoft account**.
-The system browser may reuse Microsoft SSO or request account selection/MFA.
+Open a fresh chooser after configuration. It starts Microsoft sign-in once,
+without requiring **Connect Microsoft account**. The system browser may reuse
+Microsoft SSO or request account selection, consent, or MFA. Current-workspace and
+direct entry remain available while connection is pending or fails.
+
+Refresh, state events, and page reload do not restart an attempted connection.
+After a failure or **Disconnect Microsoft account**, use **Connect Microsoft
+account** to retry explicitly. Closing the canvas and opening a new entry session
+permits a new automatic attempt. Unconfigured, disabled, or invalid profiles never
+start sign-in.
+
 GitHub Copilot sign-in is not an Azure DevOps token. Tokens stay in memory for the
-entry instance and are discarded on disconnect/close. Disconnect does not sign out
-the browser, EzPzSpec, or Copilot, and never removes a completed clone.
+entry instance and are discarded on disconnect/close; no persistent credential
+cache is added. Disconnect does not sign out the browser, EzPzSpec, or Copilot,
+and never removes a completed clone.
 
 ## Search And Select
 

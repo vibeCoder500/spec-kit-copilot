@@ -419,6 +419,9 @@ export async function mountRepositoryEntry({ container, request }: { container: 
     document.addEventListener("pointerdown", outside);
 
     await refreshState();
+    if (!opening && !opened && snapshot?.configuration === "configured" && snapshot.connection.state === "disconnected" && snapshot.connection.generation === 0) {
+        void changeConnection(true);
+    }
     return {
         refresh: refreshState,
         receive(state: EntrySnapshot) { if (!disposed) { generation++; applySnapshot(state); render(); } },

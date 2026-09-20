@@ -809,6 +809,9 @@ async function mountRepositoryEntry({ container, request }) {
   };
   document2.addEventListener("pointerdown", outside);
   await refreshState();
+  if (!opening && !opened && snapshot?.configuration === "configured" && snapshot.connection.state === "disconnected" && snapshot.connection.generation === 0) {
+    void changeConnection(true);
+  }
   return {
     refresh: refreshState,
     receive(state) {

@@ -86,9 +86,12 @@ back to direct entry. Remote configuration never controls the local route.
 
 Configured Azure DevOps discovery offers team suggestions and typed project
 search inside one dropdown, without an embedded rail or pre-clone artifact
-reader. Connection is explicit and uses delegated Microsoft access through the
-system browser. GitHub Copilot sign-in is not reused as an Azure DevOps token.
-Tokens stay in memory and are discarded on disconnect or close.
+reader. A fresh configured chooser starts delegated Microsoft sign-in once through
+the system browser. Existing browser SSO may complete it without a prompt; account
+selection, consent, or MFA may still be required. Disconnect, refresh, and page
+reload do not repeat the attempt; the Connect control remains for explicit retry.
+GitHub Copilot sign-in is not reused as an Azure DevOps token. Tokens stay in
+memory and are discarded on disconnect or close; no persistent cache is added.
 
 **Cloning is independent of automatic handoff.** Explicit **Confirm and clone**
 creates one checkout at the displayed managed destination after fresh account,

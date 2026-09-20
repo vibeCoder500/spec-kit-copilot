@@ -82,6 +82,133 @@ test("Entry failure offers direct opening without exposing raw server output", a
     }
 });
 
+test("Entry automatically connects once and keeps local actions independent", async () => {
+    const dom = new JSDOM('<main id="entry"></main>', { url: "http://127.0.0.1:32001/?cap=synthetic-capability", pretendToBeVisual: true });
+    const prior = Object.getOwnPropertyDescriptor(globalThis, "document");
+    Object.defineProperty(globalThis, "document", { configurable: true, value: dom.window.document });
+    const state = { ...entryState(), configuration: "configured" };
+    const calls = [];
+    let releaseConnection;
+    const pending = new Promise(resolve => { releaseConnection = resolve; });
+    const tick = () => new Promise(resolve => setImmediate(resolve));
+    let instance;
+    try {
+        instance = await mountRepositoryEntry({ container: dom.window.document.getElementById("entry"), request: async (input, options) => {
+            const path = new URL(input).pathname;
+            calls.push({ path, method: options.method });
+            let data;
+            if (path.endsWith("/state")) data = structuredClone(state);
+            else if (path.endsWith("/connect")) {
+                assert.equal(options.method, "POST");
+                assert.deepEqual(JSON.parse(options.body), {});
+                state.connection = { ...state.connection, state: "connecting", generation: state.connection.generation + 1 };
+                await pending;
+                state.connection = { ...state.connection, state: "connected", accountLabel: "synthetic@example.invalid" };
+                data = { transactionId: "synthetic-transaction" };
+            } else if (path.endsWith("/disconnect")) {
+                state.connection = { state: "disconnected", generation: state.connection.generation + 1, projectLabel: "" };
+                data = {};
+            } else if (path.endsWith("/local")) data = { opened: true };
+            else if (path.endsWith("/preparations")) data = { items: [] };
+            else assert.fail(`Unexpected entry request ${path}`);
+            return { ok: true, json: async () => ({ ok: true, data }) };
+        } });
+        const document = dom.window.document;
+        assert.deepEqual(calls.map(call => call.path), ["/api/entry/state", "/api/repositories/connect"]);
+        const local = document.querySelector('[data-action="local"]');
+        assert.equal(local.disabled, false);
+        assert.equal(document.querySelector('[data-action="direct"]').disabled, false);
+        local.click(); await tick();
+        assert.equal(calls.filter(call => call.path.endsWith("/local")).length, 1);
+        releaseConnection(); await tick();
+        assert.equal(document.querySelector('[role="combobox"]').disabled, false);
+        document.querySelector('[aria-label="Disconnect Microsoft account"]').click(); await tick();
+        assert.equal(document.querySelector('[role="combobox"]').disabled, true);
+        await instance.refresh(); instance.receive(structuredClone(state)); await tick();
+        assert.equal(calls.filter(call => call.path.endsWith("/connect")).length, 1);
+        document.querySelector('[aria-label="Connect Microsoft account"]').click(); await tick();
+        assert.equal(calls.filter(call => call.path.endsWith("/connect")).length, 2);
+        assert.equal(calls.filter(call => call.path.endsWith("/clone")).length, 0);
+    } finally {
+        releaseConnection(); instance?.dispose();
+        if (prior) Object.defineProperty(globalThis, "document", prior); else Reflect.deleteProperty(globalThis, "document");
+        dom.window.close();
+    }
+});
+
+for (const [configuration, connection, generation = 1] of [["unconfigured", "disconnected"], ["disabled", "disconnected"], ["invalid", "disconnected"],
+    ["configured", "connected"], ["configured", "connecting"], ["configured", "failed"], ["configured", "disconnected", 2]]) {
+    test(`Entry does not auto-connect from ${configuration}/${connection}`, async () => {
+        const dom = new JSDOM('<main id="entry"></main>', { url: "http://127.0.0.1:32001/?cap=synthetic-capability" });
+        const prior = Object.getOwnPropertyDescriptor(globalThis, "document");
+        Object.defineProperty(globalThis, "document", { configurable: true, value: dom.window.document });
+        const state = { ...entryState(), configuration, connection: { state: connection, generation, projectLabel: "Synthetic" } };
+        const calls = [];
+        let instance;
+        try {
+            instance = await mountRepositoryEntry({ container: dom.window.document.getElementById("entry"), request: async (input, options) => {
+                const path = new URL(input).pathname; calls.push({ path, method: options.method });
+                assert.ok(["/api/entry/state", "/api/entry/preparations"].includes(path));
+                const data = path.endsWith("/state") ? structuredClone(state) : { items: [] };
+                return { ok: true, json: async () => ({ ok: true, data }) };
+            } });
+            await instance.refresh();
+            instance.receive({ ...state, configuration: "configured", connection: { ...state.connection, state: "disconnected", generation: 2 } });
+            await new Promise(resolve => setImmediate(resolve));
+            assert.equal(calls.filter(call => call.method === "POST").length, 0);
+            assert.equal(dom.window.document.querySelector('[data-action="local"]').disabled, false);
+            assert.equal(dom.window.document.querySelector('[data-action="direct"]').disabled, false);
+        } finally {
+            instance?.dispose();
+            if (prior) Object.defineProperty(globalThis, "document", prior); else Reflect.deleteProperty(globalThis, "document");
+            dom.window.close();
+        }
+    });
+}
+
+test("Failed automatic sign-in requires an explicit retry and preserves local entry", async () => {
+    const dom = new JSDOM('<main id="entry"></main>', { url: "http://127.0.0.1:32001/?cap=synthetic-capability" });
+    const prior = Object.getOwnPropertyDescriptor(globalThis, "document");
+    Object.defineProperty(globalThis, "document", { configurable: true, value: dom.window.document });
+    const state = { ...entryState(), configuration: "configured" };
+    let connections = 0;
+    let instance;
+    const tick = () => new Promise(resolve => setImmediate(resolve));
+    try {
+        instance = await mountRepositoryEntry({ container: dom.window.document.getElementById("entry"), request: async input => {
+            const path = new URL(input).pathname;
+            let data;
+            if (path.endsWith("/state")) data = structuredClone(state);
+            else if (path.endsWith("/preparations")) data = { items: [] };
+            else if (path.endsWith("/connect")) {
+                connections++;
+                if (connections === 1) {
+                    state.connection = { ...state.connection, state: "failed", generation: 1 };
+                    return { ok: false, json: async () => ({ ok: false, error: { code: "interaction_required", message: "private-provider-diagnostic" } }) };
+                }
+                state.connection = { ...state.connection, state: "connected", generation: 2, accountLabel: "synthetic@example.invalid" };
+                data = { transactionId: "synthetic-retry" };
+            } else assert.fail(`Unexpected entry request ${path}`);
+            return { ok: true, json: async () => ({ ok: true, data }) };
+        } });
+        await tick(); await instance.refresh(); instance.receive(structuredClone(state)); await tick();
+        assert.equal(connections, 1);
+        const document = dom.window.document;
+        assert.equal(document.querySelector('[data-action="local"]').disabled, false);
+        assert.equal(document.querySelector('[data-action="direct"]').disabled, false);
+        assert.doesNotMatch(document.body.textContent, /private-provider-diagnostic/);
+        const retry = document.querySelector('[aria-label="Connect Microsoft account"]');
+        assert.equal(retry.hidden, false); assert.equal(retry.disabled, false);
+        retry.click(); await tick();
+        assert.equal(connections, 2);
+        assert.equal(document.querySelector('[role="combobox"]').disabled, false);
+    } finally {
+        instance?.dispose();
+        if (prior) Object.defineProperty(globalThis, "document", prior); else Reflect.deleteProperty(globalThis, "document");
+        dom.window.close();
+    }
+});
+
 test("Entry dropdown restores suggestions, selects by keyboard, and requires explicit clone consent", async () => {
     const dom = new JSDOM('<main id="entry"></main><textarea id="original">Preserved</textarea>', { url: "http://127.0.0.1:32001/?cap=synthetic-capability", pretendToBeVisual: true });
     const prior = Object.getOwnPropertyDescriptor(globalThis, "document");

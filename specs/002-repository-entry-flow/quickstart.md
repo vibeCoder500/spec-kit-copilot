@@ -87,6 +87,9 @@ the migration becomes a completed or released slice.
 | Coordinated UI/router migration | Foundation preserves the existing UI/router pair; T022 accepts chooser launch, legacy-route rejection, migrated tests, and rebuilt assets together. No halfway migration is exposed or released. | FR-001, FR-014, FR-015, SC-005 |
 | Direct launch / disabled or failed entry | Original canvas works independently. | FR-014, FR-016, SC-005 |
 | Current Spec Kit workspace, no profile/network | One action to original canvas; zero remote sign-in/clone; dirty files preserved. | FR-002, FR-003, FR-018, SC-001, SC-007 |
+| Fresh configured disconnected entry | One automatic Microsoft connection request without a button click; local/direct controls stay usable and no clone starts. | 2026-09-21 sign-in amendment |
+| Connected, connecting, failed, or previously disconnected entry | No automatic new request; refresh, events, and reload preserve that decision; failure/disconnect retain explicit retry. | 2026-09-21 sign-in amendment |
+| Missing, disabled, invalid, or unavailable remote configuration | No automatic sign-in request. | FR-003, FR-016 |
 | No Git workspace | Local shortcut unavailable; no inferred alternative root. | FR-002, FR-021 |
 | Empty/type/clear search | Team suggestions, project matches, restored suggestions; no rail or pre-clone content reads. | FR-004, FR-005, FR-015 |
 | Suggestions fail or return none | Explicit search/local continuation remain usable. | FR-004 |
@@ -164,9 +167,11 @@ and compatibility gates first, then use only the explicitly approved repository.
 
 1. Stage the verified current payload in an owned App test session without
    replacing global plugins. Record source Git/file baselines and App/SDK versions.
-2. Connect explicitly, find the approved repository, inspect the account/ref/full
-   commit/destination and **App workspace: Unchanged**. Cancel once and verify
-   no new managed operation or checkout was created.
+2. Verify one automatic connection attempt when the fresh configured chooser
+   opens, without clicking Connect. Complete any required Microsoft interaction;
+   use explicit retry after a failure or Disconnect. Find the approved repository,
+   inspect the account/ref/full commit/destination and **App workspace: Unchanged**.
+   Cancel once and verify no new managed operation or checkout was created.
 3. Reselect while idle and choose **Confirm and clone** once. Observe **Clone
    complete**, the copyable path and unchanged active App workspace. Require one
    completed checkout, no handoff calls and no setup/workflow dispatch.
