@@ -224,6 +224,7 @@ test("Entry preparation routes accept only opaque bindings and preserve guarded 
         cancel: async (id: string, requestId: string) => { calls++; return { operationId: id, requestId, state: "cancelled" }; },
         preparations: async () => ({ items: [] }),
         handoff: async (id: string, contextId: string, requestId: string) => { calls++; return { operationId: id, contextId, requestId }; },
+        openCheckout: async (id: string, contextId: string, requestId: string) => { calls++; return { operationId: id, contextId, requestId, status: "requested" }; },
     };
     let origin = "";
     const server = createServer((request, response) => { void handleEntry(request, response, new URL(request.url!, origin), entry); });
@@ -252,6 +253,16 @@ test("Entry preparation routes accept only opaque bindings and preserve guarded 
         assert.equal((await fetch(`${origin}/api/entry/preparations`)).status, 200);
         assert.equal((await post(`operations/${operationId}/handoff`, { contextId: "local", requestId: "explicit-handoff" })).status, 200);
         assert.equal((await post(`operations/${operationId}/handoff`, { contextId: "local", requestId: "explicit-handoff", targetKind: "host_worktree" })).status, 400);
+        const beforeOpen = calls;
+        for (const extra of [{ destination: "/private" }, { executable: "/untrusted" }, { args: ["--prompt", "untrusted"] }, { url: "github-app://untrusted" }]) {
+            assert.equal((await post(`operations/${operationId}/open`, { contextId: "local", requestId: "explicit-open", ...extra })).status, 400);
+        }
+        assert.equal((await fetch(`${origin}/api/entry/operations/${operationId}/open`)).status, 400);
+        assert.equal(calls, beforeOpen);
+        const opened = await post(`operations/${operationId}/open`, { contextId: "local", requestId: "explicit-open" });
+        assert.equal(opened.status, 202);
+        assert.equal((await opened.json()).data.status, "requested");
+        assert.equal(calls, beforeOpen + 1);
     } finally { await new Promise<void>(resolve => { server.close(() => resolve()); server.closeAllConnections(); }); }
 });
 
@@ -298,6 +309,7 @@ test("Selection stays metadata-only on unsupported hosts and recognizes the curr
 async function handoffFixture(run: (proof: {
     entry: Awaited<ReturnType<typeof repositoryModule.createEntryCoordinator>>; counts: { clones: number; transitions: number; opens: number; lookups: number };
     events: string[]; setOutcome(value: HandoffOutcome["status"]): void; setProvider(value: boolean): void; setActivity(value: "idle" | "busy"): void;
+    appLaunches: { workspacePath: string; destination: string }[]; beforeAppLaunch(callback: () => void): void;
     prepare(): Promise<string>; afterClone(callback: () => void): void; record(operationId: string): ReturnType<ReturnType<typeof createPreparationStore>["read"]>;
 }) => Promise<void>, { cloneOnly = false } = {}) {
     const home = await realpath(await mkdtemp(join(tmpdir(), "sdd-entry-handoff-")));
@@ -310,6 +322,8 @@ async function handoffFixture(run: (proof: {
     let activation: WorkspaceActivation | undefined;
     let operationId = "";
     let afterClone: () => void = () => undefined;
+    let beforeAppLaunch: () => void = () => undefined;
+    const appLaunches: { workspacePath: string; destination: string }[] = [];
     const counts = { clones: 0, transitions: 0, opens: 0, lookups: 0 };
     const events: string[] = [];
     const store = createPreparationStore({ homeDirectory: home });
@@ -354,6 +368,9 @@ async function handoffFixture(run: (proof: {
         account: { tenantId: profile.tenantId, localAccountId: repositoryId, homeAccountId: "synthetic-account", username: "synthetic@example.invalid" } }) as AuthenticationResult;
     const entry = await repositoryModule.createEntryCoordinator({ host, profileStatus: { state: "configured", profile },
         handoffOptions: { verifyPrepared: async () => { events.push("preparation_verified"); } },
+        appLauncher: { available: async () => true, async launch(workspacePath, destination, beforeOpen) {
+            beforeAppLaunch(); await beforeOpen?.(); appLaunches.push({ workspacePath, destination }); return { status: "requested" };
+        } },
         inspectWorkspace: async path => ({ workingDirectory: path, worktreeRoot: path, gitCommonDirectory: join(path, ".git"), origin: null, head: "a".repeat(40), branch: "refs/heads/original" }),
         cloneOptions: { homeDirectory: home, executable: join(home, "trusted-git"), runner: async ({ args, cwd }) => {
             if (args.includes("clone")) { counts.clones++; await mkdir(join(args.at(-1)!, ".git"), { recursive: true }); afterClone(); return ""; }
@@ -376,7 +393,8 @@ async function handoffFixture(run: (proof: {
     try {
         assert.equal(typeof Reflect.get(entry, "handoff"), "function");
         await entry.connect().completion;
-        await run({ entry, counts, events, setOutcome(value) { outcome = value; }, setProvider(value) { provider = value; },
+        await run({ entry, counts, events, appLaunches, beforeAppLaunch(callback) { beforeAppLaunch = callback; },
+            setOutcome(value) { outcome = value; }, setProvider(value) { provider = value; },
             setActivity(value) { activity = value; activityRevision++; },
             afterClone(callback) { afterClone = callback; }, record: store.read,
             async prepare() {
@@ -423,6 +441,40 @@ test("Clone-only completion stays complete when the host becomes busy and never 
     await entry.state(); await entry.settled();
     assert.equal((await entry.state()).phase, "prepared");
     assert.deepEqual(counts, { clones: 1, transitions: 0, opens: 0, lookups: 0 });
+}, { cloneOnly: true }));
+
+test("Explicit checkout opening reuses one authorized launch and never clones or hands off", () => handoffFixture(async ({ entry, prepare, counts, record, appLaunches }) => {
+    const operationId = await prepare();
+    const before = await entry.state();
+    assert.equal(before.host.canOpenClone, true);
+    assert.equal(appLaunches.length, 0);
+    const [first, second] = await Promise.all([
+        entry.openCheckout(operationId, before.localContext.contextId, "one-explicit-open"),
+        entry.openCheckout(operationId, before.localContext.contextId, "one-explicit-open"),
+    ]);
+    assert.deepEqual(first, { status: "requested" }); assert.deepEqual(second, first);
+    assert.equal(appLaunches.length, 1);
+    assert.equal(appLaunches[0]!.destination, (await record(operationId)).destination);
+    assert.notEqual(appLaunches[0]!.workspacePath, appLaunches[0]!.destination);
+    assert.equal((await entry.state()).localContext.contextId, before.localContext.contextId);
+    assert.equal((await record(operationId)).handoff, undefined);
+    assert.deepEqual(counts, { clones: 1, transitions: 0, opens: 0, lookups: 0 });
+    entry.disconnect();
+    await assert.rejects(entry.openCheckout(operationId, before.localContext.contextId, "disconnected-open"), { code: "resource_unavailable" });
+    assert.equal(appLaunches.length, 1);
+}, { cloneOnly: true }));
+
+test("Checkout opening rejects stale, busy and changed-during-launch states", () => handoffFixture(async ({ entry, prepare, setActivity, beforeAppLaunch, appLaunches }) => {
+    const operationId = await prepare();
+    const before = await entry.state();
+    await assert.rejects(entry.openCheckout(operationId, "stale-context", "stale-open"), { code: "context_changed" });
+    setActivity("busy");
+    assert.equal((await entry.state()).host.canOpenClone, false);
+    await assert.rejects(entry.openCheckout(operationId, before.localContext.contextId, "busy-open"), { code: "session_busy" });
+    setActivity("idle");
+    beforeAppLaunch(() => setActivity("busy"));
+    await assert.rejects(entry.openCheckout(operationId, before.localContext.contextId, "late-busy-open"), { code: "session_busy" });
+    assert.equal(appLaunches.length, 0);
 }, { cloneOnly: true }));
 
 test("Entry persists each handoff phase and reaches readiness only after target verification", () => handoffFixture(async ({ entry, prepare, counts, events }) => {

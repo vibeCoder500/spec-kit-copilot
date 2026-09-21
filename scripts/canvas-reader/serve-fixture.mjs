@@ -25,6 +25,8 @@ export async function startFixture({ canvas, pluginRoot, markdown, allowMutation
     const entryHost = repositoryEntry && canvas === "sdd" ? await createEntryHostFixture({ workspace: fixture.workspace, supported: supportedEntryHost, cloneOnly: cloneOnlyEntryHost }) : null;
     let entry;
     const targetEntries = new Map();
+    const appLaunches = [];
+    let appLaunchError;
     let dispatches = 0;
     let deniedWrites = 0;
     let stopped = false;
@@ -95,7 +97,14 @@ export async function startFixture({ canvas, pluginRoot, markdown, allowMutation
                     await binding.ready();
                 });
                 entry = await module.startServer({ ...(repositoryFixture?.options ?? { profileStatus: { state: "unconfigured" } }),
-                    ...(entryHost ? { entryMode: true, entryOptions: { host: entryHost.adapter, inspectWorkspace: async () => entryRepository ? {
+                    ...(entryHost ? { entryMode: true, entryOptions: { host: entryHost.adapter,
+                        appLauncher: { available: async () => Boolean(repositoryFixture), async launch(workspacePath, destination, beforeOpen) {
+                            if (workspacePath !== fixture.workspace || !repositoryFixture) throw new Error("Unowned fixture launch source.");
+                            await beforeOpen?.();
+                            if (appLaunchError) throw Object.assign(new Error("Synthetic App launch result."), { code: appLaunchError });
+                            appLaunches.push({ destination });
+                            return { status: "requested" };
+                        } }, inspectWorkspace: async () => entryRepository ? {
                         workingDirectory: fixture.workspace, worktreeRoot: fixture.workspace, gitCommonDirectory: join(fixture.workspace, ".git"),
                         origin: null, head: "a".repeat(40), branch: "refs/heads/synthetic" } : null } } : {}) });
             } finally { hooks.deregister(); delete globalThis[key]; }
@@ -111,7 +120,7 @@ export async function startFixture({ canvas, pluginRoot, markdown, allowMutation
             const readOnlyLink = request.method === "POST" && ["/api/review/resolve-link", "/api/review/validate-clarifications"].includes(path);
             const mockClarification = allowMockDispatch && canvas === "sdd" && request.method === "POST" && path === "/api/clarify";
             const repositoryRead = repositoryFixture && repositoryRoutes.has(path);
-            const entryRequest = entryHost && /^\/api\/entry\/(?:local|direct|selection|clone|preparations|operations\/[a-f0-9]{32}(?:\/(?:cancel|handoff))?)$/.test(path);
+            const entryRequest = entryHost && /^\/api\/entry\/(?:local|direct|selection|clone|preparations|operations\/[a-f0-9]{32}(?:\/(?:cancel|handoff|open))?)$/.test(path);
             const retiredRequest = path.startsWith("/api/repositories/") && !["connection", "connect", "disconnect", "search", "relevant", "detail"].includes(path.split("/").at(-1));
             if (!retiredRequest && !entryRequest && !repositoryRead && !mockClarification && !readOnlyLink && (request.method !== "GET" || (path.startsWith("/api/") && !readRoutes.has(path)))) {
                 deniedWrites++;
@@ -129,6 +138,11 @@ export async function startFixture({ canvas, pluginRoot, markdown, allowMutation
             fixtureId: fixture.id,
             repositories: repositoryFixture,
             entryHost,
+            appLaunches: () => appLaunches.map(item => ({ ...item })),
+            setAppLaunchError(code) {
+                if (code !== undefined && !["app_launch_failed", "app_launch_unknown"].includes(code)) throw new Error("Unknown synthetic launch outcome.");
+                appLaunchError = code;
+            },
             targetUrl: () => [...targetEntries.values()].find(target => target.workspacePath !== fixture.workspace)?.url ?? null,
             currentUrl: () => [...targetEntries.values()].find(target => target.workspacePath === fixture.workspace)?.url ?? null,
             dispatchCount: () => dispatches,

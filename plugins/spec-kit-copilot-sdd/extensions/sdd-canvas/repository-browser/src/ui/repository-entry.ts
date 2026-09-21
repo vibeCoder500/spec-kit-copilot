@@ -77,6 +77,13 @@ export async function mountRepositoryEntry({ container, request }: { container: 
         return copy;
     }
 
+    function openCheckoutButton(operationId: string) {
+        const control = button("Open in Copilot App", ExternalLink, () => { void launchCheckout(operationId); }, true);
+        control.dataset.action = "open-checkout";
+        control.disabled = submitting || snapshot?.host.canOpenClone !== true || snapshot.host.activity !== "idle";
+        return control;
+    }
+
     const direct = button("Open canvas directly", ExternalLink, () => { void open(true); }); direct.dataset.action = "direct";
     const local = button("Use current workspace", ArrowRight, () => { void open(false); }, true); local.dataset.action = "local"; local.disabled = true;
     const refresh = button("Refresh entry state", RefreshCw, () => { void refreshState(); });
@@ -211,7 +218,9 @@ export async function mountRepositoryEntry({ container, request }: { container: 
         const destination = document.createElement("p"); destination.className = "entry-path"; destination.textContent = operation.destination ?? "";
         operationPanel.append(status, destination);
         if (operation.state === "prepared") {
-            operationPanel.append(copyCheckoutPath(operation.destination));
+            const actions = document.createElement("div"); actions.className = "entry-selection-actions";
+            actions.append(openCheckoutButton(operation.operationId), copyCheckoutPath(operation.destination));
+            operationPanel.append(actions);
             if (snapshot?.phase === "prepared" && !snapshot.host.canHandoff) {
                 const workspace = document.createElement("p"); workspace.className = "entry-muted";
                 workspace.textContent = "Current workspace unchanged. Automatic workspace switching is unavailable.";
@@ -244,7 +253,7 @@ export async function mountRepositoryEntry({ container, request }: { container: 
             const path = document.createElement("p"); path.className = "entry-path"; path.textContent = item.destination;
             details.append(name, path);
             const actions = document.createElement("div"); actions.className = "entry-selection-actions";
-            actions.append(copyCheckoutPath(item.destination));
+            actions.append(openCheckoutButton(item.operationId), copyCheckoutPath(item.destination));
             if (snapshot?.host.canHandoff) {
                 const retry = button("Retry handoff", ArrowRight, () => { void retryHandoff(item.operationId); }, true);
                 retry.disabled = submitting || !snapshot.host.canPrepareRemote;
@@ -371,6 +380,16 @@ export async function mountRepositoryEntry({ container, request }: { container: 
         submitting = true; render();
         try { operation = await api.call<Operation>(`operations/${operation.operationId}/cancel`, {}, { requestId: requestId() }); }
         catch (error) { if (!disposed) message.textContent = safeError(error); }
+        finally { submitting = false; render(); }
+    }
+
+    async function launchCheckout(operationId: string) {
+        if (disposed || submitting || !connected() || snapshot?.host.canOpenClone !== true || snapshot.host.activity !== "idle") return;
+        submitting = true; message.textContent = "Requesting Copilot App opening..."; render();
+        try {
+            await api.call(`operations/${operationId}/open`, {}, { contextId: snapshot.localContext.contextId, requestId: requestId() });
+            if (!disposed) message.textContent = "Open request sent to Copilot App.";
+        } catch (error) { if (!disposed) message.textContent = safeError(error); }
         finally { submitting = false; render(); }
     }
 

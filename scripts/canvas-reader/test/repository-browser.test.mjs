@@ -334,7 +334,7 @@ for (const restored of [false, true]) {
             destination: "C:/Synthetic/SpecKitCanvas/repositories/owned/checkout", sourceCommit: "a".repeat(40), localBranch: "speckit/canvas-owned" };
         const state = { ...entryState(), configuration: "configured", phase: restored ? "chooser" : "prepared",
             connection: { state: "connected", generation: 1, accountLabel: "synthetic@example.invalid" },
-            host: { activity: "idle", canOpenCurrent: true, canPrepareRemote: true, canHandoff: false, canRetryHandoff: false, reason: null },
+            host: { activity: "idle", canOpenCurrent: true, canPrepareRemote: true, canOpenClone: true, canHandoff: false, canRetryHandoff: false, reason: null },
             operation: restored ? null : operation };
         const calls = [];
         let instance;
@@ -342,8 +342,14 @@ for (const restored of [false, true]) {
             instance = await mountRepositoryEntry({ container: dom.window.document.getElementById("entry"), request: async (input, options) => {
                 const path = new URL(input).pathname;
                 calls.push({ path, method: options.method });
-                assert.ok(["/api/entry/state", "/api/entry/preparations"].includes(path));
-                const data = path.endsWith("/state") ? state : { items: restored ? [{ ...operation, handoffState: null }] : [] };
+                assert.ok(["/api/entry/state", "/api/entry/preparations", `/api/entry/operations/${operation.operationId}/open`].includes(path));
+                if (path.endsWith("/open")) {
+                    assert.equal(options.method, "POST");
+                    const body = JSON.parse(options.body);
+                    assert.deepEqual(Object.keys(body).sort(), ["contextId", "requestId"]);
+                    assert.equal(body.contextId, state.localContext.contextId);
+                }
+                const data = path.endsWith("/state") ? state : path.endsWith("/open") ? { status: "requested" } : { items: restored ? [{ ...operation, handoffState: null }] : [] };
                 return { ok: true, json: async () => ({ ok: true, data }) };
             } });
             await new Promise(resolve => setImmediate(resolve));
@@ -359,9 +365,16 @@ for (const restored of [false, true]) {
             assert.deepEqual(copied, [operation.destination]);
             assert.match(document.body.textContent, /Checkout path copied/);
             instance.receive({ ...state, host: { ...state.host, activity: "busy", canPrepareRemote: false } });
+            assert.equal(document.querySelector('[data-action="open-checkout"]').disabled, true);
             instance.receive(state);
             assert.equal(calls.filter(call => call.method === "POST").length, 0);
             assert.equal(document.querySelector('[aria-label="Retry handoff"]'), null);
+            const launch = document.querySelector('[data-action="open-checkout"]');
+            assert.equal(launch.disabled, false);
+            launch.click(); launch.click();
+            await new Promise(resolve => setImmediate(resolve));
+            assert.equal(calls.filter(call => call.path.endsWith("/open")).length, 1);
+            assert.match(document.body.textContent, /Open request sent to Copilot App/);
         } finally {
             instance?.dispose();
             if (prior) Object.defineProperty(globalThis, "document", prior); else Reflect.deleteProperty(globalThis, "document");

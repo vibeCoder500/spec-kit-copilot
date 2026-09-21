@@ -193,7 +193,29 @@ export async function createWorkflowBinding({ host, providerId, instanceId, home
     if (!prepared && (inside(managed, resolve(initial.workingDirectory)) || identity && inside(managed, identity.gitCommonDirectory))) {
         throw new RepositoryError("entry_required");
     }
-    if (prepared && !prepared.acceptedTarget) {
+    const locallyOpened = Boolean(prepared && !prepared.handoff);
+    async function verifyLocalPreparation(record: PreparedRepositoryRecord, local: LocalRepositoryIdentity | null) {
+        try {
+            await store.verifyOwnership(record);
+            if (record.handoff || record.acceptedTarget || !local || local.gitCommonDirectory !== record.gitCommonDirectory ||
+                local.origin !== record.originIdentity || !local.head || !local.branch) throw new Error();
+            const execute = await readOnlyGit(local.worktreeRoot, { ...options, record }, AbortSignal.timeout(10_000));
+            const registrations = (await execute(["worktree", "list", "--porcelain", "-z"])).split("\0\0").map(block => block.split("\0"));
+            let matches = 0;
+            for (const fields of registrations) {
+                const path = fields.find(field => field.startsWith("worktree "))?.slice(9);
+                if (!path || !isAbsolute(path)) continue;
+                if (await realpath(path).catch(() => undefined) !== local.worktreeRoot) continue;
+                if (fields.some(field => field === "bare" || field === "detached" || field.startsWith("prunable")) ||
+                    !fields.includes(`branch ${local.branch}`) || !fields.includes(`HEAD ${local.head}`)) throw new Error();
+                matches++;
+            }
+            if (matches !== 1) throw new Error();
+        } catch { throw new RepositoryError("entry_required"); }
+    }
+    if (prepared && locallyOpened) {
+        await verifyLocalPreparation(prepared, identity);
+    } else if (prepared && !prepared.acceptedTarget) {
         const attempt = prepared.handoff;
         if (!attempt?.activation || attempt.status !== "workspace_activated" || attempt.instanceId !== instanceId || !providerId) throw new RepositoryError("entry_required");
         await verifyActivatedRepository({ ...options, record: prepared, activation: attempt.activation, snapshot: initial });
@@ -211,6 +233,13 @@ export async function createWorkflowBinding({ host, providerId, instanceId, home
             if (!prepared || prepared.acceptedTarget) return;
             const current = await host.inspectCurrent();
             const latest = await store.read(prepared.operationId);
+            if (locallyOpened) {
+                if (current.sessionId !== initial.sessionId || current.contextRevision !== initial.contextRevision || current.workingDirectory !== initial.workingDirectory) {
+                    throw new RepositoryError("context_changed");
+                }
+                await verifyLocalPreparation(latest, await inspectCurrentRepository({ ...options, workspacePath: current.workingDirectory }));
+                return;
+            }
             const attempt = latest.handoff;
             if (!attempt?.activation || attempt.instanceId !== instanceId || attempt.status !== "workspace_activated") throw new RepositoryError("entry_required");
             await verifyActivatedRepository({ ...options, record: latest, activation: attempt.activation, snapshot: current });
@@ -231,7 +260,8 @@ export async function createWorkflowBinding({ host, providerId, instanceId, home
             }
             if (prepared) {
                 const latest = await store.read(prepared.operationId);
-                if (!latest.acceptedTarget || latest.handoff?.status !== "canvas_ready" || latest.gitCommonDirectory !== local?.gitCommonDirectory || latest.originIdentity !== local?.origin) {
+                if (locallyOpened) await verifyLocalPreparation(latest, local);
+                else if (!latest.acceptedTarget || latest.handoff?.status !== "canvas_ready" || latest.gitCommonDirectory !== local?.gitCommonDirectory || latest.originIdentity !== local?.origin) {
                     throw new RepositoryError("entry_required");
                 }
             }

@@ -203,6 +203,51 @@ test("Verified readiness permits later local edits and branches without reapplyi
         providerId: acceptedTarget.providerId, instanceId: acceptedTarget.instanceId, homeDirectory: home }), { code: "clone_identity_changed" });
 }));
 
+test("Explicitly opened clone and linked worktree bind locally without manufacturing handoff readiness", () => preparedFixture(async ({ home, record, linked, host: initial, git }) => {
+    const store = createPreparationStore({ homeDirectory: home });
+    await store.write(record);
+    let snapshot = { ...initial, workingDirectory: record.destination };
+    const host: HostHandoffAdapter = { inspectCurrent: async () => snapshot,
+        openCurrentCanvas: async () => assert.fail("Binding cannot open a canvas"), admitPreparation: async () => assert.fail("Binding cannot clone"),
+        handoffPrepared: async () => assert.fail("Binding cannot switch workspaces"), getHandoffOutcome: async () => assert.fail("Binding cannot submit recovery"), dispose() {} };
+    for (const workspacePath of [record.destination, linked]) {
+        snapshot = { ...initial, workingDirectory: workspacePath };
+        const binding = await workspaceModule.createWorkflowBinding({ host, providerId: "project:sdd-canvas", instanceId: "explicit-local", homeDirectory: home });
+        assert.equal(binding.workspacePath, workspacePath);
+        await binding.ready(); await binding.verify();
+        assert.equal((await store.read(record.operationId)).handoff, undefined);
+        assert.equal((await store.read(record.operationId)).acceptedTarget, undefined);
+    }
+    git(["checkout", "-b", "normal-local-edits"], linked);
+    await writeFile(join(linked, "spec.md"), "# Preserve local edits\n");
+    await writeFile(join(linked, "draft.txt"), "Keep this draft\n");
+    const reopened = await workspaceModule.createWorkflowBinding({ host, providerId: "project:sdd-canvas", instanceId: "explicit-reopen", homeDirectory: home });
+    await reopened.ready(); await reopened.verify();
+    assert.equal(await readFile(join(linked, "draft.txt"), "utf8"), "Keep this draft\n");
+    assert.equal(git(["symbolic-ref", "HEAD"]), record.branch);
+    snapshot = { ...snapshot, contextRevision: "changed" };
+    await assert.rejects(reopened.verify(), { code: "context_changed" });
+}));
+
+test("Locally opened managed repositories reject unregistered worktrees and unresolved handoffs", () => preparedFixture(async ({ home, record, linked, host: initial }) => {
+    const store = createPreparationStore({ homeDirectory: home });
+    await store.write(record);
+    const unregistered = join(home, "unregistered-local-copy");
+    await mkdir(unregistered);
+    await writeFile(join(unregistered, ".git"), await readFile(join(linked, ".git")));
+    await writeFile(join(unregistered, "spec.md"), await readFile(join(linked, "spec.md")));
+    let snapshot = { ...initial, workingDirectory: unregistered };
+    const host: HostHandoffAdapter = { inspectCurrent: async () => snapshot,
+        openCurrentCanvas: async () => assert.fail("No canvas dispatch"), admitPreparation: async () => assert.fail("No clone"),
+        handoffPrepared: async () => assert.fail("No workspace mutation"), getHandoffOutcome: async () => assert.fail("No recovery"), dispose() {} };
+    await assert.rejects(workspaceModule.createWorkflowBinding({ host, providerId: "project:sdd-canvas", instanceId: "local-copy", homeDirectory: home }), { code: "entry_required" });
+    snapshot = { ...initial, workingDirectory: record.destination };
+    await store.beginAttempt(record.operationId, { attemptId: "d".repeat(32), operationId: record.operationId, instanceId: "pending-target",
+        expectedSource: { sessionId: "source", contextRevision: "original" }, status: "requested", createdAt: 3000 });
+    await assert.rejects(workspaceModule.createWorkflowBinding({ host, providerId: "project:sdd-canvas", instanceId: "local-bypass", homeDirectory: home }), { code: "entry_required" });
+    assert.equal((await store.read(record.operationId)).acceptedTarget, undefined);
+}));
+
 test("Target binder rejects direct bypass and records readiness only for the independently verified instance", () => preparedFixture(async ({ home, record, activation, host: initial }) => {
     const bind = Reflect.get(workspaceModule, "createWorkflowBinding");
     assert.equal(typeof bind, "function");

@@ -39,6 +39,7 @@ kept distinct from the required, not-yet-available host contract in
 | Checked cloning supported, automatic handoff unsupported | Explicit clone is available; confirmation states that the App workspace stays unchanged. |
 | Confirm and clone | Exactly one admitted preparation, progress, and explicit cancel. |
 | Successful standalone clone | **Clone complete**, retained checkout path and copy control; no handoff request or unsupported retry. |
+| Explicitly open a completed checkout | **Open in Copilot App** submits one guarded launch request; normal App approval remains, and the original session is retained. |
 | Successful automatic handoff | Original target-workspace canvas; entry controls leave the view. |
 | Failed handoff | Retained clone, explicit **Retry handoff**, or return to original workspace. |
 | Busy after clone | Retained clone; retry enabled only after idle, never auto-invoked. |
@@ -80,7 +81,7 @@ RPC method names.
 
 | Method / Route | Input | Result / Guards |
 | --- | --- | --- |
-| `GET /api/entry/state` | Instance capability only | Entry settings, safe connection/workspace state, independent `canPrepareRemote` and `canHandoff` flags, retry eligibility and operation status. |
+| `GET /api/entry/state` | Instance capability only | Entry settings, safe connection/workspace state, independent `canPrepareRemote`, `canOpenClone`, and `canHandoff` flags, retry eligibility and operation status. |
 | `GET /api/repositories/connection` | Existing capability | Safe remote-connection snapshot; no token. |
 | `POST /api/repositories/connect` | Empty JSON | Explicit existing MSAL transaction; no clone or workflow. |
 | `POST /api/repositories/disconnect` | Empty JSON | Clear auth/transient selection, cancel incomplete owned prep, retain completed checkout/record. |
@@ -93,6 +94,7 @@ RPC method names.
 | `GET /api/entry/operations/{id}` | Owned operation ID | Safe progress/recovery status; no raw Git output, credentials, or automatic mutation. |
 | `POST /api/entry/operations/{id}/cancel` | Request ID | Cancel only the incomplete owned preparation; completed clones remain. |
 | `GET /api/entry/preparations` | Current profile/account authorization when connected | Bounded validated retained-completion summaries; no unauthorized inventory. |
+| `POST /api/entry/operations/{id}/open` | Expected opaque local context ID, request ID | Reauthorize record/repository, verify checkout and fresh idle/context state, then launch the installed `copilot app` in that directory. 202 means `requested`, not activated; identical request IDs reuse one result. |
 | `POST /api/entry/operations/{id}/handoff` | Expected local context ID, request ID | Explicit recovery: reconcile last attempt, recheck access/clone/host; if already activated, finish guarded canvas binding in that target without another switch; never call clone start. |
 
 Server-side initial successful clone completion may request handoff only when
@@ -110,6 +112,18 @@ failed validation after activation retains the clone and the activation record.
 Recovery must not repeat workspace activation, and a direct-provider call tied by
 the host to the pending attempt cannot bypass target validation. Ordinary direct
 entry in an existing workspace remains independent of remote entry services.
+
+Explicit App opening is independent of automatic handoff. It never sets the
+handoff capability flags or persists an activation/readiness acknowledgment.
+The launcher uses fixed argument arrays, no shell, a token-free allowlisted
+environment, and an installed native executable outside the source/target
+repositories. It verifies the `app` subcommand, disables CLI updates, and applies
+bounded waits and output limits. There is no automatic retry or App termination.
+
+When a completed clone has no handoff attempt, normal local canvas binding
+validates ownership, Git origin/common directory, and worktree registration.
+It allows subsequent ordinary local edits without manufacturing handoff evidence.
+Unresolved automatic attempts continue to reject direct-provider bypass.
 
 Retire the old embedded `/api/repositories/clone*` and remote-artifact
 context/items/content/reference/refresh routes in the same validated changeset
@@ -135,8 +149,10 @@ repository error vocabulary:
 | 404 | `resource_unavailable` | Repository/operation is unavailable; do not reveal unauthorized existence. |
 | 409 | `source_changed`, `context_changed`, `confirmation_expired`, `session_busy`, `clone_identity_changed` | Refresh/reconfirm or wait and explicitly retry; no automatic mutation. |
 | 409 | `handoff_in_progress`, `handoff_unknown` | Reconcile the same attempt; do not start another clone or transition. |
+| 409 | `app_launch_failed`, `app_launch_unknown` | Preserve the checkout, check the App, and retry only by a new explicit user action. |
 | 412 | `activity_unknown` | Reject clone admission before start; direct/current-workspace path stays available where valid. |
 | 412 | `host_handoff_unsupported`, `canvas_unavailable` | Block the unavailable handoff/canvas operation; retain completed clones. Unsupported handoff does not disable checked cloning. |
+| 412 | `app_launcher_unavailable` | No supported installed launcher; retain copy-path/manual opening without installation. |
 | 429/503 | Existing rate-limit/upstream categories | Bounded read retry only; explicit user retry for mutations. |
 
 SSE may refresh safe state and invalidate stale controls. It may not start a clone,

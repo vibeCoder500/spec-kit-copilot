@@ -89,6 +89,58 @@ Shared-reader source/build hashes remain at the T001 baseline. The planning file
 was left untouched. These are local Windows results, not a hosted CI, Linux,
 or new native Microsoft SSO acceptance claim.
 
+## Explicit App Opening Follow-Up: 2026-09-21
+
+The user requested a button/script mechanism to open the cloned repository,
+even without automatic in-session switching. The separate **Open in Copilot App**
+action uses the public, noninteractive `copilot app` command from an already
+installed native CLI. It does not start another agent or modify the old session's
+cwd. The existing G-HOST gate for atomic automatic handoff remains unverified.
+
+- The backend accepts only operation/context/request IDs, reauthorizes the retained
+  repository, validates its owned checkout and source activity/context, and uses
+  fixed argv with a sanitized environment. No browser-supplied path or command is
+  accepted. Duplicate requests reuse a result; failures retain the checkout.
+- Completed and retained clones expose an explicit opening button. Busy or unknown
+  state blocks it; idle events do not submit it. Results say `requested`, never
+  `workspace_activated` or `canvas_ready` based on a launcher exit code.
+- Normal local binding now accepts an explicitly opened owned clone or registered
+  worktree without forging an automatic attempt, and preserves ordinary local
+  edits. Pending automatic handoffs still cannot bypass their guarded target path.
+- Native verification used the installed CLI 1.0.83 and two owned synthetic Git
+  repositories. The old App 1.1.20 process did not exit normally; the user explicitly
+  approved stopping only that App process and relaunching. A pending App update
+  applied during restart, yielding App 1.1.21. No updater command was issued.
+- The App displayed **Open session?** with the exact owned folder. After the
+  normal **Allow** action, its own **Show in Explorer** selected that exact target.
+  A second explicit launch while App 1.1.21 was already running passed the same
+  independent folder check with no restart. App confirmation was required.
+- Both repositories' tracked/untracked files, branches and HEADs matched their
+  baselines after native opening. No private repository was cloned, no model
+  prompt or workflow was submitted, and no global plugin was replaced. Detailed
+  ownership/path observations are in ignored evidence only.
+
+The native checks prove the launcher and App approval path, not the complete
+atomic handoff contract, macOS behavior, or automatic target-canvas opening. The
+button/HTTP integration is exercised by synthetic controller/browser tests; native
+checks invoke the same launch adapter without a private clone. The shipped
+button never stops the App; the explicitly approved restart was test-only.
+
+Final local checks passed 636 automated tests: 103 repository-package,
+372 original-canvas, 34 shared-reader, 63 tooling/controller, and 64 actual-shell
+browser tests. Typecheck, lint, changed-script lint, package verification and
+Markdown/link checks passed. One unchanged reader-navigation timing failure
+passed in isolation and then in the complete 64-test browser rerun without a
+reader or assertion change. Mobile and desktop completion/opening views were
+inspected for clipping and overlap.
+
+The five-asset runtime build is
+`247d4fff03512398b2e1484190fc872ac58c10af123b4db51bd40230025d2513`.
+The shared reader remains at the T001 source/build hashes. Hosted CI, native
+macOS, and an actual private-clone button invocation were not run in this follow-up;
+the Windows native launcher and its App-approved repository selection were proved
+separately against the owned fixtures above.
+
 ## T001: Baseline
 
 - The tracked working tree was clean. The new feature documents and scoped

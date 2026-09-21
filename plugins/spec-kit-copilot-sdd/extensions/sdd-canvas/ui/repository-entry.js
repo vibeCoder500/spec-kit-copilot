@@ -147,6 +147,9 @@ var messages = {
   host_handoff_unsupported: "This Copilot App host does not provide the verified repository handoff capability.",
   activity_unknown: "The host's activity state could not be verified. Repository preparation is blocked.",
   canvas_unavailable: "The original Spec Kit canvas is unavailable in the target session.",
+  app_launcher_unavailable: "A supported installed Copilot CLI is required to open this checkout in the App.",
+  app_launch_failed: "The Copilot App open request failed. The checkout has been preserved.",
+  app_launch_unknown: "The App open request could not be confirmed. Check the App before opening again.",
   upstream_unavailable: "The repository service is temporarily unavailable."
 };
 function knownRepositoryError(code) {
@@ -274,6 +277,14 @@ async function mountRepositoryEntry({ container, request }) {
     copy.dataset.action = "copy-checkout-path";
     copy.disabled = typeof window.navigator.clipboard?.writeText !== "function";
     return copy;
+  }
+  function openCheckoutButton(operationId) {
+    const control = button("Open in Copilot App", ExternalLink, () => {
+      void launchCheckout(operationId);
+    }, true);
+    control.dataset.action = "open-checkout";
+    control.disabled = submitting || snapshot?.host.canOpenClone !== true || snapshot.host.activity !== "idle";
+    return control;
   }
   const direct = button("Open canvas directly", ExternalLink, () => {
     void open(true);
@@ -492,7 +503,10 @@ async function mountRepositoryEntry({ container, request }) {
     destination.textContent = operation.destination ?? "";
     operationPanel.append(status, destination);
     if (operation.state === "prepared") {
-      operationPanel.append(copyCheckoutPath(operation.destination));
+      const actions = document2.createElement("div");
+      actions.className = "entry-selection-actions";
+      actions.append(openCheckoutButton(operation.operationId), copyCheckoutPath(operation.destination));
+      operationPanel.append(actions);
       if (snapshot?.phase === "prepared" && !snapshot.host.canHandoff) {
         const workspace = document2.createElement("p");
         workspace.className = "entry-muted";
@@ -539,7 +553,7 @@ async function mountRepositoryEntry({ container, request }) {
       details.append(name, path);
       const actions = document2.createElement("div");
       actions.className = "entry-selection-actions";
-      actions.append(copyCheckoutPath(item.destination));
+      actions.append(openCheckoutButton(item.operationId), copyCheckoutPath(item.destination));
       if (snapshot?.host.canHandoff) {
         const retry = button("Retry handoff", ArrowRight, () => {
           void retryHandoff(item.operationId);
@@ -736,6 +750,21 @@ async function mountRepositoryEntry({ container, request }) {
     render();
     try {
       operation = await api.call(`operations/${operation.operationId}/cancel`, {}, { requestId: requestId() });
+    } catch (error) {
+      if (!disposed) message.textContent = safeError(error);
+    } finally {
+      submitting = false;
+      render();
+    }
+  }
+  async function launchCheckout(operationId) {
+    if (disposed || submitting || !connected() || snapshot?.host.canOpenClone !== true || snapshot.host.activity !== "idle") return;
+    submitting = true;
+    message.textContent = "Requesting Copilot App opening...";
+    render();
+    try {
+      await api.call(`operations/${operationId}/open`, {}, { contextId: snapshot.localContext.contextId, requestId: requestId() });
+      if (!disposed) message.textContent = "Open request sent to Copilot App.";
     } catch (error) {
       if (!disposed) message.textContent = safeError(error);
     } finally {

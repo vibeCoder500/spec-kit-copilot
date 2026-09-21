@@ -27,6 +27,9 @@ const messages = {
     host_handoff_unsupported: "This Copilot App host does not provide the verified repository handoff capability.",
     activity_unknown: "The host's activity state could not be verified. Repository preparation is blocked.",
     canvas_unavailable: "The original Spec Kit canvas is unavailable in the target session.",
+    app_launcher_unavailable: "A supported installed Copilot CLI is required to open this checkout in the App.",
+    app_launch_failed: "The Copilot App open request failed. The checkout has been preserved.",
+    app_launch_unknown: "The App open request could not be confirmed. Check the App before opening again.",
     upstream_unavailable: "The repository service is temporarily unavailable.",
 } as const;
 
@@ -37,7 +40,7 @@ export function repositoryErrorStatus(code: RepositoryErrorCode): number {
     if (code === "resource_unavailable") return 404;
     if (["connection_required", "interaction_required"].includes(code)) return 401;
     if (["wrong_tenant", "insufficient_scope", "policy_blocked"].includes(code)) return 403;
-    if (["host_handoff_unsupported", "activity_unknown", "canvas_unavailable"].includes(code)) return 412;
+    if (["host_handoff_unsupported", "activity_unknown", "canvas_unavailable", "app_launcher_unavailable"].includes(code)) return 412;
     if (code === "rate_limited") return 429;
     if (code === "upstream_unavailable") return 503;
     return 409;

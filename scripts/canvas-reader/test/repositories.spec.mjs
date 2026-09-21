@@ -204,6 +204,19 @@ for (const width of [360, 768, 1280, 1920]) {
             await expect(retained.locator(".entry-path")).toHaveText(destination);
             await expect(retained.getByRole("button", { name: "Copy checkout path", exact: true })).toBeEnabled();
             await expect(page.getByRole("button", { name: "Retry handoff", exact: true })).toHaveCount(0);
+            expect(fixture.appLaunches()).toEqual([]);
+            const openCheckout = retained.getByRole("button", { name: "Open in Copilot App", exact: true });
+            await expect(openCheckout).toBeEnabled();
+            fixture.entryHost.setActivity("busy");
+            await page.getByRole("button", { name: "Refresh entry state", exact: true }).click();
+            await expect(openCheckout).toBeDisabled();
+            fixture.entryHost.setActivity("idle");
+            await page.getByRole("button", { name: "Refresh entry state", exact: true }).click();
+            await expect(openCheckout).toBeEnabled();
+            expect(fixture.appLaunches()).toEqual([]);
+            await openCheckout.click();
+            await expect(page.getByRole("status").filter({ hasText: "Open request sent to Copilot App." })).toBeVisible();
+            expect(fixture.appLaunches()).toEqual([{ destination }]);
             expect(fixture.repositories.cloneCount()).toBe(1);
             expect(fixture.entryHost.counts().starts).toBe(1);
             expect(fixture.entryHost.counts().handoffs).toBe(0);
@@ -214,6 +227,32 @@ for (const width of [360, 768, 1280, 1920]) {
         } finally { await page.close(); expect((await fixture.stop()).cleaned).toBe(true); }
     });
 }
+
+test("SDD checkout open failure preserves the clone and requires an explicit retry", async ({ page }) => {
+    const fixture = await startFixture({ canvas: "sdd", repositories: true, repositoryEntry: true, cloneOnlyEntryHost: true });
+    fixture.setAppLaunchError("app_launch_failed");
+    try {
+        await page.goto(fixture.url);
+        const search = page.getByRole("combobox", { name: "Search readable project repositories", exact: true });
+        await expect(search).toBeEnabled(); await search.focus();
+        await page.getByRole("option", { name: /Synthetic repository 1/ }).click();
+        await page.getByRole("button", { name: "Confirm and clone", exact: true }).click();
+        await expect(page.getByRole("status").filter({ hasText: "Clone complete." })).toBeVisible();
+        const openCheckout = page.getByRole("button", { name: "Open in Copilot App", exact: true });
+        await openCheckout.click();
+        await expect(page.getByRole("status").filter({ hasText: "The Copilot App open request failed. The checkout has been preserved." })).toBeVisible();
+        await expect(page.getByRole("button", { name: "Copy checkout path", exact: true })).toBeEnabled();
+        fixture.setAppLaunchError(undefined);
+        await page.getByRole("button", { name: "Refresh entry state", exact: true }).click();
+        expect(fixture.appLaunches()).toEqual([]);
+        await openCheckout.click();
+        await expect(page.getByRole("status").filter({ hasText: "Open request sent to Copilot App." })).toBeVisible();
+        expect(fixture.appLaunches()).toHaveLength(1);
+        expect(fixture.repositories.cloneCount()).toBe(1);
+        expect(fixture.entryHost.counts().handoffs).toBe(0);
+        expect(fixture.workspaceChanged()).toBe(false);
+    } finally { await page.close(); expect((await fixture.stop()).cleaned).toBe(true); }
+});
 
 test("SDD entry cancels only an in-progress owned preparation", async ({ page }) => {
     const fixture = await startFixture({ canvas: "sdd", repositories: true, repositoryEntry: true, supportedEntryHost: true });

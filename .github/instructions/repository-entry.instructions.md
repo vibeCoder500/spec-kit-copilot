@@ -20,6 +20,12 @@ applyTo: "specs/002-repository-entry-flow/**,plugins/spec-kit-copilot-sdd/extens
 - Reuse the current Node/TypeScript build, MSAL/discovery, native Git protections,
   and managed clone destination. Do not install a second SDK/CLI or add a new
   provider/authentication system.
+- The user's later 2026-09-21 amendment permits an explicit **Open in Copilot
+  App** action using the already-installed, documented noninteractive
+  `copilot app` launcher. Bind it to an authorized retained operation, verify
+  the checkout and fresh idle/context state, and preserve normal App approval.
+  Do not start a CLI agent, send a prompt, force-close the App, or manufacture
+  handoff readiness. Launcher completion means requested, not verified activation.
 - G-HOST gates automatic handoff, not clone-only completion. It remains blocked
   until a supported contract proves atomic idle/context
   admission, visible App activation, target binding, and uncertain-result

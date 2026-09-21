@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "kind": "sdd-repository-browser",
-  "sourceHash": "4c3ffdc79ec2cf8c29f62674f3f55fc744ef8a1145051daf32992721f7176a07",
-  "buildHash": "e43522d57fb514f3ab148888a97133d6d24755f3506db48d0f1374e649d3afc1",
+  "sourceHash": "95da5d708effbce1b15cb9b00007279fa98e67d7cdb5409b31ad5b98ca46e522",
+  "buildHash": "247d4fff03512398b2e1484190fc872ac58c10af123b4db51bd40230025d2513",
   "sources": [
     {
       "path": "build-runtime.mjs",
@@ -15,6 +15,10 @@
     {
       "path": "src/ado-client.ts",
       "sha256": "215a3f53e8af24f2822af02cc199ec98856255d8e2d73c2a635854dd9ff3aa76"
+    },
+    {
+      "path": "src/app-launch.ts",
+      "sha256": "b36e254ecc720caae6b8b7c37ac9262718adb5407be645b7b336d363dccdc49b"
     },
     {
       "path": "src/artifact-clock.ts",
@@ -38,7 +42,7 @@
     },
     {
       "path": "src/errors.ts",
-      "sha256": "94b115134aaa829a86fc71ab376bbce3953c6a018d79aeb1d6770d5020aa78a1"
+      "sha256": "09a65e6652f8882fde7b1cadf26939abffd962d8416dab0c672bdd47a5b58d2d"
     },
     {
       "path": "src/host-handoff.ts",
@@ -66,7 +70,7 @@
     },
     {
       "path": "src/repository-service.ts",
-      "sha256": "6e8f91e4aa8667d0e2666fcbd06b1d6695f617cde901f9d78e6b03380bcae8b3"
+      "sha256": "e50d03e048751a049a92f654243158efd78f60692455406c044620dfdf9a22b8"
     },
     {
       "path": "src/ui/api.ts",
@@ -78,11 +82,11 @@
     },
     {
       "path": "src/ui/repository-entry.ts",
-      "sha256": "f69b42efe3f068b9dd12656ab71840fd7cbe96e9fb9ebe27b5f50873b526c392"
+      "sha256": "670811a4a75194763293f22753a93eb8ea170bddadb1c0ef3d68b8a57b7e6570"
     },
     {
       "path": "src/workspace-binding.ts",
-      "sha256": "72d69112cb5dbf5c373b30d42a71344905272e4d2b7e21a65cc2bf10adc10457"
+      "sha256": "3c899b30ce85148fe8bc9ca31568679a779d7aedaef43ba930c497cbc75793c7"
     }
   ],
   "dependencies": [
@@ -255,13 +259,13 @@
     },
     {
       "path": "ui/repository-entry.js",
-      "bytes": 36348,
-      "sha256": "f1cd0a3ec15ffd0b5837cd35d0af1e351a21514217dea65048f25d33ffcf3f12"
+      "bytes": 37884,
+      "sha256": "ce3dc83898d9120c5c3030ba1db91260ff9adce442a0fc85aad8796c4fa2e320"
     },
     {
       "path": "vendor/repository-browser/server.mjs",
-      "bytes": 992379,
-      "sha256": "e4d17c795caf0decca1d61aae8517027a4d784933a2091ddc2f4cf9fb12fa11a"
+      "bytes": 1003644,
+      "sha256": "b8a59e0437ad68539bc080cf887119bc4c3d35fe0e869cfe211af9278060dac7"
     },
     {
       "path": "vendor/repository-browser/THIRD_PARTY_NOTICES.txt",

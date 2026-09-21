@@ -5,6 +5,8 @@ import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import { parseDocument } from "yaml";
 import { createAdoClient } from "./ado-client.ts";
+import { createCopilotAppLauncher } from "./app-launch.ts";
+import type { CopilotAppLauncher } from "./app-launch.ts";
 import { createPreparedArtifactClock } from "./artifact-clock.ts";
 import { createCloneService, createEntryCloneService } from "./clone.ts";
 import type { CloneState, EntryCloneService } from "./clone.ts";
@@ -119,7 +121,7 @@ export async function createRepositoryService({ workspacePath, profileStatus, de
 
 export type RepositoryService = Awaited<ReturnType<typeof createRepositoryService>>;
 
-export async function createEntryCoordinator({ host, profileStatus, dependencies, request, cloneOptions, handoffOptions,
+export async function createEntryCoordinator({ host, profileStatus, dependencies, request, cloneOptions, handoffOptions, appLauncher = createCopilotAppLauncher(),
     inspectWorkspace = (workspacePath) => inspectCurrentRepository({ workspacePath }), onChange = () => undefined }: {
     host: HostHandoffAdapter;
     profileStatus?: ProfileStatus;
@@ -127,6 +129,7 @@ export async function createEntryCoordinator({ host, profileStatus, dependencies
     request?: typeof fetch;
     cloneOptions?: Partial<Pick<Parameters<typeof createCloneService>[0], "homeDirectory" | "runner" | "executable" | "now">>;
     handoffOptions?: { verifyPrepared?: (record: PreparedRepositoryRecord) => Promise<unknown>; timeoutMs?: number; now?: () => number };
+    appLauncher?: CopilotAppLauncher;
     inspectWorkspace?: (workingDirectory: string) => Promise<LocalRepositoryIdentity | null>;
     onChange?: () => void;
 }) {
@@ -151,6 +154,7 @@ export async function createEntryCoordinator({ host, profileStatus, dependencies
     const transitions = new Set<string>();
     const store = createPreparationStore({ homeDirectory: cloneOptions?.homeDirectory });
     const localRequests = new Map<string, { contextId: string; completion: Promise<{ opened: true }> }>();
+    const appRequests = new Map<string, { operationId: string; contextId: string; completion: Promise<{ status: "requested" }> }>();
     const adapter = dependencies ?? nativeAuthDependencies();
     const connection = profile ? createRepositoryConnection(profile, { ...adapter, onChange: (snapshot) => {
         if (disposed) return;
@@ -411,6 +415,7 @@ export async function createEntryCoordinator({ host, profileStatus, dependencies
         async state() {
             const localContext: EntryLocalContext = { contextId: localContextId, label: "Current workspace", state: "unavailable" };
             let snapshot: HostWorkspaceSnapshot | undefined;
+            let appAvailable = false;
             let reason: string | null = null;
             try {
                 const local = await readLocal();
@@ -420,10 +425,12 @@ export async function createEntryCoordinator({ host, profileStatus, dependencies
                 localContext.state = repository ? "repository" : "not_repository";
                 if (repository) localContext.label = basename(repository.worktreeRoot);
                 reason = preparationReason(snapshot);
+                appAvailable = await appLauncher.available(repository?.worktreeRoot ?? snapshot.workingDirectory).catch(() => false);
             } catch (error) { reason = knownRepositoryError((error as { code?: unknown })?.code).code; }
             return { configuration: configuration.state, connection: connection?.snapshot() ?? { state: "disconnected", generation: 0, projectLabel: "" },
                 phase: phase as RepositoryEntryPhase, localContext, host: { activity: snapshot?.activity ?? "unknown", canOpenCurrent: Boolean(snapshot?.capabilities.localCanvas && localContext.state === "repository"),
                     canPrepareRemote: Boolean(snapshot && supportsRepositoryCloning(snapshot) && snapshot.activity === "idle"),
+                    canOpenClone: Boolean(appAvailable && snapshot?.activity === "idle"),
                     canHandoff: Boolean(snapshot && supportsRemotePreparation(snapshot)),
                     canRetryHandoff: Boolean(snapshot && supportsRemotePreparation(snapshot) && snapshot.activity === "idle" && activeOperationId &&
                         retainedOperation && !transitions.has(activeOperationId) && !automatic.get(activeOperationId)?.eligible && phase !== "ready"), reason },
@@ -555,6 +562,37 @@ export async function createEntryCoordinator({ host, profileStatus, dependencies
             retries.set(requestId, { operationId, contextId, completion });
             return completion;
         },
+        async openCheckout(operationId: string, contextId: string, requestId: string) {
+            text(operationId); text(contextId); text(requestId);
+            const local = await readLocal();
+            if (contextId !== localContextId) throw new RepositoryError("context_changed");
+            if (local.snapshot.activity !== "idle") throw new RepositoryError(local.snapshot.activity === "busy" ? "session_busy" : "activity_unknown");
+            const authorized = await authorizedRecord(operationId);
+            const existing = appRequests.get(requestId);
+            if (existing) {
+                if (existing.operationId !== operationId || existing.contextId !== contextId) throw new RepositoryError("context_changed");
+                return existing.completion;
+            }
+            if (appRequests.size >= 32) throw new RepositoryError("invalid_context");
+            if (transitions.size || authorized.record.handoff && !["rejected", "canvas_ready"].includes(authorized.record.handoff.status)) {
+                throw new RepositoryError("handoff_in_progress");
+            }
+            const completion = (async () => {
+                await (handoffOptions?.verifyPrepared ? handoffOptions.verifyPrepared(authorized.record) : verifyPreparedRepository({ record: authorized.record, ...cloneOptions }));
+                const check = async () => {
+                    await (handoffOptions?.verifyPrepared ? handoffOptions.verifyPrepared(authorized.record) : verifyPreparedRepository({ record: authorized.record, ...cloneOptions }));
+                    authorized.access.assertCurrent();
+                    if (disposed || contextId !== localContextId) throw new RepositoryError("context_changed");
+                    const current = await readHost();
+                    if (current.activity !== "idle") throw new RepositoryError(current.activity === "busy" ? "session_busy" : "activity_unknown");
+                    if (!sameSource(local.snapshot, current)) throw new RepositoryError("context_changed");
+                };
+                await check();
+                return appLauncher.launch(local.repository?.worktreeRoot ?? local.snapshot.workingDirectory, authorized.record.destination, check);
+            })().catch(error => { throw knownRepositoryError((error as { code?: unknown })?.code); });
+            appRequests.set(requestId, { operationId, contextId, completion });
+            return completion;
+        },
         async preparations() {
             const remote = remoteAvailable();
             const access = await remote.connection.access();
@@ -660,6 +698,7 @@ export async function handleEntryRequest(req: IncomingMessage, res: ServerRespon
     cancel?(operationId: string, requestId: string): Promise<unknown>;
     preparations?(): Promise<unknown>;
     handoff?(operationId: string, contextId: string, requestId: string): Promise<unknown>;
+    openCheckout?(operationId: string, contextId: string, requestId: string): Promise<unknown>;
 }) {
     function json(status: number, payload: unknown) {
         res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store",
@@ -670,12 +709,12 @@ export async function handleEntryRequest(req: IncomingMessage, res: ServerRespon
         if (!url.pathname.startsWith("/api/entry/") || !["GET", "POST"].includes(req.method ?? "")) throw new RepositoryError("invalid_request");
         if (req.method === "POST" && req.headers.origin !== url.origin) throw new RepositoryError("invalid_request");
         const path = url.pathname.slice("/api/entry/".length);
-        const operation = /^operations\/([a-f0-9]{32})(?:\/(cancel|handoff))?$/.exec(path);
+        const operation = /^operations\/([a-f0-9]{32})(?:\/(cancel|handoff|open))?$/.exec(path);
         const route = operation ? operation[2] ? `operation-${operation[2]}` : "operation" : path;
         const queries = new Map<string, string[]>([["state", []], ["operation", []], ["preparations", []]]);
         const bodies = new Map<string, string[]>([["local", ["contextId", "requestId"]], ["direct", ["requestId"]],
             ["selection", ["repositoryId", "contextId"]], ["clone", ["selectionId", "confirmation", "requestId"]], ["operation-cancel", ["requestId"]],
-            ["operation-handoff", ["contextId", "requestId"]]]);
+            ["operation-handoff", ["contextId", "requestId"]], ["operation-open", ["contextId", "requestId"]]]);
         const allowed = (req.method === "GET" ? queries : bodies).get(route);
         if (!allowed) throw new RepositoryError("invalid_request");
         for (const key of url.searchParams.keys()) {
@@ -694,6 +733,7 @@ export async function handleEntryRequest(req: IncomingMessage, res: ServerRespon
         else if (route === "operation" && entry.operation) data = await entry.operation(operation![1]!);
         else if (route === "operation-cancel" && entry.cancel) data = await entry.cancel(operation![1]!, text(body.requestId));
         else if (route === "operation-handoff" && entry.handoff) data = await entry.handoff(operation![1]!, text(body.contextId), text(body.requestId));
+        else if (route === "operation-open" && entry.openCheckout) { data = await entry.openCheckout(operation![1]!, text(body.contextId), text(body.requestId)); status = 202; }
         else if (route === "preparations" && entry.preparations) data = await entry.preparations();
         else if (route === "local") data = await entry.local(text(body.contextId), text(body.requestId));
         else throw new RepositoryError("invalid_request");

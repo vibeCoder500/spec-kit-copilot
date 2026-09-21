@@ -100,6 +100,14 @@ reservation. Busy, unknown or stale observations reject without queued retry.
 Completion shows **Clone complete** and a copyable path; completed checkouts
 remain available after reconnecting. The current App workspace is not changed.
 
+**Open in Copilot App** is a separate explicit action on a completed checkout.
+It uses an already-installed native `copilot app` launcher to open a new App
+session, preserving the old one. Confirm the folder in the App's **Open session?**
+prompt when shown. No restart, model prompt, or workflow is initiated by the
+button. The response reports only that opening was requested; unsupported or busy
+hosts keep the copy-path fallback. Windows App 1.1.21 and CLI 1.0.83 were verified
+with owned synthetic repositories, including opening while the App was running.
+
 Automatic switching remains blocked because the installed public SDK does not
 supply the verified App activation and reconciliation contract. Unsupported
 handoff controls are hidden. Manual opening, private IPC or cwd-only mutation

@@ -4000,10 +4000,10 @@ var require_resolve_block_map = __commonJS({
       let offset = bm.offset;
       let commentEnd = null;
       for (const collItem of bm.items) {
-        const { start, key, sep: sep4, value } = collItem;
+        const { start, key, sep: sep5, value } = collItem;
         const keyProps = resolveProps.resolveProps(start, {
           indicator: "explicit-key-ind",
-          next: key ?? sep4?.[0],
+          next: key ?? sep5?.[0],
           offset,
           onError,
           parentIndent: bm.indent,
@@ -4017,7 +4017,7 @@ var require_resolve_block_map = __commonJS({
             else if ("indent" in key && key.indent !== bm.indent)
               onError(offset, "BAD_INDENT", startColMsg);
           }
-          if (!keyProps.anchor && !keyProps.tag && !sep4) {
+          if (!keyProps.anchor && !keyProps.tag && !sep5) {
             commentEnd = keyProps.end;
             if (keyProps.comment) {
               if (map.comment)
@@ -4041,7 +4041,7 @@ var require_resolve_block_map = __commonJS({
         ctx.atKey = false;
         if (utilMapIncludes.mapIncludes(ctx, map.items, keyNode))
           onError(keyStart, "DUPLICATE_KEY", "Map keys must be unique");
-        const valueProps = resolveProps.resolveProps(sep4 ?? [], {
+        const valueProps = resolveProps.resolveProps(sep5 ?? [], {
           indicator: "map-value-ind",
           next: value,
           offset: keyNode.range[2],
@@ -4057,7 +4057,7 @@ var require_resolve_block_map = __commonJS({
             if (ctx.options.strict && keyProps.start < valueProps.found.offset - 1024)
               onError(keyNode.range, "KEY_OVER_1024_CHARS", "The : indicator must be at most 1024 chars after the start of an implicit block mapping key");
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep4, null, valueProps, onError);
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep5, null, valueProps, onError);
           if (ctx.schema.compat)
             utilFlowIndentCheck.flowIndentCheck(bm.indent, value, onError);
           offset = valueNode.range[2];
@@ -4148,7 +4148,7 @@ var require_resolve_end = __commonJS({
       let comment = "";
       if (end) {
         let hasSpace = false;
-        let sep4 = "";
+        let sep5 = "";
         for (const token of end) {
           const { source, type } = token;
           switch (type) {
@@ -4162,13 +4162,13 @@ var require_resolve_end = __commonJS({
               if (!comment)
                 comment = cb;
               else
-                comment += sep4 + cb;
-              sep4 = "";
+                comment += sep5 + cb;
+              sep5 = "";
               break;
             }
             case "newline":
               if (comment)
-                sep4 += source;
+                sep5 += source;
               hasSpace = true;
               break;
             default:
@@ -4211,18 +4211,18 @@ var require_resolve_flow_collection = __commonJS({
       let offset = fc.offset + fc.start.source.length;
       for (let i = 0; i < fc.items.length; ++i) {
         const collItem = fc.items[i];
-        const { start, key, sep: sep4, value } = collItem;
+        const { start, key, sep: sep5, value } = collItem;
         const props = resolveProps.resolveProps(start, {
           flow: fcName,
           indicator: "explicit-key-ind",
-          next: key ?? sep4?.[0],
+          next: key ?? sep5?.[0],
           offset,
           onError,
           parentIndent: fc.indent,
           startOnNewline: false
         });
         if (!props.found) {
-          if (!props.anchor && !props.tag && !sep4 && !value) {
+          if (!props.anchor && !props.tag && !sep5 && !value) {
             if (i === 0 && props.comma)
               onError(props.comma, "UNEXPECTED_TOKEN", `Unexpected , in ${fcName}`);
             else if (i < fc.items.length - 1)
@@ -4276,8 +4276,8 @@ var require_resolve_flow_collection = __commonJS({
             }
           }
         }
-        if (!isMap2 && !sep4 && !props.found) {
-          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep4, null, props, onError);
+        if (!isMap2 && !sep5 && !props.found) {
+          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep5, null, props, onError);
           coll.items.push(valueNode);
           offset = valueNode.range[2];
           if (isBlock(value))
@@ -4289,7 +4289,7 @@ var require_resolve_flow_collection = __commonJS({
           if (isBlock(key))
             onError(keyNode.range, "BLOCK_IN_FLOW", blockMsg);
           ctx.atKey = false;
-          const valueProps = resolveProps.resolveProps(sep4 ?? [], {
+          const valueProps = resolveProps.resolveProps(sep5 ?? [], {
             flow: fcName,
             indicator: "map-value-ind",
             next: value,
@@ -4300,8 +4300,8 @@ var require_resolve_flow_collection = __commonJS({
           });
           if (valueProps.found) {
             if (!isMap2 && !props.found && ctx.options.strict) {
-              if (sep4)
-                for (const st of sep4) {
+              if (sep5)
+                for (const st of sep5) {
                   if (st === valueProps.found)
                     break;
                   if (st.type === "newline") {
@@ -4318,7 +4318,7 @@ var require_resolve_flow_collection = __commonJS({
             else
               onError(valueProps.start, "MISSING_CHAR", `Missing , or : between ${fcName} items`);
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep4, null, valueProps, onError) : null;
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep5, null, valueProps, onError) : null;
           if (valueNode) {
             if (isBlock(value))
               onError(valueNode.range, "BLOCK_IN_FLOW", blockMsg);
@@ -4498,7 +4498,7 @@ var require_resolve_block_scalar = __commonJS({
           chompStart = i + 1;
       }
       let value = "";
-      let sep4 = "";
+      let sep5 = "";
       let prevMoreIndented = false;
       for (let i = 0; i < contentStart; ++i)
         value += lines[i][0].slice(trimIndent) + "\n";
@@ -4515,24 +4515,24 @@ var require_resolve_block_scalar = __commonJS({
           indent = "";
         }
         if (type === Scalar.Scalar.BLOCK_LITERAL) {
-          value += sep4 + indent.slice(trimIndent) + content;
-          sep4 = "\n";
+          value += sep5 + indent.slice(trimIndent) + content;
+          sep5 = "\n";
         } else if (indent.length > trimIndent || content[0] === "	") {
-          if (sep4 === " ")
-            sep4 = "\n";
-          else if (!prevMoreIndented && sep4 === "\n")
-            sep4 = "\n\n";
-          value += sep4 + indent.slice(trimIndent) + content;
-          sep4 = "\n";
+          if (sep5 === " ")
+            sep5 = "\n";
+          else if (!prevMoreIndented && sep5 === "\n")
+            sep5 = "\n\n";
+          value += sep5 + indent.slice(trimIndent) + content;
+          sep5 = "\n";
           prevMoreIndented = true;
         } else if (content === "") {
-          if (sep4 === "\n")
+          if (sep5 === "\n")
             value += "\n";
           else
-            sep4 = "\n";
+            sep5 = "\n";
         } else {
-          value += sep4 + content;
-          sep4 = " ";
+          value += sep5 + content;
+          sep5 = " ";
           prevMoreIndented = false;
         }
       }
@@ -4714,25 +4714,25 @@ var require_resolve_flow_scalar = __commonJS({
       if (!match)
         return source;
       let res = match[1];
-      let sep4 = " ";
+      let sep5 = " ";
       let pos = first.lastIndex;
       line.lastIndex = pos;
       while (match = line.exec(source)) {
         if (match[1] === "") {
-          if (sep4 === "\n")
-            res += sep4;
+          if (sep5 === "\n")
+            res += sep5;
           else
-            sep4 = "\n";
+            sep5 = "\n";
         } else {
-          res += sep4 + match[1];
-          sep4 = " ";
+          res += sep5 + match[1];
+          sep5 = " ";
         }
         pos = line.lastIndex;
       }
       const last = /[ \t]*(.*)/sy;
       last.lastIndex = pos;
       match = last.exec(source);
-      return res + sep4 + (match?.[1] ?? "");
+      return res + sep5 + (match?.[1] ?? "");
     }
     function doubleQuotedValue(source, onError) {
       let res = "";
@@ -5542,14 +5542,14 @@ var require_cst_stringify = __commonJS({
         }
       }
     }
-    function stringifyItem({ start, key, sep: sep4, value }) {
+    function stringifyItem({ start, key, sep: sep5, value }) {
       let res = "";
       for (const st of start)
         res += st.source;
       if (key)
         res += stringifyToken(key);
-      if (sep4)
-        for (const st of sep4)
+      if (sep5)
+        for (const st of sep5)
           res += st.source;
       if (value)
         res += stringifyToken(value);
@@ -6716,18 +6716,18 @@ var require_parser = __commonJS({
         if (this.type === "map-value-ind") {
           const prev = getPrevProps(this.peek(2));
           const start = getFirstKeyStartProps(prev);
-          let sep4;
+          let sep5;
           if (scalar.end) {
-            sep4 = scalar.end;
-            sep4.push(this.sourceToken);
+            sep5 = scalar.end;
+            sep5.push(this.sourceToken);
             delete scalar.end;
           } else
-            sep4 = [this.sourceToken];
+            sep5 = [this.sourceToken];
           const map = {
             type: "block-map",
             offset: scalar.offset,
             indent: scalar.indent,
-            items: [{ start, key: scalar, sep: sep4 }]
+            items: [{ start, key: scalar, sep: sep5 }]
           };
           this.onKeyLine = true;
           this.stack[this.stack.length - 1] = map;
@@ -6880,15 +6880,15 @@ var require_parser = __commonJS({
                 } else if (isFlowToken(it.key) && !includesToken(it.sep, "newline")) {
                   const start2 = getFirstKeyStartProps(it.start);
                   const key = it.key;
-                  const sep4 = it.sep;
-                  sep4.push(this.sourceToken);
+                  const sep5 = it.sep;
+                  sep5.push(this.sourceToken);
                   delete it.key;
                   delete it.sep;
                   this.stack.push({
                     type: "block-map",
                     offset: this.offset,
                     indent: this.indent,
-                    items: [{ start: start2, key, sep: sep4 }]
+                    items: [{ start: start2, key, sep: sep5 }]
                   });
                 } else if (start.length > 0) {
                   it.sep = it.sep.concat(start, this.sourceToken);
@@ -7082,13 +7082,13 @@ var require_parser = __commonJS({
             const prev = getPrevProps(parent);
             const start = getFirstKeyStartProps(prev);
             fixFlowSeqItems(fc);
-            const sep4 = fc.end.splice(1, fc.end.length);
-            sep4.push(this.sourceToken);
+            const sep5 = fc.end.splice(1, fc.end.length);
+            sep5.push(this.sourceToken);
             const map = {
               type: "block-map",
               offset: fc.offset,
               indent: fc.indent,
-              items: [{ start, key: fc, sep: sep4 }]
+              items: [{ start, key: fc, sep: sep5 }]
             };
             this.onKeyLine = true;
             this.stack[this.stack.length - 1] = map;
@@ -11298,9 +11298,9 @@ var require_jsonwebtoken = __commonJS({
 // src/repository-service.ts
 var import_yaml4 = __toESM(require_dist(), 1);
 import { createHash as createHash7, randomBytes as randomBytes8 } from "node:crypto";
-import { realpath as realpath5 } from "node:fs/promises";
+import { realpath as realpath6 } from "node:fs/promises";
 import { homedir as homedir6 } from "node:os";
-import { basename, join as join6 } from "node:path";
+import { basename, join as join7 } from "node:path";
 
 // src/ado-client.ts
 import { setTimeout as delay } from "node:timers/promises";
@@ -11335,6 +11335,9 @@ var messages = {
   host_handoff_unsupported: "This Copilot App host does not provide the verified repository handoff capability.",
   activity_unknown: "The host's activity state could not be verified. Repository preparation is blocked.",
   canvas_unavailable: "The original Spec Kit canvas is unavailable in the target session.",
+  app_launcher_unavailable: "A supported installed Copilot CLI is required to open this checkout in the App.",
+  app_launch_failed: "The Copilot App open request failed. The checkout has been preserved.",
+  app_launch_unknown: "The App open request could not be confirmed. Check the App before opening again.",
   upstream_unavailable: "The repository service is temporarily unavailable."
 };
 function repositoryErrorStatus(code) {
@@ -11342,7 +11345,7 @@ function repositoryErrorStatus(code) {
   if (code === "resource_unavailable") return 404;
   if (["connection_required", "interaction_required"].includes(code)) return 401;
   if (["wrong_tenant", "insufficient_scope", "policy_blocked"].includes(code)) return 403;
-  if (["host_handoff_unsupported", "activity_unknown", "canvas_unavailable"].includes(code)) return 412;
+  if (["host_handoff_unsupported", "activity_unknown", "canvas_unavailable", "app_launcher_unavailable"].includes(code)) return 412;
   if (code === "rate_limited") return 429;
   if (code === "upstream_unavailable") return 503;
   return 409;
@@ -11632,23 +11635,153 @@ function record(value) {
   return value;
 }
 
+// src/app-launch.ts
+import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
+import { lstat as lstat2, open, realpath } from "node:fs/promises";
+import { delimiter, isAbsolute as isAbsolute2, join as join2, relative, resolve as resolve2, sep } from "node:path";
+function inside(root, target) {
+  const path3 = relative(root, target);
+  return path3 !== ".." && !path3.startsWith(`..${sep}`) && !isAbsolute2(path3);
+}
+function appLaunchEnvironment(environment = process.env) {
+  const allowed = /* @__PURE__ */ new Set(["path", "pathext", "systemroot", "windir", "comspec", "temp", "tmp", "userprofile", "home", "localappdata", "appdata"]);
+  return { ...Object.fromEntries(Object.entries(environment).filter(([name3]) => allowed.has(name3.toLowerCase()))), COPILOT_AUTO_UPDATE: "false" };
+}
+async function nativeExecutable(candidate, workspacePath) {
+  try {
+    const executable = await realpath(candidate);
+    if (inside(resolve2(workspacePath), executable)) return;
+    const info = await lstat2(executable);
+    if (!info.isFile() || info.isSymbolicLink()) return;
+    const handle = await open(executable, "r");
+    try {
+      const header = Buffer.alloc(4);
+      if ((await handle.read(header, 0, 4, 0)).bytesRead !== 4) return;
+      const magic = header.toString("hex");
+      if (header.subarray(0, 2).toString() !== "MZ" && !["7f454c46", "feedface", "cefaedfe", "feedfacf", "cffaedfe", "cafebabe"].includes(magic)) return;
+    } finally {
+      await handle.close();
+    }
+    return executable;
+  } catch {
+    return;
+  }
+}
+async function findCopilotExecutable(workspacePath, environment = process.env, platform2 = process.platform, architecture = process.arch) {
+  for (const directory of (environment.PATH ?? environment.Path ?? "").split(delimiter)) {
+    if (!directory || !isAbsolute2(directory) || inside(resolve2(workspacePath), resolve2(directory))) continue;
+    const native = await nativeExecutable(join2(directory, platform2 === "win32" ? "copilot.exe" : "copilot"), workspacePath);
+    if (native) return native;
+    try {
+      const packageFile = join2(directory, "node_modules", "@github", "copilot", "package.json");
+      if (!(await lstat2(packageFile)).isFile()) continue;
+      const require2 = createRequire(packageFile);
+      const executable = await nativeExecutable(require2.resolve(`@github/copilot-${platform2}-${architecture}`), workspacePath);
+      if (executable) return executable;
+    } catch {
+      continue;
+    }
+  }
+  return;
+}
+var runAppCommand = ({ executable, args, cwd, env, timeoutMs }) => new Promise((resolveResult, reject) => {
+  const child = spawn(executable, args, { cwd, env, shell: false, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
+  let timedOut = false;
+  let oversized = false;
+  let bytes = 0;
+  const chunks = [];
+  const timer = setTimeout(() => {
+    timedOut = true;
+    child.kill();
+  }, timeoutMs);
+  child.stdout.on("data", (chunk) => {
+    bytes += chunk.length;
+    if (bytes > 65536) {
+      oversized = true;
+      child.kill();
+    } else chunks.push(chunk);
+  });
+  child.stderr.on("data", (chunk) => {
+    bytes += chunk.length;
+    if (bytes > 65536) {
+      oversized = true;
+      child.kill();
+    }
+  });
+  child.once("error", () => {
+    clearTimeout(timer);
+    reject(new RepositoryError("app_launch_failed"));
+  });
+  child.once("close", (code) => {
+    clearTimeout(timer);
+    if (timedOut || oversized) reject(new RepositoryError("app_launch_unknown"));
+    else if (code !== 0) reject(new RepositoryError("app_launch_failed"));
+    else resolveResult(Buffer.concat(chunks).toString("utf8"));
+  });
+});
+function createCopilotAppLauncher({ environment = process.env, platform: platform2 = process.platform, runner = runAppCommand } = {}) {
+  let cached;
+  function executable(workspacePath) {
+    if (!cached || cached.workspacePath !== workspacePath) cached = { workspacePath, executable: findCopilotExecutable(workspacePath, environment, platform2) };
+    return cached.executable;
+  }
+  return {
+    async available(workspacePath) {
+      return ["win32", "darwin"].includes(platform2) && Boolean(await executable(workspacePath));
+    },
+    async launch(workspacePath, destination, beforeOpen) {
+      if (!["win32", "darwin"].includes(platform2)) throw new RepositoryError("app_launcher_unavailable");
+      if (!isAbsolute2(destination) || /[\p{Cc}\p{Cf}]/u.test(destination)) throw new RepositoryError("invalid_request");
+      const target = await realpath(destination).catch(() => {
+        throw new RepositoryError("clone_identity_changed");
+      });
+      const info = await lstat2(destination);
+      if (!info.isDirectory() || info.isSymbolicLink() || target !== resolve2(destination)) throw new RepositoryError("clone_identity_changed");
+      const selected = await executable(workspacePath);
+      if (!selected || inside(target, selected) || await nativeExecutable(selected, workspacePath) !== selected) throw new RepositoryError("app_launcher_unavailable");
+      const env = appLaunchEnvironment(environment);
+      for (const key of Object.keys(env).filter((name3) => name3.toLowerCase() === "path")) {
+        const directories = [];
+        for (const directory of (env[key] ?? "").split(delimiter)) {
+          if (!isAbsolute2(directory)) continue;
+          const canonical = await realpath(directory).catch(() => void 0);
+          if (canonical && !inside(resolve2(workspacePath), canonical) && !inside(target, canonical)) directories.push(canonical);
+        }
+        env[key] = directories.join(delimiter);
+      }
+      const command = { executable: selected, cwd: target, env, timeoutMs: 5e3 };
+      let help;
+      try {
+        help = await runner({ ...command, args: ["--no-auto-update", "app", "--help"] });
+      } catch {
+        throw new RepositoryError("app_launcher_unavailable");
+      }
+      if (!/Usage:\s+copilot app\b/i.test(help)) throw new RepositoryError("app_launcher_unavailable");
+      await beforeOpen?.();
+      await runner({ ...command, args: ["--no-auto-update", "app"], timeoutMs: 1e4 });
+      return { status: "requested" };
+    }
+  };
+}
+
 // src/artifact-clock.ts
 import { createHash as createHash2 } from "node:crypto";
 import { lstatSync, readFileSync, realpathSync } from "node:fs";
-import { realpath as realpath3 } from "node:fs/promises";
+import { realpath as realpath4 } from "node:fs/promises";
 import { homedir as homedir4 } from "node:os";
-import { isAbsolute as isAbsolute5, join as join4, relative as relative2, resolve as resolve4, sep as sep2 } from "node:path";
+import { isAbsolute as isAbsolute6, join as join5, relative as relative3, resolve as resolve5, sep as sep3 } from "node:path";
 
 // src/clone.ts
 import { createHash, randomBytes as randomBytes3, timingSafeEqual } from "node:crypto";
-import { spawn } from "node:child_process";
-import { lstat as lstat3, mkdir as mkdir2, open as open2, readFile as readFile2, readdir, realpath as realpath2, rm, writeFile } from "node:fs/promises";
+import { spawn as spawn2 } from "node:child_process";
+import { lstat as lstat4, mkdir as mkdir2, open as open3, readFile as readFile2, readdir, realpath as realpath3, rm, writeFile } from "node:fs/promises";
 import { homedir as homedir3 } from "node:os";
-import { delimiter, dirname as dirname3, isAbsolute as isAbsolute4, join as join3, relative, resolve as resolve3, sep } from "node:path";
+import { delimiter as delimiter2, dirname as dirname3, isAbsolute as isAbsolute5, join as join4, relative as relative2, resolve as resolve4, sep as sep2 } from "node:path";
 
 // src/host-handoff.ts
 import { randomBytes } from "node:crypto";
-import { isAbsolute as isAbsolute2 } from "node:path";
+import { isAbsolute as isAbsolute3 } from "node:path";
 function record2(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
@@ -11726,7 +11859,7 @@ function createHostHandoffAdapter(options) {
     if (shutdown.signal.aborted || signal?.aborted) throw new RepositoryError("invalid_context");
     if (expectedEpoch !== epoch || sequence < appliedSequence) throw new RepositoryError("context_changed");
     const snapshot = record2(rawSnapshot);
-    if (snapshot.sessionId !== options.sessionId || !identifier2(snapshot.workingDirectory, 32768) || !isAbsolute2(snapshot.workingDirectory)) {
+    if (snapshot.sessionId !== options.sessionId || !identifier2(snapshot.workingDirectory, 32768) || !isAbsolute3(snapshot.workingDirectory)) {
       throw new RepositoryError("context_changed");
     }
     if (lastDirectory !== void 0 && lastDirectory !== snapshot.workingDirectory) {
@@ -11814,7 +11947,7 @@ async function executeHostHandoff({ host, request, outcome, persistActivation, r
     const received = outcome ?? await host.handoffPrepared(request);
     if (!["workspace_activated", "canvas_ready"].includes(received.status)) return received;
     const activation = received.activation;
-    if (!activation || activation.attemptId !== request.attemptId || !identifier2(activation.sessionId) || !identifier2(activation.contextRevision) || !identifier2(activation.workingDirectory, 32768) || !isAbsolute2(activation.workingDirectory) || !["prepared_checkout", "host_worktree"].includes(activation.targetKind) || !activation.targetBranch.startsWith("refs/heads/")) throw new RepositoryError("clone_identity_changed");
+    if (!activation || activation.attemptId !== request.attemptId || !identifier2(activation.sessionId) || !identifier2(activation.contextRevision) || !identifier2(activation.workingDirectory, 32768) || !isAbsolute3(activation.workingDirectory) || !["prepared_checkout", "host_worktree"].includes(activation.targetKind) || !activation.targetBranch.startsWith("refs/heads/")) throw new RepositoryError("clone_identity_changed");
     await persistActivation(activation);
     if (deadline.signal.aborted) throw new RepositoryError("handoff_unknown");
     const current = await host.inspectCurrent(deadline.signal);
@@ -11848,10 +11981,10 @@ async function executeHostHandoff({ host, request, outcome, persistActivation, r
 // src/preparation-store.ts
 var import_yaml2 = __toESM(require_dist(), 1);
 import { constants } from "node:fs";
-import { link, lstat as lstat2, mkdir, open, opendir, realpath, rename, unlink } from "node:fs/promises";
+import { link, lstat as lstat3, mkdir, open as open2, opendir, realpath as realpath2, rename, unlink } from "node:fs/promises";
 import { randomBytes as randomBytes2 } from "node:crypto";
 import { homedir as homedir2 } from "node:os";
-import { dirname as dirname2, isAbsolute as isAbsolute3, join as join2, resolve as resolve2 } from "node:path";
+import { dirname as dirname2, isAbsolute as isAbsolute4, join as join3, resolve as resolve3 } from "node:path";
 var operationPattern = /^[a-f0-9]{32}$/;
 var digestPattern = /^[a-f0-9]{64}$/;
 var commitPattern = /^[a-f0-9]{40}$/;
@@ -11899,7 +12032,7 @@ var activationFields = ["attemptId", "sessionId", "contextRevision", "workingDir
 function validateActivation(input, attemptId, ready = false) {
   const value = object(input);
   const allowed = ready ? [...activationFields, "providerId", "instanceId"] : activationFields;
-  if (Object.keys(value).length !== allowed.length || allowed.some((field) => !Object.hasOwn(value, field)) || value.attemptId !== attemptId || !safeText(value.sessionId, 256) || !safeText(value.contextRevision, 256) || !safeText(value.workingDirectory) || !isAbsolute3(value.workingDirectory) || !["prepared_checkout", "host_worktree"].includes(String(value.targetKind)) || !namedRef(value.targetBranch) || ready && (!safeText(value.providerId, 256) || !safeText(value.instanceId, 256))) return invalid();
+  if (Object.keys(value).length !== allowed.length || allowed.some((field) => !Object.hasOwn(value, field)) || value.attemptId !== attemptId || !safeText(value.sessionId, 256) || !safeText(value.contextRevision, 256) || !safeText(value.workingDirectory) || !isAbsolute4(value.workingDirectory) || !["prepared_checkout", "host_worktree"].includes(String(value.targetKind)) || !namedRef(value.targetBranch) || ready && (!safeText(value.providerId, 256) || !safeText(value.instanceId, 256))) return invalid();
   return value;
 }
 function validateAttempt(input, operationId) {
@@ -11919,22 +12052,22 @@ function validateAttempt(input, operationId) {
   return structuredClone(value);
 }
 async function regularPath(path3, directory) {
-  if (!safeText(path3) || !isAbsolute3(path3)) return invalid();
-  const resolved = resolve2(path3);
+  if (!safeText(path3) || !isAbsolute4(path3)) return invalid();
+  const resolved = resolve3(path3);
   let current = resolved;
   for (; ; ) {
-    const info = await lstat2(current);
+    const info = await lstat3(current);
     if (info.isSymbolicLink() || (current !== resolved || directory ? !info.isDirectory() : !info.isFile())) return invalid();
     if (dirname2(current) === current) break;
     current = dirname2(current);
   }
-  return realpath(resolved);
+  return realpath2(resolved);
 }
 async function boundedJson(path3, maximum) {
   await regularPath(path3, false);
-  const before = await lstat2(path3);
+  const before = await lstat3(path3);
   if (before.size > maximum) return invalid();
-  const handle = await open(path3, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
+  const handle = await open2(path3, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
   try {
     const opened = await handle.stat();
     if (!opened.isFile() || opened.dev !== before.dev || opened.ino !== before.ino) return invalid();
@@ -11973,7 +12106,7 @@ function createPreparationStore({ homeDirectory = homedir2() } = {}) {
   async function directory(create = false) {
     let path3 = await home();
     for (const name3 of [".speckit-canvas", "preparations"]) {
-      path3 = join2(path3, name3);
+      path3 = join3(path3, name3);
       if (create) {
         try {
           await mkdir(path3, { mode: 448 });
@@ -11986,16 +12119,16 @@ function createPreparationStore({ homeDirectory = homedir2() } = {}) {
     return path3;
   }
   async function ownership(operationId, destination, gitCommonDirectory) {
-    const root = join2(await home(), "SpecKitCanvas", "repositories", operationId);
-    if (destination !== join2(root, "checkout") || gitCommonDirectory !== join2(destination, ".git")) return invalid();
+    const root = join3(await home(), "SpecKitCanvas", "repositories", operationId);
+    if (destination !== join3(root, "checkout") || gitCommonDirectory !== join3(destination, ".git")) return invalid();
     if (await regularPath(destination, true) !== destination || await regularPath(gitCommonDirectory, true) !== gitCommonDirectory) return invalid();
-    const marker = await boundedJson(join2(root, ".sdd-clone-owner.json"), 1024);
+    const marker = await boundedJson(join3(root, ".sdd-clone-owner.json"), 1024);
     if (Object.keys(marker).length !== 2 || marker.kind !== "sdd-repository-clone" || marker.operationId !== operationId) return invalid();
   }
   async function read(operationId) {
     if (!operationPattern.test(operationId)) return invalid();
     try {
-      const record3 = validateRecord(await boundedJson(join2(await directory(), `${operationId}.json`), 8192));
+      const record3 = validateRecord(await boundedJson(join3(await directory(), `${operationId}.json`), 8192));
       if (record3.operationId !== operationId) return invalid();
       await ownership(record3.operationId, record3.destination, record3.gitCommonDirectory);
       return record3;
@@ -12006,8 +12139,8 @@ function createPreparationStore({ homeDirectory = homedir2() } = {}) {
   async function change(operationId, update) {
     if (!operationPattern.test(operationId)) return invalid();
     const parent = await directory();
-    const lockPath = join2(parent, `.${operationId}.lock`);
-    const lock = await open(lockPath, "wx", 384).catch((error) => {
+    const lockPath = join3(parent, `.${operationId}.lock`);
+    const lock = await open2(lockPath, "wx", 384).catch((error) => {
       if (error.code === "EEXIST") throw new RepositoryError("handoff_in_progress");
       return invalid();
     });
@@ -12017,8 +12150,8 @@ function createPreparationStore({ homeDirectory = homedir2() } = {}) {
       const next = validateRecord(update(structuredClone(previous)));
       if (fields.some((field) => Reflect.get(next, field) !== Reflect.get(previous, field))) return invalid();
       if (JSON.stringify(next) === JSON.stringify(previous)) return previous;
-      temporary = join2(parent, `.${operationId}-${randomBytes2(12).toString("hex")}.tmp`);
-      const handle = await open(temporary, "wx", 384);
+      temporary = join3(parent, `.${operationId}-${randomBytes2(12).toString("hex")}.tmp`);
+      const handle = await open2(temporary, "wx", 384);
       try {
         await handle.writeFile(JSON.stringify(next));
         await handle.sync();
@@ -12027,7 +12160,7 @@ function createPreparationStore({ homeDirectory = homedir2() } = {}) {
       }
       await regularPath(parent, true);
       if (JSON.stringify(await read(operationId)) !== JSON.stringify(previous)) throw new RepositoryError("handoff_in_progress");
-      await rename(temporary, join2(parent, `${operationId}.json`));
+      await rename(temporary, join3(parent, `${operationId}.json`));
       temporary = void 0;
       return next;
     } catch (error) {
@@ -12088,16 +12221,16 @@ function createPreparationStore({ homeDirectory = homedir2() } = {}) {
         if (record3.handoff || record3.acceptedTarget) return invalid();
         await ownership(record3.operationId, record3.destination, record3.gitCommonDirectory);
         const parent = await directory(true);
-        const filename = join2(parent, `${record3.operationId}.json`);
+        const filename = join3(parent, `${record3.operationId}.json`);
         try {
-          await lstat2(filename);
+          await lstat3(filename);
           if (JSON.stringify(await read(record3.operationId)) !== JSON.stringify(record3)) return invalid();
           return;
         } catch (error) {
           if (error.code !== "ENOENT") throw error;
         }
-        temporary = join2(parent, `.${record3.operationId}-${randomBytes2(12).toString("hex")}.tmp`);
-        const handle = await open(temporary, "wx", 384);
+        temporary = join3(parent, `.${record3.operationId}-${randomBytes2(12).toString("hex")}.tmp`);
+        const handle = await open2(temporary, "wx", 384);
         try {
           await handle.writeFile(JSON.stringify(record3));
           await handle.sync();
@@ -12131,12 +12264,12 @@ function createPreparationStore({ homeDirectory = homedir2() } = {}) {
           if (!/^[a-f0-9]{32}\.json$/.test(entry.name) || !entry.isFile() || entry.isSymbolicLink()) continue;
           const operationId = entry.name.slice(0, -5);
           try {
-            const input = await boundedJson(join2(parent, entry.name), 8192);
+            const input = await boundedJson(join3(parent, entry.name), 8192);
             if (input.schemaVersion === 2) {
               const record3 = await read(operationId);
               items.push({ operationId, destination: record3.destination, legacy: false, actionable: false, record: record3 });
             } else if (input.schemaVersion === 1) {
-              const legacy = await boundedJson(join2(parent, entry.name), 4096);
+              const legacy = await boundedJson(join3(parent, entry.name), 4096);
               const legacyFields = ["schemaVersion", "operationId", "kind", "gitDirectory", "checkout", "remote", "repositoryId", "initialCommit", "initialBranch", "createdAt"];
               if (Object.keys(legacy).length !== legacyFields.length || legacyFields.some((field) => !Object.hasOwn(legacy, field)) || legacy.operationId !== operationId || legacy.kind !== "sdd-prepared-repository" || !origin(legacy.remote, legacy.repositoryId) || !safeText(legacy.initialCommit, 40) || !commitPattern.test(legacy.initialCommit) || legacy.initialBranch !== `speckit/canvas-${operationId}` || !safeText(legacy.createdAt, 64) || !Number.isFinite(Date.parse(legacy.createdAt)) || !safeText(legacy.checkout) || !safeText(legacy.gitDirectory)) continue;
               await ownership(operationId, legacy.checkout, legacy.gitDirectory);
@@ -12161,19 +12294,19 @@ var operationIdPattern = /^[a-f0-9]{32}$/;
 var digest = (value) => createHash("sha256").update(value).digest("hex");
 var sameSecret = (value, expected) => typeof value === "string" && value.length <= 256 && timingSafeEqual(Buffer.from(digest(value), "hex"), Buffer.from(expected, "hex"));
 async function fingerprintCheckout(checkout, signal) {
-  const root = await realpath2(checkout);
-  if ((await lstat3(checkout)).isSymbolicLink()) throw new RepositoryError("clone_identity_changed");
+  const root = await realpath3(checkout);
+  if ((await lstat4(checkout)).isSymbolicLink()) throw new RepositoryError("clone_identity_changed");
   const queue = [root];
   const files = [];
   let count = 0;
   while (queue.length) {
     if (signal.aborted) throw new RepositoryError("clone_cancelled");
     const directory = queue.pop();
-    if ((await lstat3(directory)).isSymbolicLink()) throw new RepositoryError("clone_identity_changed");
+    if ((await lstat4(directory)).isSymbolicLink()) throw new RepositoryError("clone_identity_changed");
     for (const entry of await readdir(directory, { withFileTypes: true })) {
       if (directory === root && entry.name === ".git") continue;
       if (++count > 1e5 || entry.isSymbolicLink()) throw new RepositoryError("clone_identity_changed");
-      const path3 = join3(directory, entry.name);
+      const path3 = join4(directory, entry.name);
       if (entry.isDirectory()) queue.push(path3);
       else if (entry.isFile()) files.push(path3);
       else throw new RepositoryError("clone_identity_changed");
@@ -12182,9 +12315,9 @@ async function fingerprintCheckout(checkout, signal) {
   const hash = createHash("sha256");
   for (const path3 of files.sort()) {
     if (signal.aborted) throw new RepositoryError("clone_cancelled");
-    const before = await lstat3(path3);
-    if (!before.isFile() || before.isSymbolicLink() || await realpath2(path3) !== path3) throw new RepositoryError("clone_identity_changed");
-    const handle = await open2(path3, "r");
+    const before = await lstat4(path3);
+    if (!before.isFile() || before.isSymbolicLink() || await realpath3(path3) !== path3) throw new RepositoryError("clone_identity_changed");
+    const handle = await open3(path3, "r");
     const content = createHash("sha256");
     try {
       const opened = await handle.stat();
@@ -12203,7 +12336,7 @@ async function fingerprintCheckout(checkout, signal) {
     } finally {
       await handle.close();
     }
-    hash.update(relative(root, path3).split(sep).join("/"));
+    hash.update(relative2(root, path3).split(sep2).join("/"));
     hash.update("\0");
     hash.update(String(before.mode & 73));
     hash.update("\0");
@@ -12214,7 +12347,7 @@ async function fingerprintCheckout(checkout, signal) {
 async function runGit({ executable, args, cwd, env, signal }) {
   if (signal.aborted) throw new RepositoryError("clone_cancelled");
   return new Promise((resolveResult, reject) => {
-    const child = spawn(executable, args, { cwd, env, shell: false, windowsHide: true, stdio: ["ignore", "pipe", "pipe"], detached: process.platform !== "win32" });
+    const child = spawn2(executable, args, { cwd, env, shell: false, windowsHide: true, stdio: ["ignore", "pipe", "pipe"], detached: process.platform !== "win32" });
     const chunks = [];
     let bytes = 0;
     let excessive = false;
@@ -12227,13 +12360,13 @@ async function runGit({ executable, args, cwd, env, signal }) {
       terminating = true;
       if (process.platform === "win32") {
         const systemRoot = env.SystemRoot ?? env.SYSTEMROOT ?? process.env.SystemRoot ?? process.env.SYSTEMROOT;
-        if (!systemRoot || !isAbsolute4(systemRoot)) {
+        if (!systemRoot || !isAbsolute5(systemRoot)) {
           child.kill("SIGTERM");
           return;
         }
         termination = new Promise((resolveTermination) => {
-          const killer = spawn(
-            join3(systemRoot, "System32", "taskkill.exe"),
+          const killer = spawn2(
+            join4(systemRoot, "System32", "taskkill.exe"),
             ["/PID", String(child.pid), "/T", "/F"],
             { windowsHide: true, shell: false, stdio: "ignore" }
           );
@@ -12283,18 +12416,18 @@ async function runGit({ executable, args, cwd, env, signal }) {
     if (signal.aborted) terminate();
   });
 }
-function inside(root, target) {
-  const path3 = relative(root, target);
-  return path3 !== ".." && !path3.startsWith(`..${sep}`) && !isAbsolute4(path3);
+function inside2(root, target) {
+  const path3 = relative2(root, target);
+  return path3 !== ".." && !path3.startsWith(`..${sep2}`) && !isAbsolute5(path3);
 }
 async function findGitExecutable(workspacePath, environment = process.env) {
   const filename = process.platform === "win32" ? "git.exe" : "git";
-  for (const directory of (environment.PATH ?? environment.Path ?? "").split(delimiter)) {
-    if (!directory || !isAbsolute4(directory) || inside(resolve3(workspacePath), resolve3(directory))) continue;
-    const candidate = join3(directory, filename);
+  for (const directory of (environment.PATH ?? environment.Path ?? "").split(delimiter2)) {
+    if (!directory || !isAbsolute5(directory) || inside2(resolve4(workspacePath), resolve4(directory))) continue;
+    const candidate = join4(directory, filename);
     try {
-      const info = await lstat3(candidate);
-      if (info.isFile() && !info.isSymbolicLink()) return await realpath2(candidate);
+      const info = await lstat4(candidate);
+      if (info.isFile() && !info.isSymbolicLink()) return await realpath3(candidate);
     } catch {
       continue;
     }
@@ -12322,13 +12455,13 @@ function cloneEnvironment({ token, remote, home, emptyFile, signalEnvironment = 
 }
 async function ensureParents(path3) {
   const parents = [];
-  for (let current = resolve3(path3); ; current = dirname3(current)) {
+  for (let current = resolve4(path3); ; current = dirname3(current)) {
     parents.push(current);
     if (dirname3(current) === current) break;
   }
   for (const parent of parents.reverse()) {
     try {
-      const info = await lstat3(parent);
+      const info = await lstat4(parent);
       if (!info.isDirectory() || info.isSymbolicLink()) throw new RepositoryError("clone_conflict");
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
@@ -12338,7 +12471,7 @@ async function ensureParents(path3) {
 }
 async function removeOwnedStage(root, operationId) {
   try {
-    const marker = JSON.parse(await readFile2(join3(root, ".sdd-clone-owner.json"), "utf8"));
+    const marker = JSON.parse(await readFile2(join4(root, ".sdd-clone-owner.json"), "utf8"));
     if (marker.operationId !== operationId || marker.kind !== "sdd-repository-clone") return;
     const children = await readdir(root, { withFileTypes: true });
     if (children.some((child) => ![".sdd-clone-owner.json", "config", "checkout"].includes(child.name) || child.isSymbolicLink())) return;
@@ -12346,10 +12479,10 @@ async function removeOwnedStage(root, operationId) {
     let count = 0;
     while (queue.length) {
       const directory = queue.pop();
-      if ((await lstat3(directory)).isSymbolicLink()) return;
+      if ((await lstat4(directory)).isSymbolicLink()) return;
       for (const entry of await readdir(directory, { withFileTypes: true })) {
         if (++count > 1e5 || entry.isSymbolicLink()) return;
-        if (entry.isDirectory()) queue.push(join3(directory, entry.name));
+        if (entry.isDirectory()) queue.push(join4(directory, entry.name));
         else if (!entry.isFile()) return;
       }
     }
@@ -12395,19 +12528,19 @@ function createCloneService({
       const signal = AbortSignal.any([controller.signal, access.signal, deadline]);
       if (signal.aborted) throw new RepositoryError("clone_cancelled");
       const git = executable ?? await findGitExecutable(workspacePath);
-      if (!isAbsolute4(git)) throw new RepositoryError("clone_conflict");
-      const canonicalHome = await realpath2(homeDirectory);
-      const parent = join3(canonicalHome, "SpecKitCanvas", "repositories");
+      if (!isAbsolute5(git)) throw new RepositoryError("clone_conflict");
+      const canonicalHome = await realpath3(homeDirectory);
+      const parent = join4(canonicalHome, "SpecKitCanvas", "repositories");
       await ensureParents(parent);
-      const root = join3(parent, operation.public.operationId);
+      const root = join4(parent, operation.public.operationId);
       await mkdir2(root);
       operation.root = root;
-      await writeFile(join3(root, ".sdd-clone-owner.json"), JSON.stringify({ kind: "sdd-repository-clone", operationId: operation.public.operationId }), { flag: "wx" });
-      const config = join3(root, "config");
+      await writeFile(join4(root, ".sdd-clone-owner.json"), JSON.stringify({ kind: "sdd-repository-clone", operationId: operation.public.operationId }), { flag: "wx" });
+      const config = join4(root, "config");
       await mkdir2(config);
-      const hooks = join3(config, "hooks");
+      const hooks = join4(config, "hooks");
       await mkdir2(hooks);
-      const emptyFile = join3(config, "empty");
+      const emptyFile = join4(config, "empty");
       await writeFile(emptyFile, "", { flag: "wx" });
       const remote = `https://dev.azure.com/${[profile.organization, profile.project, "_git", source.repository.id].map(encodeURIComponent).join("/")}`;
       environment = cloneEnvironment({ token: access.accessToken, remote, home: config, emptyFile });
@@ -12456,8 +12589,8 @@ function createCloneService({
       const branch = await gitCommand(["symbolic-ref", "--short", "HEAD"], operation.public.destination);
       if (head !== source.sourceVersion || origin2 !== remote || branch !== operation.public.localBranch) throw new RepositoryError("clone_conflict");
       const common = await gitCommand(["rev-parse", "--path-format=absolute", "--git-common-dir"], operation.public.destination);
-      const gitDirectory = await realpath2(common);
-      if (!inside(root, gitDirectory)) throw new RepositoryError("clone_conflict");
+      const gitDirectory = await realpath3(common);
+      if (!inside2(root, gitDirectory)) throw new RepositoryError("clone_conflict");
       access.assertCurrent();
       if (signal.aborted) throw new RepositoryError("clone_cancelled");
       if (onPrepared) {
@@ -12471,15 +12604,15 @@ function createCloneService({
           originIdentity: remote,
           defaultRef: source.repository.defaultBranch,
           sourceCommit: head,
-          destination: await realpath2(operation.public.destination),
+          destination: await realpath3(operation.public.destination),
           gitCommonDirectory: gitDirectory,
           branch: `refs/heads/${branch}`,
           initialWorktreeFingerprint
         });
       } else {
-        const metadataDirectory = join3(canonicalHome, ".speckit-canvas", "preparations");
+        const metadataDirectory = join4(canonicalHome, ".speckit-canvas", "preparations");
         await ensureParents(metadataDirectory);
-        await writeFile(join3(metadataDirectory, `${operation.public.operationId}.json`), JSON.stringify({
+        await writeFile(join4(metadataDirectory, `${operation.public.operationId}.json`), JSON.stringify({
           schemaVersion: 1,
           operationId: operation.public.operationId,
           kind: "sdd-prepared-repository",
@@ -12513,7 +12646,7 @@ function createCloneService({
       if (!COMMIT2.test(source.sourceVersion) || !source.repository.defaultBranch || source.repository.operationalState !== "active") throw new RepositoryError("source_unavailable");
       const access = await connection.access();
       if (source.generation !== access.generation) throw new RepositoryError("invalid_context");
-      const canonicalHome = await realpath2(homeDirectory);
+      const canonicalHome = await realpath3(homeDirectory);
       const operationId = randomBytes3(16).toString("hex");
       const confirmation = randomBytes3(32).toString("base64url");
       const state = {
@@ -12523,7 +12656,7 @@ function createCloneService({
         sourceCommit: source.sourceVersion,
         branch: source.repository.defaultBranch,
         localBranch: `speckit/canvas-${operationId}`,
-        destination: join3(canonicalHome, "SpecKitCanvas", "repositories", operationId, "checkout")
+        destination: join4(canonicalHome, "SpecKitCanvas", "repositories", operationId, "checkout")
       };
       for (const [key, operation] of operations) if (!operation.completion && operation.expiresAt <= now()) operations.delete(key);
       if (operations.size >= 32) throw new RepositoryError("clone_conflict");
@@ -12660,7 +12793,7 @@ function createEntryCloneService({ host, readSource, connection, profile, worksp
           guard(snapshot, consent.expected);
           if (now() >= consent.expiresAt) throw new RepositoryError("confirmation_expired");
           try {
-            await lstat3(dirname3(core.status(operationId).destination));
+            await lstat4(dirname3(core.status(operationId).destination));
             throw new RepositoryError("clone_conflict");
           } catch (error) {
             if (error.code !== "ENOENT") throw error;
@@ -12723,7 +12856,7 @@ var blobHash = (bytes) => createHash2("sha1").update(`blob ${bytes.length}\0`).u
 async function createPreparedArtifactClock({ workspacePath, binding, executable, runner = runGit, homeDirectory = homedir4() }) {
   const entries = /* @__PURE__ */ new Map();
   if (binding.state !== "verified") return void 0;
-  const root = await realpath3(workspacePath);
+  const root = await realpath4(workspacePath);
   try {
     const git = executable ?? await findGitExecutable(root);
     const empty = process.platform === "win32" ? "NUL" : "/dev/null";
@@ -12753,12 +12886,12 @@ async function createPreparedArtifactClock({ workspacePath, binding, executable,
     try {
       let path3 = root;
       for (const segment2 of relativePath.split("/")) {
-        path3 = join4(path3, segment2);
+        path3 = join5(path3, segment2);
         if (lstatSync(path3).isSymbolicLink()) return filesystemTime;
       }
       const actual = realpathSync(path3);
-      const within = relative2(root, actual);
-      if (isAbsolute5(within) || within === ".." || within.startsWith(`..${sep2}`) || actual !== resolve4(path3)) return filesystemTime;
+      const within = relative3(root, actual);
+      if (isAbsolute6(within) || within === ".." || within.startsWith(`..${sep3}`) || actual !== resolve5(path3)) return filesystemTime;
       const stat = lstatSync(path3);
       if (!stat.isFile() || stat.size > 1048576) return filesystemTime;
       const bytes = readFileSync(path3);
@@ -12789,8 +12922,8 @@ async function startOAuthCallback({ state, signal, timeoutMs = 12e4 }) {
   if (signal?.aborted) throw new RepositoryError("connection_required");
   let accept;
   let reject;
-  const result = new Promise((resolve6, fail) => {
-    accept = resolve6;
+  const result = new Promise((resolve7, fail) => {
+    accept = resolve7;
     reject = fail;
   });
   void result.catch(() => void 0);
@@ -12870,11 +13003,11 @@ async function startOAuthCallback({ state, signal, timeoutMs = 12e4 }) {
   server.setTimeout(5e3, (socket) => socket.destroy());
   server.maxConnections = 8;
   server.on("clientError", (_error, socket) => socket.destroy());
-  await new Promise((resolve6, fail) => {
+  await new Promise((resolve7, fail) => {
     server.once("error", fail);
     server.listen(0, "127.0.0.1", () => {
       server.removeListener("error", fail);
-      resolve6();
+      resolve7();
     });
   }).catch(() => {
     close();
@@ -14990,7 +15123,7 @@ function wasClockTurnedBack(cachedAt) {
   return cachedAtSec > nowSeconds();
 }
 function delay2(t, value) {
-  return new Promise((resolve6) => setTimeout(() => resolve6(value), t));
+  return new Promise((resolve7) => setTimeout(() => resolve7(value), t));
 }
 
 // node_modules/@azure/msal-common/dist/cache/utils/CacheHelpers.mjs
@@ -21997,7 +22130,7 @@ var LoopbackClient = class {
     if (this.server) {
       throw NodeAuthError.createLoopbackServerAlreadyExistsError();
     }
-    return new Promise((resolve6, reject) => {
+    return new Promise((resolve7, reject) => {
       this.server = http.createServer((req, res) => {
         const method = req.method?.toUpperCase();
         if (method !== "GET" && method !== "POST") {
@@ -22014,7 +22147,7 @@ var LoopbackClient = class {
           return;
         } else if (url === Constants_exports.FORWARD_SLASH) {
           if (method === "POST") {
-            this.handlePostRequest(req, res, resolve6, successTemplate, errorTemplate);
+            this.handlePostRequest(req, res, resolve7, successTemplate, errorTemplate);
             return;
           }
           res.end(successTemplate || "Auth code was successfully acquired. You can close this window now.");
@@ -22038,7 +22171,7 @@ var LoopbackClient = class {
           if (authCodeResponse.error) {
             res.end(errorTemplate || `Error occurred: ${authCodeResponse.error}`);
           }
-          resolve6(authCodeResponse);
+          resolve7(authCodeResponse);
         } else {
           res.writeHead(200);
           res.end();
@@ -22058,7 +22191,7 @@ var LoopbackClient = class {
   /**
    * Handles POST requests for form_post response mode
    */
-  handlePostRequest(req, res, resolve6, successTemplate, errorTemplate) {
+  handlePostRequest(req, res, resolve7, successTemplate, errorTemplate) {
     const contentType = req.headers["content-type"]?.split(";")[0]?.trim();
     if (contentType !== "application/x-www-form-urlencoded") {
       res.writeHead(415);
@@ -22089,7 +22222,7 @@ var LoopbackClient = class {
         res.writeHead(200);
         res.end(successTemplate || "Auth code was successfully acquired. You can close this window now.");
       }
-      resolve6(authCodeResponse);
+      resolve7(authCodeResponse);
     });
   }
   /**
@@ -22530,7 +22663,7 @@ var PublicClientApplication = class extends ClientApplication {
    * @returns
    */
   async waitForRedirectUri(loopbackClient, correlationId) {
-    return new Promise((resolve6, reject) => {
+    return new Promise((resolve7, reject) => {
       let ticks = 0;
       const id = setInterval(() => {
         if (LOOPBACK_SERVER_CONSTANTS.TIMEOUT_MS / LOOPBACK_SERVER_CONSTANTS.INTERVAL_MS < ticks) {
@@ -22541,7 +22674,7 @@ var PublicClientApplication = class extends ClientApplication {
         try {
           const r = loopbackClient.getRedirectUri();
           clearInterval(id);
-          resolve6(r);
+          resolve7(r);
           return;
         } catch (e) {
           if (e instanceof AuthError && e.errorCode === NodeAuthErrorMessage.noLoopbackServerExists.code) {
@@ -23394,19 +23527,19 @@ var baseOpen = async (options) => {
   }
   const subprocess = childProcess4.spawn(command, cliArguments, childProcessOptions);
   if (options.wait) {
-    return new Promise((resolve6, reject) => {
+    return new Promise((resolve7, reject) => {
       subprocess.once("error", reject);
       subprocess.once("close", (exitCode) => {
         if (!options.allowNonzeroExitCode && exitCode !== 0) {
           reject(new Error(`Exited with code ${exitCode}`));
           return;
         }
-        resolve6(subprocess);
+        resolve7(subprocess);
       });
     });
   }
   if (isFallbackAttempt) {
-    return new Promise((resolve6, reject) => {
+    return new Promise((resolve7, reject) => {
       subprocess.once("error", reject);
       subprocess.once("spawn", () => {
         subprocess.once("close", (exitCode) => {
@@ -23416,21 +23549,21 @@ var baseOpen = async (options) => {
             return;
           }
           subprocess.unref();
-          resolve6(subprocess);
+          resolve7(subprocess);
         });
       });
     });
   }
   subprocess.unref();
-  return new Promise((resolve6, reject) => {
+  return new Promise((resolve7, reject) => {
     subprocess.once("error", reject);
     subprocess.once("spawn", () => {
       subprocess.off("error", reject);
-      resolve6(subprocess);
+      resolve7(subprocess);
     });
   });
 };
-var open3 = (target, options) => {
+var open4 = (target, options) => {
   if (typeof target !== "string") {
     throw new TypeError("Expected a `target`");
   }
@@ -23500,7 +23633,7 @@ defineLazyProperty(apps, "edge", () => detectPlatformBinary({
 defineLazyProperty(apps, "safari", () => detectPlatformBinary({
   darwin: "Safari"
 }));
-var open_default = open3;
+var open_default = open4;
 
 // src/msal-client.ts
 function createIdentityNetwork(signal, request = fetch) {
@@ -23794,26 +23927,26 @@ function createRemoteReview({ client, now = Date.now }) {
 }
 
 // src/workspace-binding.ts
-import { lstat as lstat4, readFile as readFile3, readdir as readdir2, realpath as realpath4 } from "node:fs/promises";
+import { lstat as lstat5, readFile as readFile3, readdir as readdir2, realpath as realpath5 } from "node:fs/promises";
 import { homedir as homedir5 } from "node:os";
-import { dirname as dirname4, isAbsolute as isAbsolute6, join as join5, relative as relative3, resolve as resolve5, sep as sep3 } from "node:path";
-function inside2(root, path3) {
-  const part = relative3(root, path3);
-  return part !== ".." && !part.startsWith(`..${sep3}`) && !isAbsolute6(part);
+import { dirname as dirname4, isAbsolute as isAbsolute7, join as join6, relative as relative4, resolve as resolve6, sep as sep4 } from "node:path";
+function inside3(root, path3) {
+  const part = relative4(root, path3);
+  return part !== ".." && !part.startsWith(`..${sep4}`) && !isAbsolute7(part);
 }
 async function inspectCurrentRepository({ workspacePath, homeDirectory = homedir5(), runner = runGit, executable, signal: cancellation }) {
   try {
-    if (!isAbsolute6(workspacePath) || /[\p{Cc}\p{Cf}]/u.test(workspacePath)) throw new Error();
-    for (let directory = resolve5(workspacePath); ; directory = dirname4(directory)) {
-      const info = await lstat4(directory);
+    if (!isAbsolute7(workspacePath) || /[\p{Cc}\p{Cf}]/u.test(workspacePath)) throw new Error();
+    for (let directory = resolve6(workspacePath); ; directory = dirname4(directory)) {
+      const info = await lstat5(directory);
       if (!info.isDirectory() || info.isSymbolicLink()) throw new Error();
       if (dirname4(directory) === directory) break;
     }
-    const workingDirectory = await realpath4(workspacePath);
+    const workingDirectory = await realpath5(workspacePath);
     let repositoryRoot = workingDirectory;
     for (; ; ) {
       try {
-        const marker = await lstat4(join5(repositoryRoot, ".git"));
+        const marker = await lstat5(join6(repositoryRoot, ".git"));
         if (marker.isSymbolicLink() || !marker.isFile() && !marker.isDirectory()) throw new Error();
         break;
       } catch (error) {
@@ -23823,7 +23956,7 @@ async function inspectCurrentRepository({ workspacePath, homeDirectory = homedir
         repositoryRoot = parent;
       }
     }
-    const home = await realpath4(homeDirectory);
+    const home = await realpath5(homeDirectory);
     const git = executable ?? await findGitExecutable(workingDirectory);
     const env = cloneEnvironment({ token: "", remote: "https://unused.invalid", home, emptyFile: process.platform === "win32" ? "NUL" : "/dev/null" });
     delete env.GIT_CONFIG_KEY_0;
@@ -23834,10 +23967,10 @@ async function inspectCurrentRepository({ workspacePath, homeDirectory = homedir
     const execute = (args) => runner({ executable: git, args: ["-c", "core.fsmonitor=false", "-c", "core.hooksPath=", ...args], cwd: workingDirectory, env, signal });
     const root = await execute(["rev-parse", "--path-format=absolute", "--show-toplevel"]);
     const common = await execute(["rev-parse", "--path-format=absolute", "--git-common-dir"]);
-    if (!isAbsolute6(root) || !isAbsolute6(common)) throw new Error();
-    const worktreeRoot = await realpath4(root);
-    const gitCommonDirectory = await realpath4(common);
-    if (worktreeRoot !== await realpath4(repositoryRoot) || !inside2(worktreeRoot, workingDirectory)) throw new Error();
+    if (!isAbsolute7(root) || !isAbsolute7(common)) throw new Error();
+    const worktreeRoot = await realpath5(root);
+    const gitCommonDirectory = await realpath5(common);
+    if (worktreeRoot !== await realpath5(repositoryRoot) || !inside3(worktreeRoot, workingDirectory)) throw new Error();
     const optional = async (args) => {
       try {
         return await execute(args);
@@ -23867,7 +24000,7 @@ async function inspectCurrentRepository({ workspacePath, homeDirectory = homedir
   }
 }
 async function readOnlyGit(workspacePath, options, signal) {
-  const home = await realpath4(options.homeDirectory ?? homedir5());
+  const home = await realpath5(options.homeDirectory ?? homedir5());
   const executable = options.executable ?? await findGitExecutable(workspacePath);
   const env = cloneEnvironment({ token: "", remote: "https://unused.invalid", home, emptyFile: process.platform === "win32" ? "NUL" : "/dev/null" });
   delete env.GIT_CONFIG_KEY_0;
@@ -23909,10 +24042,10 @@ async function verifyActivatedRepository(options) {
     let matches = 0;
     for (const fields2 of registrations) {
       const path3 = fields2.find((field) => field.startsWith("worktree "))?.slice(9);
-      if (!path3 || !isAbsolute6(path3)) continue;
+      if (!path3 || !isAbsolute7(path3)) continue;
       let canonical;
       try {
-        canonical = await realpath4(path3);
+        canonical = await realpath5(path3);
       } catch {
         continue;
       }
@@ -23948,11 +24081,33 @@ async function createWorkflowBinding({ host, providerId, instanceId, homeDirecto
   const candidates = records.items.flatMap((item) => item.record && (item.record.gitCommonDirectory === identity2?.gitCommonDirectory || item.record.destination === identity2?.worktreeRoot || item.record.handoff?.activation?.workingDirectory === initial.workingDirectory) ? [item.record] : []);
   if (candidates.length > 1) throw new RepositoryError("entry_required");
   const prepared = candidates[0];
-  const managed = join5(await realpath4(homeDirectory), "SpecKitCanvas", "repositories");
-  if (!prepared && (inside2(managed, resolve5(initial.workingDirectory)) || identity2 && inside2(managed, identity2.gitCommonDirectory))) {
+  const managed = join6(await realpath5(homeDirectory), "SpecKitCanvas", "repositories");
+  if (!prepared && (inside3(managed, resolve6(initial.workingDirectory)) || identity2 && inside3(managed, identity2.gitCommonDirectory))) {
     throw new RepositoryError("entry_required");
   }
-  if (prepared && !prepared.acceptedTarget) {
+  const locallyOpened = Boolean(prepared && !prepared.handoff);
+  async function verifyLocalPreparation(record3, local) {
+    try {
+      await store.verifyOwnership(record3);
+      if (record3.handoff || record3.acceptedTarget || !local || local.gitCommonDirectory !== record3.gitCommonDirectory || local.origin !== record3.originIdentity || !local.head || !local.branch) throw new Error();
+      const execute = await readOnlyGit(local.worktreeRoot, { ...options, record: record3 }, AbortSignal.timeout(1e4));
+      const registrations = (await execute(["worktree", "list", "--porcelain", "-z"])).split("\0\0").map((block) => block.split("\0"));
+      let matches = 0;
+      for (const fields2 of registrations) {
+        const path3 = fields2.find((field) => field.startsWith("worktree "))?.slice(9);
+        if (!path3 || !isAbsolute7(path3)) continue;
+        if (await realpath5(path3).catch(() => void 0) !== local.worktreeRoot) continue;
+        if (fields2.some((field) => field === "bare" || field === "detached" || field.startsWith("prunable")) || !fields2.includes(`branch ${local.branch}`) || !fields2.includes(`HEAD ${local.head}`)) throw new Error();
+        matches++;
+      }
+      if (matches !== 1) throw new Error();
+    } catch {
+      throw new RepositoryError("entry_required");
+    }
+  }
+  if (prepared && locallyOpened) {
+    await verifyLocalPreparation(prepared, identity2);
+  } else if (prepared && !prepared.acceptedTarget) {
     const attempt = prepared.handoff;
     if (!attempt?.activation || attempt.status !== "workspace_activated" || attempt.instanceId !== instanceId || !providerId) throw new RepositoryError("entry_required");
     await verifyActivatedRepository({ ...options, record: prepared, activation: attempt.activation, snapshot: initial });
@@ -23975,6 +24130,13 @@ async function createWorkflowBinding({ host, providerId, instanceId, homeDirecto
       if (!prepared || prepared.acceptedTarget) return;
       const current = await host.inspectCurrent();
       const latest = await store.read(prepared.operationId);
+      if (locallyOpened) {
+        if (current.sessionId !== initial.sessionId || current.contextRevision !== initial.contextRevision || current.workingDirectory !== initial.workingDirectory) {
+          throw new RepositoryError("context_changed");
+        }
+        await verifyLocalPreparation(latest, await inspectCurrentRepository({ ...options, workspacePath: current.workingDirectory }));
+        return;
+      }
       const attempt = latest.handoff;
       if (!attempt?.activation || attempt.instanceId !== instanceId || attempt.status !== "workspace_activated") throw new RepositoryError("entry_required");
       await verifyActivatedRepository({ ...options, record: latest, activation: attempt.activation, snapshot: current });
@@ -23995,7 +24157,8 @@ async function createWorkflowBinding({ host, providerId, instanceId, homeDirecto
       }
       if (prepared) {
         const latest = await store.read(prepared.operationId);
-        if (!latest.acceptedTarget || latest.handoff?.status !== "canvas_ready" || latest.gitCommonDirectory !== local?.gitCommonDirectory || latest.originIdentity !== local?.origin) {
+        if (locallyOpened) await verifyLocalPreparation(latest, local);
+        else if (!latest.acceptedTarget || latest.handoff?.status !== "canvas_ready" || latest.gitCommonDirectory !== local?.gitCommonDirectory || latest.originIdentity !== local?.origin) {
           throw new RepositoryError("entry_required");
         }
       }
@@ -24004,18 +24167,18 @@ async function createWorkflowBinding({ host, providerId, instanceId, homeDirecto
 }
 async function inspectWorkspaceBinding({ workspacePath, homeDirectory = homedir5(), runner = runGit, executable, previous }) {
   let entries;
-  const requiresPreparation = previous?.state === "verified" || inside2(join5(resolve5(homeDirectory), "SpecKitCanvas", "repositories"), resolve5(workspacePath));
+  const requiresPreparation = previous?.state === "verified" || inside3(join6(resolve6(homeDirectory), "SpecKitCanvas", "repositories"), resolve6(workspacePath));
   const unprepared = { state: requiresPreparation ? "mismatch" : "ordinary" };
   try {
-    const gitEntry = await lstat4(join5(workspacePath, ".git"));
+    const gitEntry = await lstat5(join6(workspacePath, ".git"));
     if (gitEntry.isSymbolicLink() || !gitEntry.isFile() && !gitEntry.isDirectory()) return { state: "unavailable" };
   } catch (error) {
     if (error.code === "ENOENT") return unprepared;
     return { state: "unavailable" };
   }
-  const directory = join5(homeDirectory, ".speckit-canvas", "preparations");
+  const directory = join6(homeDirectory, ".speckit-canvas", "preparations");
   try {
-    const info = await lstat4(directory);
+    const info = await lstat5(directory);
     if (!info.isDirectory() || info.isSymbolicLink()) return { state: "unavailable" };
     entries = await readdir2(directory, { withFileTypes: true });
   } catch (error) {
@@ -24024,14 +24187,14 @@ async function inspectWorkspaceBinding({ workspacePath, homeDirectory = homedir5
   if (entries.length > 256) return { state: "unavailable" };
   const records = [];
   try {
-    const home = await realpath4(homeDirectory);
+    const home = await realpath5(homeDirectory);
     for (const entry of entries) {
       if (!/^[a-f0-9]{32}\.json$/.test(entry.name) || !entry.isFile() || entry.isSymbolicLink()) continue;
-      const file = join5(directory, entry.name);
-      if ((await lstat4(file)).size > 4096) continue;
+      const file = join6(directory, entry.name);
+      if ((await lstat5(file)).size > 4096) continue;
       const record4 = JSON.parse(await readFile3(file, "utf8"));
-      const root = join5(home, "SpecKitCanvas", "repositories", entry.name.slice(0, -5));
-      if (record4.schemaVersion !== 1 || record4.kind !== "sdd-prepared-repository" || record4.operationId !== entry.name.slice(0, -5) || !/^[a-f0-9]{40}$/.test(record4.initialCommit) || record4.initialBranch !== `speckit/canvas-${record4.operationId}` || !isAbsolute6(record4.gitDirectory) || !inside2(root, record4.gitDirectory) || resolve5(record4.checkout) !== join5(root, "checkout")) continue;
+      const root = join6(home, "SpecKitCanvas", "repositories", entry.name.slice(0, -5));
+      if (record4.schemaVersion !== 1 || record4.kind !== "sdd-prepared-repository" || record4.operationId !== entry.name.slice(0, -5) || !/^[a-f0-9]{40}$/.test(record4.initialCommit) || record4.initialBranch !== `speckit/canvas-${record4.operationId}` || !isAbsolute7(record4.gitDirectory) || !inside3(root, record4.gitDirectory) || resolve6(record4.checkout) !== join6(root, "checkout")) continue;
       const remote2 = new URL(record4.remote);
       if (remote2.origin !== "https://dev.azure.com" || remote2.username || remote2.password || remote2.search || remote2.hash || !remote2.pathname.endsWith(`/_git/${record4.repositoryId}`)) continue;
       records.push(record4);
@@ -24045,17 +24208,17 @@ async function inspectWorkspaceBinding({ workspacePath, homeDirectory = homedir5
     env.GIT_CONFIG_COUNT = "0";
     const signal = AbortSignal.timeout(1e4);
     const execute = (args) => runner({ executable: git, args: ["-c", "core.fsmonitor=false", "-c", "core.hooksPath=", ...args], cwd: workspacePath, env, signal });
-    const common = await realpath4(await execute(["rev-parse", "--path-format=absolute", "--git-common-dir"]));
+    const common = await realpath5(await execute(["rev-parse", "--path-format=absolute", "--git-common-dir"]));
     const candidates = [];
     for (const record4 of records) {
       try {
-        if (await realpath4(record4.gitDirectory) === common) candidates.push(record4);
+        if (await realpath5(record4.gitDirectory) === common) candidates.push(record4);
       } catch {
         continue;
       }
     }
     if (!candidates.length) {
-      return requiresPreparation || records.some((record4) => inside2(record4.checkout, resolve5(workspacePath))) ? { state: "mismatch" } : { state: "ordinary" };
+      return requiresPreparation || records.some((record4) => inside3(record4.checkout, resolve6(workspacePath))) ? { state: "mismatch" } : { state: "ordinary" };
     }
     if (candidates.length !== 1) return { state: "mismatch" };
     const record3 = candidates[0];
@@ -24205,6 +24368,7 @@ async function createEntryCoordinator({
   request,
   cloneOptions,
   handoffOptions,
+  appLauncher = createCopilotAppLauncher(),
   inspectWorkspace = (workspacePath) => inspectCurrentRepository({ workspacePath }),
   onChange = () => void 0
 }) {
@@ -24228,6 +24392,7 @@ async function createEntryCoordinator({
   const transitions = /* @__PURE__ */ new Set();
   const store = createPreparationStore({ homeDirectory: cloneOptions?.homeDirectory });
   const localRequests = /* @__PURE__ */ new Map();
+  const appRequests = /* @__PURE__ */ new Map();
   const adapter = dependencies ?? nativeAuthDependencies();
   const connection = profile ? createRepositoryConnection(profile, { ...adapter, onChange: (snapshot) => {
     if (disposed) return;
@@ -24528,6 +24693,7 @@ async function createEntryCoordinator({
     async state() {
       const localContext = { contextId: localContextId, label: "Current workspace", state: "unavailable" };
       let snapshot;
+      let appAvailable = false;
       let reason = null;
       try {
         const local = await readLocal();
@@ -24537,6 +24703,7 @@ async function createEntryCoordinator({
         localContext.state = repository ? "repository" : "not_repository";
         if (repository) localContext.label = basename(repository.worktreeRoot);
         reason = preparationReason(snapshot);
+        appAvailable = await appLauncher.available(repository?.worktreeRoot ?? snapshot.workingDirectory).catch(() => false);
       } catch (error) {
         reason = knownRepositoryError(error?.code).code;
       }
@@ -24549,6 +24716,7 @@ async function createEntryCoordinator({
           activity: snapshot?.activity ?? "unknown",
           canOpenCurrent: Boolean(snapshot?.capabilities.localCanvas && localContext.state === "repository"),
           canPrepareRemote: Boolean(snapshot && supportsRepositoryCloning(snapshot) && snapshot.activity === "idle"),
+          canOpenClone: Boolean(appAvailable && snapshot?.activity === "idle"),
           canHandoff: Boolean(snapshot && supportsRemotePreparation(snapshot)),
           canRetryHandoff: Boolean(snapshot && supportsRemotePreparation(snapshot) && snapshot.activity === "idle" && activeOperationId && retainedOperation && !transitions.has(activeOperationId) && !automatic.get(activeOperationId)?.eligible && phase !== "ready"),
           reason
@@ -24622,7 +24790,7 @@ async function createEntryCoordinator({
       };
       selected = { selection, snapshot: after, contextId };
       const operationId = randomBytes8(16).toString("hex");
-      const home = await realpath5(cloneOptions?.homeDirectory ?? homedir6());
+      const home = await realpath6(cloneOptions?.homeDirectory ?? homedir6());
       const reason = preparationReason(after) ?? (!repository.sourceVersion || !repository.defaultBranch || repository.operationalState !== "active" ? "source_unavailable" : null);
       const current = selected;
       if (!matchesCurrentWorkspace && !reason) current.preview = await ensureClones(after).confirm(selection.selectionId, after);
@@ -24635,7 +24803,7 @@ async function createEntryCoordinator({
         accountLabel: remote.connection.snapshot().accountLabel ?? "Microsoft account",
         matchesCurrentWorkspace,
         operationId: current.preview?.operationId ?? operationId,
-        destination: current.preview?.destination ?? join6(home, "SpecKitCanvas", "repositories", operationId, "checkout"),
+        destination: current.preview?.destination ?? join7(home, "SpecKitCanvas", "repositories", operationId, "checkout"),
         confirmation: current.preview?.confirmation ?? null,
         expiresAt: current.preview?.expiresAt ?? null,
         reason
@@ -24718,6 +24886,41 @@ async function createEntryCoordinator({
       if (automatic.has(operationId)) automatic.get(operationId).eligible = false;
       const completion = performHandoff(operationId, local.snapshot, true);
       retries.set(requestId, { operationId, contextId, completion });
+      return completion;
+    },
+    async openCheckout(operationId, contextId, requestId) {
+      text(operationId);
+      text(contextId);
+      text(requestId);
+      const local = await readLocal();
+      if (contextId !== localContextId) throw new RepositoryError("context_changed");
+      if (local.snapshot.activity !== "idle") throw new RepositoryError(local.snapshot.activity === "busy" ? "session_busy" : "activity_unknown");
+      const authorized = await authorizedRecord(operationId);
+      const existing = appRequests.get(requestId);
+      if (existing) {
+        if (existing.operationId !== operationId || existing.contextId !== contextId) throw new RepositoryError("context_changed");
+        return existing.completion;
+      }
+      if (appRequests.size >= 32) throw new RepositoryError("invalid_context");
+      if (transitions.size || authorized.record.handoff && !["rejected", "canvas_ready"].includes(authorized.record.handoff.status)) {
+        throw new RepositoryError("handoff_in_progress");
+      }
+      const completion = (async () => {
+        await (handoffOptions?.verifyPrepared ? handoffOptions.verifyPrepared(authorized.record) : verifyPreparedRepository({ record: authorized.record, ...cloneOptions }));
+        const check = async () => {
+          await (handoffOptions?.verifyPrepared ? handoffOptions.verifyPrepared(authorized.record) : verifyPreparedRepository({ record: authorized.record, ...cloneOptions }));
+          authorized.access.assertCurrent();
+          if (disposed || contextId !== localContextId) throw new RepositoryError("context_changed");
+          const current = await readHost();
+          if (current.activity !== "idle") throw new RepositoryError(current.activity === "busy" ? "session_busy" : "activity_unknown");
+          if (!sameSource(local.snapshot, current)) throw new RepositoryError("context_changed");
+        };
+        await check();
+        return appLauncher.launch(local.repository?.worktreeRoot ?? local.snapshot.workingDirectory, authorized.record.destination, check);
+      })().catch((error) => {
+        throw knownRepositoryError(error?.code);
+      });
+      appRequests.set(requestId, { operationId, contextId, completion });
       return completion;
     },
     async preparations() {
@@ -24864,7 +25067,7 @@ async function handleEntryRequest(req, res, url, entry) {
     if (!url.pathname.startsWith("/api/entry/") || !["GET", "POST"].includes(req.method ?? "")) throw new RepositoryError("invalid_request");
     if (req.method === "POST" && req.headers.origin !== url.origin) throw new RepositoryError("invalid_request");
     const path3 = url.pathname.slice("/api/entry/".length);
-    const operation = /^operations\/([a-f0-9]{32})(?:\/(cancel|handoff))?$/.exec(path3);
+    const operation = /^operations\/([a-f0-9]{32})(?:\/(cancel|handoff|open))?$/.exec(path3);
     const route = operation ? operation[2] ? `operation-${operation[2]}` : "operation" : path3;
     const queries = /* @__PURE__ */ new Map([["state", []], ["operation", []], ["preparations", []]]);
     const bodies = /* @__PURE__ */ new Map([
@@ -24873,7 +25076,8 @@ async function handleEntryRequest(req, res, url, entry) {
       ["selection", ["repositoryId", "contextId"]],
       ["clone", ["selectionId", "confirmation", "requestId"]],
       ["operation-cancel", ["requestId"]],
-      ["operation-handoff", ["contextId", "requestId"]]
+      ["operation-handoff", ["contextId", "requestId"]],
+      ["operation-open", ["contextId", "requestId"]]
     ]);
     const allowed = (req.method === "GET" ? queries : bodies).get(route);
     if (!allowed) throw new RepositoryError("invalid_request");
@@ -24895,7 +25099,10 @@ async function handleEntryRequest(req, res, url, entry) {
     } else if (route === "operation" && entry.operation) data = await entry.operation(operation[1]);
     else if (route === "operation-cancel" && entry.cancel) data = await entry.cancel(operation[1], text(body.requestId));
     else if (route === "operation-handoff" && entry.handoff) data = await entry.handoff(operation[1], text(body.contextId), text(body.requestId));
-    else if (route === "preparations" && entry.preparations) data = await entry.preparations();
+    else if (route === "operation-open" && entry.openCheckout) {
+      data = await entry.openCheckout(operation[1], text(body.contextId), text(body.requestId));
+      status = 202;
+    } else if (route === "preparations" && entry.preparations) data = await entry.preparations();
     else if (route === "local") data = await entry.local(text(body.contextId), text(body.requestId));
     else throw new RepositoryError("invalid_request");
     json(status, { ok: true, data });

@@ -10,6 +10,86 @@ handoff remains unavailable because the installed App's supported workspace
 activation contract is unverified. Clone completion is not handoff evidence. See the
 [acceptance report](../specs/002-repository-entry-flow/evidence/acceptance.md).
 
+## One-Time Local Setup
+
+Committing this checkout does not update an installed marketplace plugin or an
+earlier project-local test copy. Use the following steps to load this exact
+development build on Windows. This is a local installation, not a marketplace
+release or a push to GitHub.
+
+1. Finish any active App work and close the old SDD canvas. In the App's plugin
+   controls, disable any competing SDD provider for this test; keep the core
+   Spec Kit skills plugin. Use a normal project without an older
+   `.github/extensions/sdd-canvas` copy, because project extensions shadow user
+   extensions. Preserve any older copy rather than deleting it blindly.
+2. In PowerShell at this repository's root, export the already-built verified
+   runtime and install only its extension payload into user scope:
+
+   ```powershell
+   $kit = Join-Path $env:TEMP ("speckit-sdd-entry-" + [guid]::NewGuid().ToString("N"))
+   node .\scripts\canvas-reader\export-preview.mjs --output $kit
+   if ($LASTEXITCODE -ne 0) { throw 'SDD export failed.' }
+   node (Join-Path $kit 'preview.mjs') verify
+   if ($LASTEXITCODE -ne 0) { throw 'SDD payload verification failed.' }
+   $copilotHome = if ($env:COPILOT_HOME) { $env:COPILOT_HOME } else { Join-Path $HOME '.copilot' }
+   $target = Join-Path $copilotHome 'extensions\sdd-canvas'
+   if (Test-Path -LiteralPath $target) { throw 'An SDD user extension already exists; preserve it before replacing it.' }
+   New-Item -ItemType Directory -Path (Split-Path $target -Parent) -Force | Out-Null
+   Copy-Item -LiteralPath (Join-Path $kit 'plugin\extensions\sdd-canvas') -Destination $target -Recurse
+   ```
+
+   The exporter does not include build dependencies, private profiles, or test
+   adapters. Node 24 and the existing installed build dependencies are needed on
+   this development checkout. No extra Copilot SDK is installed.
+3. Configure the user-local repository profile described in
+   [Remote Connection](#remote-connection), using the same approved tenant, public
+   client registration, organization, and project used for repository testing.
+   Set `enabled` to `true`. Do not put a token, password, or client secret in it.
+   The earlier isolated test profile is not the normal user profile.
+4. Restart the App normally or ask it to reload extensions, then start a fresh
+   session in a normal local repository. The user-scoped provider is
+   `user:sdd-canvas`; it will also be discoverable in the newly opened clone.
+
+## End-To-End Use
+
+1. In GitHub Copilot App, choose **New project or session > Open folder** and
+   select your starting repository. This is the desktop App, not the plain CLI.
+2. Send: **"Open the Spec-Driven Development canvas from user:sdd-canvas, canvas
+   sdd-canvas, with input {}. Do not run setup or a workflow."** Confirm the first
+   screen says **Choose a repository**. If the provider is missing or the old
+   dashboard appears immediately, recheck the installed copy and entry settings.
+3. For the existing repository, choose **Use current workspace** and proceed
+   directly to its dashboard. This route does not wait for remote authentication.
+4. For a remote repository, let the fresh chooser start Microsoft sign-in.
+   Complete account selection, consent, or MFA if requested, then return to the
+   App and wait for search to become enabled. After cancellation, failure, or
+   Disconnect, use **Connect Microsoft account** for an explicit retry.
+5. Focus the empty search box for team suggestions, or type a repository name
+   and pause for one second. Select the intended result from the configured
+   Azure DevOps project. Selection alone does not clone anything.
+6. Review the account, default branch, full commit, and destination. When the
+   session is idle, choose **Confirm and clone** once and wait for **Clone
+   complete**. The source workspace and its files stay unchanged.
+7. Choose **Open in Copilot App**. In the App's **Open session?** dialog, verify
+   the folder and choose **Allow**. The App opens a new session for the checkout;
+   the previous session remains available. A restart is not normally required.
+8. In that new session send: **"Open the Spec-Driven Development (Current
+   Workspace) canvas from user:sdd-canvas, canvas sdd-canvas-direct, with input {}.
+   Do not run setup or a workflow."** This bypasses the chooser and opens the
+   original dashboard against the cloned repository.
+9. Select an existing feature and its **View** action to read the specification,
+   plan, tasks, or constitution. To start new work, intentionally complete the
+   dashboard's setup step if shown, then use **New feature** and the normal
+   Specify, Clarify, Plan, Tasks, Analyze, Checklist, and Implement controls.
+   Setup and Run actions are separate approvals; launching, cloning, and opening
+   the canvas do not run those workflows for you.
+
+If **Open in Copilot App** is disabled, wait for idle and refresh entry state.
+If the installed native Copilot CLI is unavailable to the extension, use **Copy
+checkout path**, then the App's ordinary **Open folder** action and step 8.
+The [synthetic preview](#validation-and-preview) tests the UI only; it never signs
+in, clones a private repository, or launches the real App.
+
 ## Open The Current Workspace
 
 1. Ask Copilot to **Open Spec-Driven Development** (`sdd-canvas`). The normal
@@ -117,14 +197,47 @@ connection, the existing guarded native Git engine, and a separate managed path.
 5. A completed clone shows **Clone complete**, the destination, and **Copy checkout
    path**. The current workspace stays unchanged. Reconnecting lists the retained
    checkout under **Cloned repositories** without cloning again.
-6. To work in the checkout now, open that path using the App's normal **Open folder**
-   action and open the original Spec Kit canvas there. This is an explicit manual
-   action, not an automatic handoff or a workflow started by the entry layer.
+6. Choose **Open in Copilot App** beside the completed or retained checkout. If
+   the App shows **Open session?**, verify the folder and select **Allow**. This
+   opens a new App session for that checkout; the previous session is retained.
+   Open the original Spec Kit canvas in that new session when ready.
 
 Clone-only admission is a checked preflight, not an atomic host reservation: the
 App may start unrelated work after the observation. The clone is isolated from
 the active repository and never retargets that work. No atomic capability is
 advertised and no App activity is cancelled or paused.
+
+## Open In Copilot App
+
+This explicit action uses the existing native Copilot CLI's documented
+[`copilot app` command](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#command-line-commands)
+with the verified checkout as its working directory. It works with an already
+running App and can start the App when closed. The button never quits or restarts
+the App itself, and never starts a CLI conversation, model prompt, or workflow.
+
+An installed native Copilot CLI with the `app` subcommand must be discoverable on
+the extension's PATH, directly or through its npm installation. No CLI is
+installed or updated automatically. Windows native validation used CLI 1.0.83
+and Copilot App 1.1.21. macOS uses the same documented command but has not been
+verified natively here; other platforms leave the button unavailable.
+
+The backend accepts only the retained operation ID and opaque context/request
+IDs. It rechecks account access, owned checkout identity, and idle source context;
+the browser cannot submit a path, URL, executable, or command arguments. Changed
+checkouts are preserved and rejected, not reset. The child gets no bearer tokens
+or SDK session variables. Busy/unknown state disables opening without queueing.
+
+**Open request sent** means the launcher accepted the request, not that the App
+approved it. The App may show an external-link approval or its download page if
+no handler is available. Failure or uncertain completion retains the checkout and
+copy control; inspect the App before explicitly trying again. **Copy checkout
+path** and the App's ordinary **Open folder** remain available as manual fallbacks.
+
+An explicitly opened managed clone, including a registered App worktree, uses
+local workspace/Git verification without a fabricated `workspace_activated` or
+`canvas_ready` record. Normal later local edits are retained. Pending automatic
+handoffs still require their own guarded binding and cannot use this route as a
+bypass.
 
 ## Automatic Handoff
 
@@ -133,7 +246,8 @@ Automatic switching remains gated by
 `workspace_activated`, guarded target-canvas opening, independent identity
 verification and `canvas_ready`. An attested registered linked worktree may use a
 different branch while preserving the original preparation. Unsupported hosts
-show no **Retry handoff** action and do not attempt any workspace mutation.
+show no **Retry handoff** action. The separate **Open in Copilot App** button is
+an explicit launch request, not automatic switching after clone completion.
 
 Changing only a canvas heading or working-directory variable, manual folder
 selection, a separate SDK client, private IPC, or a sequence of idle-read/cwd-write

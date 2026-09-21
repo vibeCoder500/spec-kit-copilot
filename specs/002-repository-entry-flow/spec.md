@@ -29,6 +29,11 @@ the isolated clone must never retarget or modify that work.
   state events, failure, or explicit Disconnect within that entry session. Keep
   explicit retry and independent local/direct entry. Reuse browser SSO without
   adding credential persistence or bypassing required Microsoft interaction.
+- User decision: Add a button action that opens the completed checkout in the
+  Copilot App, allowing a launch/script mechanism instead of in-session automatic
+  switching. Use the documented installed `copilot app` command, keep normal App
+  approval and the original session, and never treat a launch response as atomic
+  handoff or target readiness. No implicit restart, new clone, or workflow.
 
 ### Session 2026-09-20
 
