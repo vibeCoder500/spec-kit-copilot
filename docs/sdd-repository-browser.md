@@ -47,17 +47,20 @@ release or a push to GitHub.
    Set `enabled` to `true`. Do not put a token, password, or client secret in it.
    The earlier isolated test profile is not the normal user profile.
 4. Restart the App normally or ask it to reload extensions, then start a fresh
-   session in a normal local repository. The user-scoped provider is
-   `user:sdd-canvas`; it will also be discoverable in the newly opened clone.
+   session in a normal local repository. This user-scoped installation will also
+   be available in the newly opened clone.
 
 ## End-To-End Use
 
+The normal launch request is **"Open Spec-Driven Development"**. Copilot discovers
+the canvas by its name; users do not need provider IDs, canvas IDs, or JSON input.
+Opening the canvas does not itself run setup or a workflow.
+
 1. In GitHub Copilot App, choose **New project or session > Open folder** and
    select your starting repository. This is the desktop App, not the plain CLI.
-2. Send: **"Open the Spec-Driven Development canvas from user:sdd-canvas, canvas
-   sdd-canvas, with input {}. Do not run setup or a workflow."** Confirm the first
-   screen says **Choose a repository**. If the provider is missing or the old
-   dashboard appears immediately, recheck the installed copy and entry settings.
+2. Say **"Open Spec-Driven Development"**. With repository entry enabled, the first
+   screen says **Choose a repository**. If the canvas is missing or an older copy
+   opens, check the installation and competing providers, not the prompt wording.
 3. For the existing repository, choose **Use current workspace** and proceed
    directly to its dashboard. This route does not wait for remote authentication.
 4. For a remote repository, let the fresh chooser start Microsoft sign-in.
@@ -73,10 +76,9 @@ release or a push to GitHub.
 7. Choose **Open in Copilot App**. In the App's **Open session?** dialog, verify
    the folder and choose **Allow**. The App opens a new session for the checkout;
    the previous session remains available. A restart is not normally required.
-8. In that new session send: **"Open the Spec-Driven Development (Current
-   Workspace) canvas from user:sdd-canvas, canvas sdd-canvas-direct, with input {}.
-   Do not run setup or a workflow."** This bypasses the chooser and opens the
-   original dashboard against the cloned repository.
+8. In that new session, say **"Open Spec-Driven Development"** again, then choose
+   **Use current workspace**. The original dashboard opens against the cloned
+   repository.
 9. Select an existing feature and its **View** action to read the specification,
    plan, tasks, or constitution. To start new work, intentionally complete the
    dashboard's setup step if shown, then use **New feature** and the normal
@@ -92,13 +94,13 @@ in, clones a private repository, or launches the real App.
 
 ## Open The Current Workspace
 
-1. Ask Copilot to **Open Spec-Driven Development** (`sdd-canvas`). The normal
+1. Ask Copilot to **Open Spec-Driven Development**. The normal
    enabled launch opens a separate repository chooser.
 2. Select **Use current workspace**. The extension rechecks the session's actual
    Git identity and opens the original canvas in that session. This does not
    require a connection profile, Microsoft sign-in, cloning, or remote handoff.
-3. Alternatively, ask for **Spec-Driven Development (Current Workspace)**
-   (`sdd-canvas-direct`). This always offers the original canvas directly,
+3. Alternatively, say **"Open Spec-Driven Development (Current Workspace)"**.
+   This always offers the original canvas directly,
    independently of remote configuration or chooser-controller failure.
 
 Existing dirty files, untracked work, branches and drafts are not reset or stashed.
