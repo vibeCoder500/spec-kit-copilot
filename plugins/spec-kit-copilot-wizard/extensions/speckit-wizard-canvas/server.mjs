@@ -49,6 +49,8 @@ import {
 } from "./server/handlers-ops.mjs";
 import { handleNpmDiagnose, handleNpmRetry } from "./server/handlers-deps.mjs";
 import { ensureEnvProbe } from "./env/probe-cache.mjs";
+import { ArtifactReadError } from "./server/artifact-read.mjs";
+import { inspectBundleMembers } from "./catalog/bundles.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_UI_DIR = join(__dirname, "ui");
@@ -58,6 +60,14 @@ const DEFAULT_SHARED_DIR = join(__dirname, "shared");
 // absolute paths like /pipeline/*, /composition/*, so the
 // static router must expose them alongside /ui/*.
 const SHARED_ROOT_DIRS = ["pipeline", "composition"];
+const READER_ASSET_PREFIX = "/ui/vendor/markdown-reader/";
+const READER_ASSETS = new Set(["markdown-reader.js", "markdown-reader.css", "manifest.json", "THIRD_PARTY_NOTICES.txt"]);
+const isReviewPath = (pathname) => pathname.startsWith("/api/review/") || pathname.startsWith(READER_ASSET_PREFIX) || pathname === "/ui/artifact-review.js";
+
+function reviewFailure(res, code, status) {
+    const failure = new ArtifactReadError(code);
+    return jsonRes(res, status ?? failure.status, { ok: false, error: { code: failure.code, message: failure.message, retryable: failure.retryable } });
+}
 
 // ------------------------------------------------------------------------
 // deps bag:
@@ -83,24 +93,50 @@ export function createHandler(deps) {
         uiDir = DEFAULT_UI_DIR,
         sharedDir = DEFAULT_SHARED_DIR,
         token,
+        getReviewOrigin,
+        inspectBundle = inspectBundleMembers,
     } = deps;
 
     if (!token) throw new Error("createHandler requires deps.token");
 
+    let reviewService;
+    let reviewWorkspace;
+
     return async function handle(req, res) {
+        let reviewing = false;
         try {
             const url = new URL(req.url, "http://127.0.0.1");
             const method = req.method ?? "GET";
+            reviewing = isReviewPath(url.pathname);
+            if (reviewing) {
+                res.setHeader("Cache-Control", "no-store");
+                res.setHeader("Referrer-Policy", "no-referrer");
+                res.setHeader("X-Content-Type-Options", "nosniff");
+                if (url.searchParams.getAll("token").length > 1 || url.searchParams.getAll("cap").length > 1) return reviewFailure(res, "invalid_request");
+                if (getReviewOrigin) {
+                    const origin = getReviewOrigin();
+                    if (!origin || req.headers.host !== new URL(origin).host || (req.headers.origin && req.headers.origin !== origin)) {
+                        return reviewFailure(res, "forbidden");
+                    }
+                }
+            }
 
             // --- Token gate. Static /ui/* + / are also guarded so a stray
             // fetch without the token can't inspect the shell. Constant-time
             // compare avoids leaking the token via response-time side channel.
             const provided = extractToken(url, req);
             if (!tokensMatch(provided, token)) {
+                if (reviewing) return reviewFailure(res, "forbidden", 401);
                 return jsonError(res, 401, "unauthorized");
             }
 
             // ---------- Static UI ----------
+            if (url.pathname.startsWith(READER_ASSET_PREFIX)) {
+                const file = url.pathname.slice(READER_ASSET_PREFIX.length);
+                if (method !== "GET" || !READER_ASSETS.has(file)) return reviewFailure(res, "artifact_unavailable");
+                const ext = file.slice(file.lastIndexOf("."));
+                return await serveFile(res, join(uiDir, "vendor", "markdown-reader", file), CONTENT_TYPES[ext] ?? "text/plain; charset=utf-8", fs);
+            }
             if (method === "GET" && (url.pathname === "/" || url.pathname === "/ui" || url.pathname === "/ui/")) {
                 // Set a session cookie so subresource requests from the iframe
                 // (styles.css, app.js, /api/*, /api/events) carry the token
@@ -144,9 +180,43 @@ export function createHandler(deps) {
             }
 
             // ---------- API ----------
+            if (url.pathname.startsWith("/api/review/")) {
+                const { createWizardReviewService, handleArtifactReview } = await import("./server/artifact-review.mjs");
+                const workspacePath = getInstance()?.workspacePath;
+                if (!reviewService || reviewWorkspace !== workspacePath) {
+                    reviewService?.dispose();
+                    reviewWorkspace = workspacePath;
+                    reviewService = createWizardReviewService({ workspacePath, instanceId: "wizard", getState });
+                    if (getInstance()) getInstance().reviewService = reviewService;
+                }
+                return handleArtifactReview(req, res, url, reviewService);
+            }
             if (method === "GET" && url.pathname === "/api/state") {
                 const snapshot = await getState();
                 return jsonRes(res, 200, snapshot);
+            }
+
+            if (method === "GET" && url.pathname === "/api/designer/bundle-members") {
+                const id = url.searchParams.get("id");
+                const source = url.searchParams.get("source");
+                if (!id || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(id)
+                    || !["default", "community", "copilot"].includes(source)) {
+                    return jsonError(res, 400, "invalid bundle id or source");
+                }
+                const snapshot = await getState();
+                if (!snapshot?.catalog?.bundles?.some((item) => item.id === id && item.source === source)) {
+                    return jsonError(res, 404, "bundle not in the designer catalog");
+                }
+                const cwd = getInstance()?.workspacePath;
+                if (!cwd) return jsonError(res, 400, "workspace path unavailable");
+                try {
+                    const info = await inspectBundle(id, cwd);
+                    if (info.source !== source) throw new Error(`Bundle ${id} resolved from a different catalog.`);
+                    return jsonRes(res, 200, { members: info.members });
+                } catch (err) {
+                    if (log) await log(`bundle inspection failed: ${err.message}`, "error");
+                    return jsonError(res, 502, err.message);
+                }
             }
 
             if (method === "GET" && url.pathname === "/api/events") {
@@ -320,6 +390,13 @@ export function createHandler(deps) {
                     "/api/env/probe": () => handleProbeEnv(res, { getState, broadcast, getInstance, ensureEnvProbe }),
                     "/api/deps/diagnose": () => handleNpmDiagnose(res, body, { broadcast, getInstance }),
                     "/api/deps/retry": () => handleNpmRetry(res, body, { broadcast, getInstance }),
+                    "/api/designer/launch": async () => {
+                        const { handleDesignerLaunch } = await import("./server/handlers-designer.mjs");
+                        return handleDesignerLaunch(res, body, {
+                            getState, getInstance, session, log,
+                            enableProviderForSession: deps.enableDesignerProvider,
+                        });
+                    },
                 };
                 const route = postRoutes[url.pathname];
                 if (route) return route();
@@ -327,6 +404,7 @@ export function createHandler(deps) {
 
             return jsonError(res, 404, "not found");
         } catch (err) {
+            if (reviewing) return reviewFailure(res, "read_failed");
             // Top-level catch — never leak an unhandled promise rejection.
             try {
                 if (log) await log(`server error: ${err?.message ?? err}`, "error");
@@ -380,11 +458,13 @@ export async function startServer(instanceId, deps) {
         inst.broadcast = broadcast;
     }
 
+    let origin;
     const handler = createHandler({
         ...deps,
         token,
         broadcast,
         registerSse,
+        getReviewOrigin: () => origin,
     });
 
     const server = createServer((req, res) => {
@@ -396,7 +476,8 @@ export async function startServer(instanceId, deps) {
     });
     await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
     const port = server.address().port;
-    const url = `http://127.0.0.1:${port}/?token=${token}`;
+    origin = `http://127.0.0.1:${port}`;
+    const url = `${origin}/?token=${token}`;
 
     if (inst) {
         inst.server = server;

@@ -186,17 +186,21 @@ export function renderStepper() {
             p: { ...entry.p, locked: true },
         }));
     }
-    visible.forEach(({ id, orphan, synthesized, extension, p }, idx) => {
-        if (idx > 0) {
+    const appendStep = (step) => {
+        if (el.lastElementChild) {
             const sep = document.createElement("li");
             sep.className = "step-sep";
             sep.setAttribute("aria-hidden", "true");
             el.appendChild(sep);
         }
+        el.appendChild(step);
+    };
+    visible.forEach(({ id, orphan, synthesized, extension, p }, idx) => {
         const li = document.createElement("li");
         li.className = "step";
         if (id === state.currentPhase && !orphan) li.classList.add("active");
-        if (p.locked) li.classList.add("locked");
+        const canReview = Boolean(state.snapshot.phases?.[id]?.artifactPath || lookup.get(id)?.artifactPath);
+        if (p.locked && !canReview) li.classList.add("locked");
         if (p.optional) li.classList.add("is-optional");
         if (orphan) li.classList.add("orphan");
         if (synthesized) li.classList.add("is-canonical-fallback");
@@ -241,37 +245,33 @@ export function renderStepper() {
         const phaseHooks = (!orphan)
             ? hooksForCommand(p.commandName || id)
             : [];
-        const beforeHooks = phaseHooks.filter((h) => String(h.phase || "").startsWith("before"));
-        const afterHooks = phaseHooks.filter((h) => !String(h.phase || "").startsWith("before"));
+        const hooksByPhase = new Map();
+        for (const hook of phaseHooks) {
+            const phase = String(hook.phase || "");
+            if (!hooksByPhase.has(phase)) hooksByPhase.set(phase, []);
+            hooksByPhase.get(phase).push(hook);
+        }
+        const beforeHooks = [...hooksByPhase].filter(([phase]) => phase.startsWith("before"));
+        const afterHooks = [...hooksByPhase].filter(([phase]) => !phase.startsWith("before"));
 
-        const appendHookStep = (hook) => {
-            const sep2 = document.createElement("li");
-            sep2.className = "step-sep step-sep-hook";
-            sep2.setAttribute("aria-hidden", "true");
-            el.appendChild(sep2);
+        const appendHookStep = ([phaseText, hooks]) => {
             const hookLi = document.createElement("li");
             hookLi.className = "step step-hook";
-            // Show the lifecycle trigger in the pipeline so the placement is
-            // clear even when multiple extensions provide the same hook.
-            const phaseText = String(hook.phase || "");
-            const displayName = phaseText
-                ? phaseText
-                : hook.targetCommand || "hook";
-            const extLabel = hook.extensionName || hook.extensionId || "extension";
-            const isOptional = !!hook.optional;
-            const reqLabel = isOptional ? "Optional" : "Required";
-            // Keep the Required/Optional detail in the tooltip only.
-            // The chip itself is omitted from the pipeline visualization —
-            // multiple hooks per phase make per-chip modifiers too noisy.
-            hookLi.title = `${extLabel} — auto-runs ${phaseText.startsWith("before") ? "before" : "after"} /${p.commandName || id} (${reqLabel})\nCannot be added or removed manually.`;
+            const targetCommands = [...new Set(hooks
+                .map((hook) => hook.targetCommand?.replace(/^commands\//, ""))
+                .filter(Boolean))];
+            const when = phaseText.startsWith("before") ? "before" : "after";
+            hookLi.title = `Auto-runs ${when} /${displayCommand(p.commandName || id)}:\n${targetCommands.length
+                ? targetCommands.map((command) => `/${displayCommand(command)}`).join("\n")
+                : "No hook command recorded"}\nCannot be added or removed manually.`;
             hookLi.innerHTML = `
                 <span class="step-hook-marker" aria-hidden="true">🪝</span>
                 <span class="step-label">
-                    <span class="step-name">${escapeHtml(displayName)}</span>
+                    <span class="step-name">${escapeHtml(phaseText || "hook")}</span>
                     <span class="step-hook-pill">Hook auto-run</span>
                 </span>
             `;
-            el.appendChild(hookLi);
+            appendStep(hookLi);
         };
 
         // Render before-hooks, then the real step, then after-hooks.
@@ -287,7 +287,7 @@ export function renderStepper() {
         `;
         li.addEventListener("click", (ev) => {
             if (ev.target?.closest?.('[data-action="pipeline-remove"]')) return;
-            if (p.locked || orphan) return;
+            if (orphan || (p.locked && !canReview)) return;
             state.currentPhase = id;
             __stepperRenderPhaseCard();
             renderStepper();
@@ -303,7 +303,7 @@ export function renderStepper() {
             // instance clicked when duplicates of the same command id exist.
             await dispatchPipeline("remove", { id, index: idx });
         });
-        el.appendChild(li);
+        appendStep(li);
         for (const h of afterHooks) appendHookStep(h);
     });
 }
@@ -339,7 +339,14 @@ export function synthesizeCanonicalPhase(id) {
 export function renderPhaseCard() {
     const el = document.getElementById("phase-card");
     if (!el || !state.snapshot) return;
-    const all = commands();
+    const all = [...commands()];
+    if (!all.length) {
+        for (const id of PHASE_ORDER) {
+            const phase = state.snapshot.phases?.[id];
+            if (id === "setup" || !phase?.artifactPath) continue;
+            all.push({ ...synthesizeCanonicalPhase(id), status: phase.status, artifactPath: phase.artifactPath });
+        }
+    }
     if (all.length) {
         // The phase card is now strictly a projection of the pipeline: only
         // commands that are currently in the pipeline can be viewed here.
@@ -520,11 +527,11 @@ export function renderGraphPhaseCard(el, p) {
     let centerActions;
     if (hasSubmitted) {
         centerActions = `
-              ${canViewArtifact ? `<button type="button" class="btn btn-primary" data-phase-action="view" ${disabledAttr}${running ? " disabled" : ""}>View artifact</button>` : ""}
+              ${canViewArtifact ? `<button type="button" class="btn btn-primary" data-phase-action="view">View artifact</button>` : ""}
               <button type="button" class="btn btn-primary" data-phase-action="redo" ${disabledAttr}${runningDisabled}>${running ? runningLabel : "Rerun phase"}</button>`;
     } else {
         centerActions = `
-              ${canViewArtifact ? `<button type="button" class="btn btn-primary" data-phase-action="view" ${disabledAttr}${running ? " disabled" : ""}>View artifact</button>` : ""}
+              ${canViewArtifact ? `<button type="button" class="btn btn-primary" data-phase-action="view">View artifact</button>` : ""}
               <button type="submit" class="btn btn-primary" ${disabledAttr}${runningDisabled}>${running ? runningLabel : "Run phase"}</button>`;
     }
     actionRow = `<div class="phase-actions phase-actions-nav">
