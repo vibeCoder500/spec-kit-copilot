@@ -8,6 +8,8 @@ import { assertWorkspaceBinding, inspectWorkspaceBinding } from "../src/workspac
 import * as workspaceModule from "../src/workspace-binding.ts";
 import { cloneEnvironment, findGitExecutable, fingerprintCheckout } from "../src/clone.ts";
 import { createPreparationStore } from "../src/preparation-store.ts";
+import { openRequestedAppCanvas } from "../src/app-canvas.ts";
+import { createHostHandoffAdapter } from "../src/host-handoff.ts";
 import type { HostHandoffAdapter, HostWorkspaceSnapshot, PreparedRepositoryRecord, WorkspaceActivation } from "../src/types.ts";
 
 test("Ordinary workspaces require no preparation marker and trigger no Git execution", async () => {
@@ -121,6 +123,7 @@ async function preparedFixture(run: (proof: { home: string; record: PreparedRepo
     const operationId = "a".repeat(32);
     const root = join(home, "SpecKitCanvas", "repositories", operationId);
     const checkout = join(root, "checkout");
+    const source = join(home, "owned-spec-kit-source");
     const linked = join(home, "host-linked");
     await mkdir(checkout, { recursive: true });
     const executable = await findGitExecutable(home);
@@ -129,11 +132,16 @@ async function preparedFixture(run: (proof: { home: string; record: PreparedRepo
     const git = (args: string[], cwd = checkout) => execFileSync(executable, ["-c", "core.hooksPath=", "-c", "core.fsmonitor=false", "-c", "init.templateDir=",
         "-c", "user.name=SDD Owned Test", "-c", "user.email=owned@example.invalid", ...args], { cwd, env, encoding: "utf8", windowsHide: true, stdio: ["ignore", "pipe", "pipe"] }).trim();
     try {
-        git(["init", "-b", `speckit/canvas-${operationId}`]);
-        await writeFile(join(checkout, "spec.md"), "# Owned repository\n");
-        git(["add", "spec.md"]); git(["commit", "-m", "Owned identity fixture"]);
+        await mkdir(join(source, ".specify", "memory"), { recursive: true });
+        await mkdir(join(source, "specs", "001-owned"), { recursive: true });
+        git(["init", "-b", `speckit/canvas-${operationId}`], source);
+        await writeFile(join(source, "spec.md"), "# Owned repository\n");
+        await writeFile(join(source, ".specify", "memory", "constitution.md"), "# Owned constitution\n");
+        await writeFile(join(source, "specs", "001-owned", "spec.md"), "# Owned feature\n");
+        git(["add", "."], source); git(["commit", "-m", "Owned identity fixture"], source);
+        git(["clone", "--no-local", "--", source, checkout], home);
         const origin = "https://dev.azure.com/Synthetic/Project/_git/33333333-3333-4333-8333-333333333333";
-        git(["remote", "add", "origin", origin]); git(["worktree", "add", "-b", "host-target", linked]);
+        git(["remote", "set-url", "origin", origin]); git(["worktree", "add", "-b", "host-target", linked]);
         await writeFile(join(root, ".sdd-clone-owner.json"), JSON.stringify({ kind: "sdd-repository-clone", operationId }));
         const record: PreparedRepositoryRecord = { schemaVersion: 2, kind: "sdd-prepared-repository", operationId, repositoryId: "33333333-3333-4333-8333-333333333333",
             originIdentity: origin, defaultRef: "refs/heads/main", sourceCommit: git(["rev-parse", "HEAD"]), destination: checkout, gitCommonDirectory: join(checkout, ".git"),
@@ -157,6 +165,40 @@ test("Prepared identity accepts only an attested registered linked branch and pr
     for (const changed of [{ targetBranch: record.branch }, { targetKind: "prepared_checkout" as const }, { contextRevision: "stale" }, { sessionId: "another-session" }]) {
         await assert.rejects(workspaceModule.verifyActivatedRepository({ record, activation: { ...activation, ...changed }, snapshot: host, homeDirectory: home }), { code: "clone_identity_changed" });
     }
+}));
+
+test("App canvas bootstrap verifies real Git checkout and registered linked worktree without switching the source", () => preparedFixture(async ({ home, record, linked, git }) => {
+    const store = createPreparationStore({ homeDirectory: home });
+    await store.write(record);
+    let time = 3000;
+    for (const directory of [record.destination, linked]) {
+        await store.requestAppCanvas(record.operationId, "source", time);
+        let opens = 0;
+        const host = createHostHandoffAdapter({ sessionId: "target", extensionId: "sdd", metadata: {
+            snapshot: async () => ({ sessionId: "target", workingDirectory: directory }),
+            activity: async () => ({ hasActiveWork: false, abortable: false }),
+        }, canvas: { open: async input => {
+            opens++;
+            const binding = await workspaceModule.createWorkflowBinding({ host, providerId: "sdd", instanceId: input.instanceId, homeDirectory: home });
+            await binding.ready(); await binding.verify();
+            return { extensionId: "sdd", canvasId: "sdd-canvas-direct", instanceId: input.instanceId };
+        } } });
+        try {
+            assert.equal((await openRequestedAppCanvas({ host, homeDirectory: home, now: () => time + 1000 })).status, "opened");
+            assert.equal((await openRequestedAppCanvas({ host, homeDirectory: home, now: () => time + 1000 })).status, "none");
+            assert.equal(opens, 1);
+            const saved = await store.read(record.operationId);
+            assert.equal(saved.appCanvas?.acknowledgment?.workingDirectory, directory);
+            assert.equal(saved.handoff, undefined);
+            assert.equal(git(["symbolic-ref", "HEAD"]), record.branch);
+            assert.equal(git(["rev-parse", "HEAD"]), record.sourceCommit);
+        } finally { host.dispose(); }
+        time += 601000;
+    }
+    await store.requestAppCanvas(record.operationId, "source", time);
+    await writeFile(join(linked, "draft.txt"), "Keep this draft\n");
+    await assert.rejects(workspaceModule.verifyAppCanvasRepository({ record, workspacePath: linked, homeDirectory: home }), { code: "clone_identity_changed" });
+    assert.equal(await readFile(join(linked, "draft.txt"), "utf8"), "Keep this draft\n");
 }));
 
 test("Initial handoff rejects unregistered, dirty, detached, moved or wrong-origin worktrees without repairing them", () => preparedFixture(async ({ home, record, linked, activation, host, git }) => {

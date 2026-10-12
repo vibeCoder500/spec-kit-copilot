@@ -119,7 +119,10 @@ test("installed preview reads existing spec iterations and related documents wit
     const key = `__previewKit_${randomUUID().replaceAll("-", "")}`;
     let dispatches = 0;
     globalThis[key] = { send: async () => { dispatches++; throw new Error("Workflow calls are not authorized by this test."); },
-        log: async () => {}, rpc: { metadata: { snapshot: async () => ({ workingDirectory: workspace }) } } };
+        log: async () => {}, rpc: { metadata: {
+            snapshot: async () => ({ sessionId: key, workingDirectory: workspace }),
+            activity: async () => ({ hasActiveWork: false, abortable: false }),
+        } } };
     const sdk = `export const createCanvas = definition => definition; export class CanvasError extends Error {} export async function joinSession() { return globalThis[${JSON.stringify(key)}]; }`;
     const hooks = registerHooks({ resolve(specifier, context, nextResolve) {
         if (specifier === "@github/copilot-sdk/extension") return { url: `data:text/javascript,${encodeURIComponent(sdk)}`, shortCircuit: true };

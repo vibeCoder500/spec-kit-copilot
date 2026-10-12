@@ -112,6 +112,7 @@ export interface PreparedTarget {
     gitCommonDirectory: string;
     branch: string;
     initialWorktreeFingerprint: string;
+    reused?: boolean;
 }
 
 export interface WorkspaceActivation extends HostContextIdentity {
@@ -149,7 +150,23 @@ export interface PreparedRepositoryRecord extends PreparedTarget {
     completedAt: number;
     handoff?: HandoffAttempt;
     acceptedTarget?: CanvasReadiness;
+    appCanvas?: AppCanvasRequest;
 }
+
+export interface AppCanvasRequest {
+    requestId: string;
+    sourceSessionId: string;
+    requestedAt: number;
+    expiresAt: number;
+    launchStatus: "pending" | "requested" | "failed" | "unknown";
+    canvasStatus: "pending" | "opening" | "opened" | "failed" | "unknown";
+    targetSessionId?: string;
+    targetWorkingDirectory?: string;
+    acknowledgment?: LocalCanvasAcknowledgment;
+    errorCode?: string;
+}
+
+export type AppCanvasState = Pick<AppCanvasRequest, "launchStatus" | "canvasStatus" | "expiresAt" | "errorCode">;
 
 export interface RepositorySelection {
     selectionId: string;

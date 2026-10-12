@@ -8,7 +8,7 @@ import { createAdoClient } from "./ado-client.ts";
 import { createCopilotAppLauncher } from "./app-launch.ts";
 import type { CopilotAppLauncher } from "./app-launch.ts";
 import { createPreparedArtifactClock } from "./artifact-clock.ts";
-import { createCloneService, createEntryCloneService } from "./clone.ts";
+import { createCloneService, createEntryCloneService, repositoryFolderName } from "./clone.ts";
 import type { CloneState, EntryCloneService } from "./clone.ts";
 import { createRepositoryConnection } from "./auth.ts";
 import type { AuthDependencies } from "./auth.ts";
@@ -20,13 +20,20 @@ import { loadRepositoryProfile } from "./profile.ts";
 import { createPreparationStore } from "./preparation-store.ts";
 import type { ProfileStatus } from "./profile.ts";
 import { createRemoteReview } from "./remote-review.ts";
-import type { ArtifactRoot, EntryLocalContext, HandoffAttempt, HandoffOutcome, HostHandoffAdapter, HostWorkspaceSnapshot, LocalRepositoryIdentity, PreparedRepositoryRecord, RepositoryEntryPhase, RepositorySelection } from "./types.ts";
+import type { AppCanvasRequest, ArtifactRoot, EntryLocalContext, HandoffAttempt, HandoffOutcome, HostHandoffAdapter, HostWorkspaceSnapshot, LocalRepositoryIdentity, PreparedRepositoryRecord, RepositoryEntryPhase, RepositorySelection } from "./types.ts";
 import { assertWorkspaceBinding, createWorkflowBinding, inspectCurrentRepository, inspectWorkspaceBinding, verifyPreparedRepository, verifyReadyRepository } from "./workspace-binding.ts";
 import type { WorkspaceBinding } from "./workspace-binding.ts";
 
 export { createHostHandoffAdapter } from "./host-handoff.ts";
 export { loadEntrySettings } from "./profile.ts";
 export { createWorkflowBinding } from "./workspace-binding.ts";
+export { verifyPreparedRepository } from "./workspace-binding.ts";
+export { openRequestedAppCanvas } from "./app-canvas.ts";
+
+function appCanvasState(request?: AppCanvasRequest) {
+    return request ? { launchStatus: request.launchStatus, canvasStatus: request.canvasStatus, expiresAt: request.expiresAt,
+        ...(request.errorCode ? { errorCode: request.errorCode } : {}) } : undefined;
+}
 
 export async function createRepositoryService({ workspacePath, profileStatus, dependencies, request, cloneOptions, bindingOptions, workflowBinding, onChange = () => undefined }: {
     workspacePath: string;
@@ -142,13 +149,14 @@ export async function createEntryCoordinator({ host, profileStatus, dependencies
     let phase: RepositoryEntryPhase = "chooser";
     let selectionGeneration = 0;
     let selected: { selection: RepositorySelection; snapshot: HostWorkspaceSnapshot; contextId: string;
+        openInApp: boolean;
         preview?: Awaited<ReturnType<EntryCloneService["confirm"]>> } | undefined;
     let clones: EntryCloneService | undefined;
     let activeOperationId: string | undefined;
     let retainedOperation: CloneState | undefined;
     let activeRecord: PreparedRepositoryRecord | undefined;
     let handoffError: string | undefined;
-    const automatic = new Map<string, { source: HostWorkspaceSnapshot; eligible: boolean }>();
+    const automatic = new Map<string, { source: HostWorkspaceSnapshot; eligible: boolean; openInApp: boolean }>();
     const pending = new Set<Promise<void>>();
     const retries = new Map<string, { operationId: string; contextId: string; completion: Promise<CloneState> }>();
     const transitions = new Set<string>();
@@ -193,7 +201,9 @@ export async function createEntryCoordinator({ host, profileStatus, dependencies
     function remember(record: PreparedRepositoryRecord, repositoryName?: string) {
         activeRecord = record; activeOperationId = record.operationId;
         retainedOperation = { operationId: record.operationId, state: "prepared", repositoryName: repositoryName ?? retainedOperation?.repositoryName ?? "Prepared repository",
-            branch: record.defaultRef, sourceCommit: record.sourceCommit, localBranch: record.branch.slice(11), destination: record.destination };
+            branch: record.defaultRef, sourceCommit: record.sourceCommit, localBranch: record.branch.slice(11), destination: record.destination,
+            ...(record.reused ? { reused: true, checkoutCommit: record.sourceCommit } : {}),
+            ...(record.appCanvas ? { appCanvas: appCanvasState(record.appCanvas) } : {}) };
     }
 
     function operationView() {
@@ -212,6 +222,8 @@ export async function createEntryCoordinator({ host, profileStatus, dependencies
             const access = await remote.connection.access();
             const record = await store.read(operationId);
             if (record.accountKey !== accountKey(access) || record.profileFingerprint !== createHash("sha256").update(JSON.stringify(remote.profile)).digest("hex")) throw new Error();
+            const retained = await store.list();
+            if (retained.hasMore || !retained.items.some(item => item.operationId === operationId)) throw new Error();
             const repository = await remote.discovery.detail(record.repositoryId);
             access.assertCurrent();
             return { record, repository, access };
@@ -333,7 +345,12 @@ export async function createEntryCoordinator({ host, profileStatus, dependencies
             const eligibility = automatic.get(operationId);
             const current = await readHost();
             if (!eligibility || !supportsRemotePreparation(eligibility.source) || !supportsRemotePreparation(current)) {
-                phase = "prepared"; handoffError = undefined; onChange(); return;
+                phase = "prepared"; handoffError = undefined;
+                if (eligibility?.openInApp) {
+                    if (!sameSource(eligibility.source, current)) throw new RepositoryError(current.activity === "busy" ? "session_busy" : "context_changed");
+                    await service.openCheckout(operationId, localContextId, `automatic-${operationId}`);
+                }
+                onChange(); return;
             }
             if (!eligibility?.eligible || !sameSource(eligibility.source, current)) {
                 phase = "waiting_user"; handoffError = remoteReason(current) ?? "context_changed"; onChange(); return;
@@ -341,7 +358,7 @@ export async function createEntryCoordinator({ host, profileStatus, dependencies
             await performHandoff(operationId, current, false);
         })().catch(error => {
             if (!disposed && !["handoff_unknown", "handoff_pending", "handoff_failed", "validation_blocked", "waiting_user"].includes(phase)) {
-                phase = "validation_blocked"; handoffError = knownRepositoryError((error as { code?: unknown })?.code).code; onChange();
+                phase = "prepared"; handoffError = knownRepositoryError((error as { code?: unknown })?.code).code; onChange();
             }
         });
         pending.add(job); void job.finally(() => pending.delete(job));
@@ -413,6 +430,7 @@ export async function createEntryCoordinator({ host, profileStatus, dependencies
     const service = {
         snapshot() { return { configuration: configuration.state, connection: connection?.snapshot() ?? { state: "disconnected", generation: 0, projectLabel: "" } }; },
         async state() {
+            if (activeRecord?.appCanvas) remember(await store.read(activeRecord.operationId));
             const localContext: EntryLocalContext = { contextId: localContextId, label: "Current workspace", state: "unavailable" };
             let snapshot: HostWorkspaceSnapshot | undefined;
             let appAvailable = false;
@@ -488,7 +506,9 @@ export async function createEntryCoordinator({ host, profileStatus, dependencies
             const profileFingerprint = createHash("sha256").update(JSON.stringify(remote.profile)).digest("hex");
             const selection: RepositorySelection = { selectionId: `selection_${randomBytes(24).toString("base64url")}`, repository, originIdentity,
                 accountKey: accountKey(access), connectionGeneration: access.generation, profileFingerprint, expectedSource: { sessionId: after.sessionId, contextRevision: after.contextRevision }, matchesCurrentWorkspace };
-            selected = { selection, snapshot: after, contextId };
+            const openInApp = !matchesCurrentWorkspace && !supportsRemotePreparation(after) && await appLauncher.available(after.workingDirectory);
+            if (generation !== selectionGeneration) throw new RepositoryError("context_changed");
+            selected = { selection, snapshot: after, contextId, openInApp };
             const operationId = randomBytes(16).toString("hex");
             const home = await realpath(cloneOptions?.homeDirectory ?? homedir());
             const reason = preparationReason(after) ?? (!repository.sourceVersion || !repository.defaultBranch || repository.operationalState !== "active" ? "source_unavailable" : null);
@@ -497,8 +517,10 @@ export async function createEntryCoordinator({ host, profileStatus, dependencies
             if (selected !== current || generation !== selectionGeneration) throw new RepositoryError("context_changed");
             phase = "selected"; onChange();
             return { selectionId: selection.selectionId, repository, accountLabel: remote.connection.snapshot().accountLabel ?? "Microsoft account",
-                matchesCurrentWorkspace, operationId: current.preview?.operationId ?? operationId,
-                destination: current.preview?.destination ?? join(home, "SpecKitCanvas", "repositories", operationId, "checkout"),
+                matchesCurrentWorkspace, openInApp, operationId: current.preview?.operationId ?? operationId,
+                destination: current.preview?.destination ?? (matchesCurrentWorkspace ? local.repository!.worktreeRoot :
+                    join(home, "SpecKitCanvas", "repositories", repositoryFolderName(repository.name))),
+                reused: current.preview?.reused ?? false, migrateFrom: current.preview?.migrateFrom ?? null, checkoutCommit: current.preview?.checkoutCommit ?? null,
                 confirmation: current.preview?.confirmation ?? null, expiresAt: current.preview?.expiresAt ?? null, reason };
         },
         async clone(selectionId: string, confirmation: string, requestId: string) {
@@ -510,7 +532,7 @@ export async function createEntryCoordinator({ host, profileStatus, dependencies
             if (!current || current.selection.selectionId !== selectionId || current.contextId !== localContextId || !current.preview || !clones) throw new RepositoryError("context_changed");
             activeOperationId = current.preview.operationId;
             const first = !automatic.has(activeOperationId);
-            if (first) automatic.set(activeOperationId, { source: structuredClone(snapshot), eligible: supportsRemotePreparation(snapshot) });
+            if (first) automatic.set(activeOperationId, { source: structuredClone(snapshot), eligible: supportsRemotePreparation(snapshot), openInApp: current.openInApp });
             try {
                 const started = await clones.start(activeOperationId, confirmation, requestId);
                 if (first) continueAfterPreparation(activeOperationId);
@@ -525,13 +547,15 @@ export async function createEntryCoordinator({ host, profileStatus, dependencies
         async operation(operationId: string) {
             text(operationId);
             if (retainedOperation?.operationId === operationId) {
-                await authorizedRecord(operationId);
+                const authorized = await authorizedRecord(operationId);
+                remember(authorized.record, authorized.repository.name);
                 return { ...retainedOperation, ...(handoffError ? { error: handoffError } : {}) };
             }
             if (clones) return clones.authorized(operationId);
             const authorized = await authorizedRecord(operationId);
             return { operationId, state: "prepared" as const, repositoryName: authorized.repository.name, branch: authorized.record.defaultRef,
-                sourceCommit: authorized.record.sourceCommit, localBranch: authorized.record.branch.slice(11), destination: authorized.record.destination };
+                sourceCommit: authorized.record.sourceCommit, localBranch: authorized.record.branch.slice(11), destination: authorized.record.destination,
+                appCanvas: appCanvasState(authorized.record.appCanvas) };
         },
         async cancel(operationId: string, requestId: string) {
             text(operationId); text(requestId);
@@ -568,6 +592,11 @@ export async function createEntryCoordinator({ host, profileStatus, dependencies
             if (contextId !== localContextId) throw new RepositoryError("context_changed");
             if (local.snapshot.activity !== "idle") throw new RepositoryError(local.snapshot.activity === "busy" ? "session_busy" : "activity_unknown");
             const authorized = await authorizedRecord(operationId);
+            if (local.repository?.gitCommonDirectory === authorized.record.gitCommonDirectory &&
+                local.repository.origin === authorized.record.originIdentity) {
+                await service.local(contextId, requestId);
+                return { status: "requested" as const };
+            }
             const existing = appRequests.get(requestId);
             if (existing) {
                 if (existing.operationId !== operationId || existing.contextId !== contextId) throw new RepositoryError("context_changed");
@@ -588,7 +617,20 @@ export async function createEntryCoordinator({ host, profileStatus, dependencies
                     if (!sameSource(local.snapshot, current)) throw new RepositoryError("context_changed");
                 };
                 await check();
-                return appLauncher.launch(local.repository?.worktreeRoot ?? local.snapshot.workingDirectory, authorized.record.destination, check);
+                const requested = await store.requestAppCanvas(operationId, local.snapshot.sessionId);
+                remember(requested, authorized.repository.name); onChange();
+                const canvasRequest = requested.appCanvas!;
+                try {
+                    const result = await appLauncher.launch(local.repository?.worktreeRoot ?? local.snapshot.workingDirectory, authorized.record.destination, check);
+                    remember(await store.updateAppLaunch(operationId, canvasRequest.requestId, "requested"), authorized.repository.name);
+                    handoffError = undefined; onChange();
+                    return result;
+                } catch (error) {
+                    const failure = knownRepositoryError((error as { code?: unknown })?.code);
+                    remember(await store.updateAppLaunch(operationId, canvasRequest.requestId,
+                        failure.code === "app_launch_unknown" ? "unknown" : "failed", failure.code), authorized.repository.name);
+                    handoffError = failure.code; onChange(); throw failure;
+                }
             })().catch(error => { throw knownRepositoryError((error as { code?: unknown })?.code); });
             appRequests.set(requestId, { operationId, contextId, completion });
             return completion;
@@ -607,7 +649,7 @@ export async function createEntryCoordinator({ host, profileStatus, dependencies
                     const repository = await remote.discovery.detail(record.repositoryId);
                     access.assertCurrent();
                     items.push({ operationId: record.operationId, repositoryName: repository.name, sourceCommit: record.sourceCommit,
-                        destination: record.destination, state: "prepared" as const, handoffState: record.handoff?.status ?? null });
+                        destination: record.destination, state: "prepared" as const, handoffState: record.handoff?.status ?? null, appCanvas: appCanvasState(record.appCanvas) });
                 } catch { access.assertCurrent(); }
             }
             return { items };

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "kind": "sdd-repository-browser",
-  "sourceHash": "95da5d708effbce1b15cb9b00007279fa98e67d7cdb5409b31ad5b98ca46e522",
-  "buildHash": "247d4fff03512398b2e1484190fc872ac58c10af123b4db51bd40230025d2513",
+  "sourceHash": "b7f465896dd8f9c2f41b40af68a5edcaa3bf61e1ed904c821dbf093d8d8ea744",
+  "buildHash": "c0677754d95cf2dee46211159dcb5bfc47f544c1f43e43c1a79fe1bdeb2357fd",
   "sources": [
     {
       "path": "build-runtime.mjs",
@@ -15,6 +15,10 @@
     {
       "path": "src/ado-client.ts",
       "sha256": "215a3f53e8af24f2822af02cc199ec98856255d8e2d73c2a635854dd9ff3aa76"
+    },
+    {
+      "path": "src/app-canvas.ts",
+      "sha256": "7f3e0a39d4564e22d4957d66cb1d1ff065660494ded8135d08b35b2bbf963a4e"
     },
     {
       "path": "src/app-launch.ts",
@@ -30,7 +34,7 @@
     },
     {
       "path": "src/clone.ts",
-      "sha256": "4a398813d121d68ad1303e7dddd6830e01c131ed9d29366c199fa01107da7a9c"
+      "sha256": "ab03027d3c3e63d0c0b857f02ce3aef2a73c3d5a10e63571089b84fac31884c6"
     },
     {
       "path": "src/continuations.ts",
@@ -42,7 +46,7 @@
     },
     {
       "path": "src/errors.ts",
-      "sha256": "09a65e6652f8882fde7b1cadf26939abffd962d8416dab0c672bdd47a5b58d2d"
+      "sha256": "e88c70250d0774708df7e602a769ce6b539f5aa7f62052fedb44134cd522f7c5"
     },
     {
       "path": "src/host-handoff.ts",
@@ -58,7 +62,7 @@
     },
     {
       "path": "src/preparation-store.ts",
-      "sha256": "556e3bc80d8a97885e5691458694ab6136320f9f0d39831860a27a5962f803fc"
+      "sha256": "161932d89338f7323846cdbb4b22643d8d6302bc6b1dbd9c6d37d0bacb953b02"
     },
     {
       "path": "src/profile.ts",
@@ -70,7 +74,7 @@
     },
     {
       "path": "src/repository-service.ts",
-      "sha256": "e50d03e048751a049a92f654243158efd78f60692455406c044620dfdf9a22b8"
+      "sha256": "15c7f3093f8d37a169ab886f32b1616e75830323701cb84a0c520adb76bd69f0"
     },
     {
       "path": "src/ui/api.ts",
@@ -82,11 +86,11 @@
     },
     {
       "path": "src/ui/repository-entry.ts",
-      "sha256": "670811a4a75194763293f22753a93eb8ea170bddadb1c0ef3d68b8a57b7e6570"
+      "sha256": "4987130d0f0149c187152bff071a8cdb236d274d2f4867c872dbca615d9bb29a"
     },
     {
       "path": "src/workspace-binding.ts",
-      "sha256": "3c899b30ce85148fe8bc9ca31568679a779d7aedaef43ba930c497cbc75793c7"
+      "sha256": "c70de487f23008727093792003a3ff33c7cba89476632cddf1daf9cce63a376d"
     }
   ],
   "dependencies": [
@@ -259,13 +263,13 @@
     },
     {
       "path": "ui/repository-entry.js",
-      "bytes": 37884,
-      "sha256": "ce3dc83898d9120c5c3030ba1db91260ff9adce442a0fc85aad8796c4fa2e320"
+      "bytes": 40538,
+      "sha256": "55a8db184ce399771fde17795e3f032071497b66c6005621a26dd5b140c78ca5"
     },
     {
       "path": "vendor/repository-browser/server.mjs",
-      "bytes": 1003644,
-      "sha256": "b8a59e0437ad68539bc080cf887119bc4c3d35fe0e869cfe211af9278060dac7"
+      "bytes": 1027066,
+      "sha256": "bed765be27bb4855d61e9faf1958ca4ca34499f6f87bb138bb14dd86b5e98990"
     },
     {
       "path": "vendor/repository-browser/THIRD_PARTY_NOTICES.txt",

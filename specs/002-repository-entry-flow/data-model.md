@@ -59,7 +59,8 @@ repository/default-ref metadata only, not spec content or a local checkout.
 | --- | --- | --- |
 | `operationId` | Proposed owned preparation ID | Random, unique; no directory created yet. |
 | `selectionId` | Selection being confirmed | Must remain current in the entry instance. |
-| `destination` | Proposed managed checkout | Canonical user home plus owned operation directory; never a caller-selected path. |
+| `destination` | Proposed managed checkout | Canonical managed root plus safe repository name, or verified older managed copy; never a caller-selected path. |
+| `reused`, `checkoutCommit` | Existing checkout review | Capture verified local HEAD, branch, origin and file fingerprint; do not reset to the remote default commit. |
 | `confirmationDigest` | Server-side binding of opaque browser nonce | Timing-safe validation; do not persist nonce or digest after consumption. |
 | `binding` | Account generation, profile, repository/ref/commit, destination, source host context, capability generation | All checked again before admission/start. |
 | `createdAt`, `expiresAt` | Consent window | 120 seconds; clock injected for tests. |
@@ -80,14 +81,36 @@ Unsupported automatic handoff alone does not prevent checked standalone cloning.
 | `profileFingerprint`, `accountKey` | Original authorization boundary | Reconnect must reestablish the same identity boundary before retry. |
 | `repositoryId`, `originIdentity`, `defaultRef`, `sourceCommit` | Immutable prepared source | Never replace commit or origin silently during retry. |
 | `destination`, `gitCommonDirectory`, `branch` | Original prepared checkout identity | Canonical containment and Git verification; `branch` is the immutable prepared branch, not a host-created target branch. |
-| `initialWorktreeFingerprint` | Prepared file-content baseline | Initial validation/retry requires unchanged prepared files and a clean index; exclude Git administrative metadata and checkout path/branch from content comparison. |
+| `initialWorktreeFingerprint` | Prepared file-content baseline | Initial validation/retry requires unchanged prepared files; fresh clones require a clean index, reused copies may retain dirty files. Exclude Git administrative metadata and checkout path/branch from content comparison. |
+| `reused` | Optional immutable reuse flag | Only `true` is accepted when present; permits the captured existing named branch rather than a generated preparation branch. |
 | `handoffState`, `lastAttemptId` | Recovery hint | Not proof of active-session binding; must reconcile with host. |
 | `acceptedTarget` | Verified target kind, cwd, branch, session/context/instance at `canvas_ready` | Separate from prepared identity; only the host/target binder can establish this mapping. |
+| `appCanvas` | Optional native-launch and target-canvas request | Separate from atomic `handoff`/`acceptedTarget`; expires after ten minutes and is claimed once. |
+
+`appCanvas` contains a random request ID, source session ID, request/expiry times,
+separate launch (`pending`, `requested`, `failed`, `unknown`) and canvas
+(`pending`, `opening`, `opened`, `failed`, `unknown`) statuses, and a bounded
+error code. A claimed request adds target session/cwd; a successful RPC adds its
+session/context/provider/instance acknowledgment. Browser state contains only
+statuses, expiry, and error code, never session IDs, request IDs, or acknowledgment.
+Unknown submitted outcomes cannot be retried automatically. A fresh explicit
+request is allowed after definite failure or expiry, except unresolved opening
+or unknown outcomes. Original preparation identity remains immutable.
 
 Store outside checkout under `~/.speckit-canvas/preparations/`, using owned-path,
 regular-file, size, schema, and atomic-write protections. New records are at most
 8 KiB; inspect at most 256. Overflow produces a recoverable management error,
 not arbitrary deletion. Completed clones have no automatic deletion policy.
+New ownership markers explicitly bind the named destination; legacy UUID-root
+checkout markers remain valid. Per-destination locks guard record writes and
+launch admission. Listing exposes the newest matching preparation for each
+checkout/profile/account/repository; pending or unknown launch outcomes block
+another preparation. Disclosed consent can migrate a verified legacy checkout
+into the named destination, preserving its fingerprint, HEAD, branch and origin.
+When Windows locks the original folder, copy its regular files/directories
+locally and reverify the result; retain the original for its existing session.
+Listing suppresses superseded legacy records, and authorization rejects their
+stale operation IDs. Unrelated destinations are never overwritten or repaired.
 
 Version 1 migration verifies owned destination, common directory, origin, HEAD,
 and branch first. Missing origin-account or host state cannot be guessed: show a

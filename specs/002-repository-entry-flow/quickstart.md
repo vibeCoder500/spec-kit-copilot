@@ -1,5 +1,41 @@
 # Quickstart: Validate Repository Entry
 
+## 2026-10-12 Naming And Reuse Acceptance
+
+- Verify a fresh clone uses the exact safe repository basename in the managed
+  root. Reselect it and confirm **Open existing Spec Kit repository**: clone count
+  stays one, and local commits, branch and dirty files remain unchanged.
+- Verify wrong-origin name collisions and changes after review stop without
+  repairing or overwriting existing content. Pending/unknown launches must block
+  duplicate preparation.
+- Open a retained repository already bound to the current session: verify zero
+  native launcher calls and one direct canvas opening. The ordinary offline
+  **Use current workspace** route remains independent of remote sign-in.
+- Record the actual desktop session title and folder-approval behavior separately.
+  The public launcher supports neither title setting nor approval suppression;
+  repository folder naming and a successful launcher exit are not proof of them.
+  Do not rename older user checkouts to manufacture acceptance.
+
+## 2026-10-11 Clone-And-Open Acceptance
+
+- Load this exact development extension in both source and new target sessions;
+  an older user/project copy cannot verify the new bootstrap.
+- Search a Spec Kit-enabled repository, review **New session + original canvas**,
+  and choose **Clone and open Spec Kit** once. Keep normal App folder approval.
+  Verify one checkout, one launch, a distinct target session, and the original
+  dashboard without a second prompt or chooser. The source session must remain
+  unchanged and no workflow may dispatch.
+- Repeat with a registered App linked worktree. Verify canonical Git common
+  directory, registration, named branch, reviewed commit, and initial file
+  fingerprint before canvas open.
+- Independently verify **Use current workspace** offline in existing Spec
+  Kit-enabled repositories, preserving dirty files and branches.
+- Exercise launch failure, lost acknowledgment, changed checkout, busy/stale
+  source and target, expired intent, and duplicate target claims. Never
+  automatically repeat unknown submissions or clone again for launch recovery.
+- Record native desktop evidence separately from real-Git and browser fixtures.
+  The native launcher plus target bootstrap is not G-HOST atomic handoff.
+
 This validates local entry, user-authorized standalone cloning, and the guarded
 handoff core. G-HOST still blocks automatic App switching, not clone-only
 acceptance after the 2026-09-21 amendment; see the

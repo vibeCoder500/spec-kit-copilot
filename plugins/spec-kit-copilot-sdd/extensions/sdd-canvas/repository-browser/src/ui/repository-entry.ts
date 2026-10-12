@@ -77,10 +77,12 @@ export async function mountRepositoryEntry({ container, request }: { container: 
         return copy;
     }
 
-    function openCheckoutButton(operationId: string) {
+    function openCheckoutButton(operationId: string, appCanvas?: Operation["appCanvas"]) {
         const control = button("Open in Copilot App", ExternalLink, () => { void launchCheckout(operationId); }, true);
         control.dataset.action = "open-checkout";
         control.disabled = submitting || snapshot?.host.canOpenClone !== true || snapshot.host.activity !== "idle";
+        if (appCanvas && appCanvas.launchStatus !== "failed" && appCanvas.canvasStatus !== "failed" &&
+            (appCanvas.launchStatus === "unknown" || ["opening", "unknown"].includes(appCanvas.canvasStatus) || appCanvas.expiresAt > Date.now())) control.disabled = true;
         return control;
     }
 
@@ -179,8 +181,8 @@ export async function mountRepositoryEntry({ container, request }: { container: 
         const heading = document.createElement("h3"); heading.textContent = selection.repository.name;
         const summary = document.createElement("dl"); summary.className = "entry-summary";
         for (const [name, value, field] of [["Account", selection.accountLabel, "account"], ["Default branch", selection.repository.defaultBranch ?? "Unavailable", "branch"],
-            ["Commit", selection.repository.sourceVersion ?? "Unavailable", "commit"], ["Destination", selection.destination, "destination"],
-            ["App workspace", snapshot?.host.canHandoff ? "Automatic handoff" : "Unchanged", "workspace"]]) {
+            ["Commit", selection.checkoutCommit ?? selection.repository.sourceVersion ?? "Unavailable", "commit"], ["Destination", selection.destination, "destination"],
+            ["App workspace", snapshot?.host.canHandoff ? "Automatic handoff" : selection.openInApp ? "New session + original canvas" : "Unchanged", "workspace"]]) {
             const label = document.createElement("dt"); label.textContent = name!;
             const content = document.createElement("dd"); content.textContent = value!; content.dataset.field = field;
             summary.append(label, content);
@@ -188,7 +190,8 @@ export async function mountRepositoryEntry({ container, request }: { container: 
         const actions = document.createElement("div"); actions.className = "entry-selection-actions";
         if (selection.matchesCurrentWorkspace) actions.append(button("Use current workspace", ArrowRight, () => { void open(false); }, true));
         else {
-            const confirm = button("Confirm and clone", Download, () => { void confirmClone(); }, true); confirm.dataset.action = "confirm-clone";
+            const confirm = button(selection.reused ? "Open existing Spec Kit repository" :
+                selection.openInApp ? "Clone and open Spec Kit" : "Confirm and clone", selection.reused ? FolderOpen : Download, () => { void confirmClone(); }, true); confirm.dataset.action = "confirm-clone";
             confirm.classList.add("entry-primary");
             confirm.disabled = submitting || !selection.confirmation || !snapshot?.host.canPrepareRemote || !selection.expiresAt || Date.now() >= selection.expiresAt;
             actions.append(confirm);
@@ -196,6 +199,16 @@ export async function mountRepositoryEntry({ container, request }: { container: 
         const cancel = button("Cancel selection", X, () => { void cancelSelection(); }, true);
         cancel.dataset.action = "cancel-selection"; cancel.disabled = submitting; actions.append(cancel);
         selectionPanel.append(heading, summary, actions);
+        if (selection.migrateFrom) {
+            const migration = document.createElement("p"); migration.className = "entry-muted";
+            migration.textContent = `Migrates the existing legacy checkout from ${selection.migrateFrom} to the repository-named destination shown above. Files, commits and branch are preserved. If an older session locks the folder, a verified local copy is used and the old folder is retained for that session; no remote clone or fetch is performed.`;
+            selectionPanel.append(migration);
+        }
+        if (selection.openInApp) {
+            const consent = document.createElement("p"); consent.className = "entry-muted";
+            consent.textContent = `${selection.reused ? "Uses the existing checkout without fetching, resetting, or changing its files" : "Clones once into a repository-named folder"}, requests a new Copilot App session, and opens the original canvas when the target session loads this extension. The App may ask you to approve opening the folder. Your current session stays unchanged.`;
+            selectionPanel.append(consent);
+        }
         const reason = selection.reason ?? snapshot?.host.reason;
         if (reason && !selection.matchesCurrentWorkspace) {
             const explanation = document.createElement("p"); explanation.className = "entry-muted"; explanation.textContent = knownRepositoryError(reason).message;
@@ -208,18 +221,26 @@ export async function mountRepositoryEntry({ container, request }: { container: 
         operationPanel.replaceChildren();
         if (!operation) return;
         const labels: Record<Operation["state"], string> = { awaiting_confirmation: "Awaiting confirmation", preparing: "Cloning repository...", verifying: "Verifying repository...",
-            prepared: snapshot?.host.canHandoff ? "Repository prepared. Handoff pending." : "Clone complete.",
+            prepared: snapshot?.host.canHandoff ? "Repository prepared. Handoff pending." : operation.reused ? "Existing repository verified." : "Clone complete.",
             prepared_for_manual_open: "Clone complete.", cancelled: "Repository preparation cancelled.", failed: "Repository preparation failed." };
         const phases: Partial<Record<EntrySnapshot["phase"], string>> = { waiting_user: "Repository prepared. Waiting for an explicit handoff.",
             handoff_pending: "Repository handoff is in progress.", target_binding: "Verifying target canvas...", handoff_failed: "Repository prepared. Handoff failed.",
             handoff_unknown: "Repository prepared. Handoff outcome is not confirmed.", validation_blocked: "Repository prepared. Handoff validation is blocked.", ready: "Spec Kit canvas ready." };
         const status = document.createElement("p"); status.setAttribute("role", "status"); status.textContent =
             operation.state === "prepared" ? phases[snapshot?.phase ?? "prepared"] ?? labels.prepared : labels[operation.state];
+        if (operation.appCanvas) {
+            const request = operation.appCanvas;
+            status.textContent = request.canvasStatus === "opened" ? "Original Spec Kit canvas acknowledged in the new repository session." :
+                request.canvasStatus === "opening" ? "Opening the original canvas in the new repository session..." :
+                    request.errorCode ? knownRepositoryError(request.errorCode).message :
+                        request.launchStatus === "requested" ? "Repository ready. App opening requested; waiting for the target canvas." :
+                            "Repository ready. Requesting a new Copilot App session...";
+        }
         const destination = document.createElement("p"); destination.className = "entry-path"; destination.textContent = operation.destination ?? "";
         operationPanel.append(status, destination);
         if (operation.state === "prepared") {
             const actions = document.createElement("div"); actions.className = "entry-selection-actions";
-            actions.append(openCheckoutButton(operation.operationId), copyCheckoutPath(operation.destination));
+            actions.append(openCheckoutButton(operation.operationId, operation.appCanvas), copyCheckoutPath(operation.destination));
             operationPanel.append(actions);
             if (snapshot?.phase === "prepared" && !snapshot.host.canHandoff) {
                 const workspace = document.createElement("p"); workspace.className = "entry-muted";
@@ -253,7 +274,7 @@ export async function mountRepositoryEntry({ container, request }: { container: 
             const path = document.createElement("p"); path.className = "entry-path"; path.textContent = item.destination;
             details.append(name, path);
             const actions = document.createElement("div"); actions.className = "entry-selection-actions";
-            actions.append(openCheckoutButton(item.operationId), copyCheckoutPath(item.destination));
+            actions.append(openCheckoutButton(item.operationId, item.appCanvas), copyCheckoutPath(item.destination));
             if (snapshot?.host.canHandoff) {
                 const retry = button("Retry handoff", ArrowRight, () => { void retryHandoff(item.operationId); }, true);
                 retry.disabled = submitting || !snapshot.host.canPrepareRemote;

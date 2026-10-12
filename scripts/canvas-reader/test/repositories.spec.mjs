@@ -1,4 +1,5 @@
 import { createRequire } from "node:module";
+import { join } from "node:path";
 import { startFixture } from "../serve-fixture.mjs";
 
 const require = createRequire(new URL("../../../plugins/spec-kit-copilot-wizard/extensions/speckit-wizard-canvas/ui/markdown-reader/package.json", import.meta.url));
@@ -170,7 +171,7 @@ for (const width of [360, 768, 1280, 1920]) {
 }
 
 for (const width of [360, 768, 1280, 1920]) {
-    test(`SDD clone-only entry completes without switching workspaces at ${width}`, async ({ page }, testInfo) => {
+    test(`SDD clone and open creates a new repository canvas without switching the source at ${width}`, async ({ page }, testInfo) => {
         const fixture = await startFixture({ canvas: "sdd", repositories: true, repositoryEntry: true, cloneOnlyEntryHost: true });
         await page.setViewportSize({ width, height: width === 360 ? 780 : 1000 });
         await page.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: new URL(fixture.url).origin });
@@ -180,12 +181,12 @@ for (const width of [360, 768, 1280, 1920]) {
             await expect(search).toBeEnabled(); await search.focus();
             expect(fixture.repositories.browserOpens()).toBe(1);
             await page.getByRole("option", { name: /Synthetic repository 1/ }).click();
-            await expect(page.locator('[data-field="workspace"]')).toHaveText("Unchanged");
+            await expect(page.locator('[data-field="workspace"]')).toHaveText("New session + original canvas");
             const destination = await page.locator('[data-field="destination"]').textContent();
             expect(fixture.repositories.gitCalls()).toBe(0);
             expect(await fixture.repositories.cloneFiles()).toEqual([]);
-            await page.getByRole("button", { name: "Confirm and clone", exact: true }).click();
-            await expect(page.getByRole("status").filter({ hasText: "Clone complete." })).toBeVisible();
+            await page.getByRole("button", { name: "Clone and open Spec Kit", exact: true }).click();
+            await expect(page.getByRole("status").filter({ hasText: "Original Spec Kit canvas acknowledged in the new repository session." })).toBeVisible();
             await expect(page.getByText("Current workspace unchanged. Automatic workspace switching is unavailable.", { exact: true })).toBeVisible();
             await expect(page.getByRole("button", { name: "Retry handoff", exact: true })).toHaveCount(0);
             await expect(page.getByRole("button", { name: "Use current workspace", exact: true })).toBeEnabled();
@@ -195,7 +196,7 @@ for (const width of [360, 768, 1280, 1920]) {
             expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
             await page.screenshot({ path: testInfo.outputPath(`entry-clone-complete-${width}.png`), fullPage: true });
             await page.reload();
-            await expect(page.getByRole("status").filter({ hasText: "Clone complete." })).toBeVisible();
+            await expect(page.getByRole("status").filter({ hasText: "Original Spec Kit canvas acknowledged in the new repository session." })).toBeVisible();
             await page.getByRole("button", { name: "Disconnect Microsoft account", exact: true }).click();
             await expect(page.getByRole("button", { name: "Connect Microsoft account", exact: true })).toBeVisible();
             await page.getByRole("button", { name: "Connect Microsoft account", exact: true }).click();
@@ -204,19 +205,30 @@ for (const width of [360, 768, 1280, 1920]) {
             await expect(retained.locator(".entry-path")).toHaveText(destination);
             await expect(retained.getByRole("button", { name: "Copy checkout path", exact: true })).toBeEnabled();
             await expect(page.getByRole("button", { name: "Retry handoff", exact: true })).toHaveCount(0);
-            expect(fixture.appLaunches()).toEqual([]);
+            expect(fixture.appLaunches()).toEqual([{ destination }]);
             const openCheckout = retained.getByRole("button", { name: "Open in Copilot App", exact: true });
-            await expect(openCheckout).toBeEnabled();
+            await expect(openCheckout).toBeDisabled();
             fixture.entryHost.setActivity("busy");
             await page.getByRole("button", { name: "Refresh entry state", exact: true }).click();
             await expect(openCheckout).toBeDisabled();
             fixture.entryHost.setActivity("idle");
             await page.getByRole("button", { name: "Refresh entry state", exact: true }).click();
-            await expect(openCheckout).toBeEnabled();
-            expect(fixture.appLaunches()).toEqual([]);
-            await openCheckout.click();
-            await expect(page.getByRole("status").filter({ hasText: "Open request sent to Copilot App." })).toBeVisible();
+            await expect(openCheckout).toBeDisabled();
             expect(fixture.appLaunches()).toEqual([{ destination }]);
+            expect(fixture.targetUrl()).not.toBeNull();
+            const target = await page.context().newPage();
+            try {
+                await target.goto(fixture.targetUrl());
+                await expect(target.getByRole("heading", { name: "Choose a repository", exact: true })).toHaveCount(0);
+                await expect(target.locator("#description")).toBeVisible();
+                await expect(target.locator("#root")).toHaveText(join(destination, "specs"));
+                const canvasUrl = new URL(fixture.targetUrl());
+                const stateUrl = new URL("/api/state", canvasUrl);
+                stateUrl.searchParams.set("cap", canvasUrl.searchParams.get("cap"));
+                const targetState = await (await target.request.get(stateUrl.href)).json();
+                expect(targetState.projectRoot).toBe(destination);
+                expect(targetState.features).toHaveLength(1);
+            } finally { await target.close(); }
             expect(fixture.repositories.cloneCount()).toBe(1);
             expect(fixture.entryHost.counts().starts).toBe(1);
             expect(fixture.entryHost.counts().handoffs).toBe(0);
@@ -236,10 +248,8 @@ test("SDD checkout open failure preserves the clone and requires an explicit ret
         const search = page.getByRole("combobox", { name: "Search readable project repositories", exact: true });
         await expect(search).toBeEnabled(); await search.focus();
         await page.getByRole("option", { name: /Synthetic repository 1/ }).click();
-        await page.getByRole("button", { name: "Confirm and clone", exact: true }).click();
-        await expect(page.getByRole("status").filter({ hasText: "Clone complete." })).toBeVisible();
+        await page.getByRole("button", { name: "Clone and open Spec Kit", exact: true }).click();
         const openCheckout = page.getByRole("button", { name: "Open in Copilot App", exact: true });
-        await openCheckout.click();
         await expect(page.getByRole("status").filter({ hasText: "The Copilot App open request failed. The checkout has been preserved." })).toBeVisible();
         await expect(page.getByRole("button", { name: "Copy checkout path", exact: true })).toBeEnabled();
         fixture.setAppLaunchError(undefined);
@@ -251,6 +261,32 @@ test("SDD checkout open failure preserves the clone and requires an explicit ret
         expect(fixture.repositories.cloneCount()).toBe(1);
         expect(fixture.entryHost.counts().handoffs).toBe(0);
         expect(fixture.workspaceChanged()).toBe(false);
+    } finally { await page.close(); expect((await fixture.stop()).cleaned).toBe(true); }
+});
+
+test("SDD entry discloses and opens an existing repository without cloning a second copy", async ({ page }) => {
+    const fixture = await startFixture({ canvas: "sdd", repositories: true, repositoryEntry: true, cloneOnlyEntryHost: true });
+    try {
+        await page.goto(fixture.url);
+        const search = page.getByRole("combobox", { name: "Search readable project repositories", exact: true });
+        await expect(search).toBeEnabled(); await search.focus();
+        await page.getByRole("option", { name: /Synthetic repository 1/ }).click();
+        const destination = await page.locator('[data-field="destination"]').innerText();
+        expect(destination).toMatch(/[\\/]repositories[\\/]Synthetic repository 1$/);
+        await page.getByRole("button", { name: "Clone and open Spec Kit", exact: true }).click();
+        await expect.poll(() => fixture.targetUrl()).toBeTruthy();
+        await expect(page.getByRole("status").filter({ hasText: "Original Spec Kit canvas acknowledged" })).toBeVisible();
+        expect(fixture.repositories.cloneCount()).toBe(1);
+        await search.focus();
+        await page.getByRole("option", { name: /Synthetic repository 1/ }).click();
+        await expect(page.getByRole("button", { name: "Open existing Spec Kit repository", exact: true })).toBeEnabled();
+        await expect(page.locator('[data-field="destination"]')).toHaveText(destination);
+        await expect(page.locator(".entry-selection")).toContainText("without fetching, resetting, or changing its files");
+        await page.getByRole("button", { name: "Open existing Spec Kit repository", exact: true }).click();
+        await expect.poll(() => fixture.appLaunches().length).toBe(2);
+        expect(fixture.repositories.cloneCount()).toBe(1);
+        expect(fixture.workspaceChanged()).toBe(false);
+        expect(fixture.dispatchCount()).toBe(0);
     } finally { await page.close(); expect((await fixture.stop()).cleaned).toBe(true); }
 });
 

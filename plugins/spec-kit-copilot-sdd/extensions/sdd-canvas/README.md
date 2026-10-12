@@ -83,6 +83,8 @@ profile, sign-in, clone, or supported remote handoff. The unconditional
 `sdd-canvas-direct` provider retains the original canvas and explicit prerequisites.
 Separate user-local entry settings can disable the chooser; invalid settings fall
 back to direct entry. Remote configuration never controls the local route.
+The local route does not invoke `copilot app` or request a new session, so it does
+not introduce the App's folder-opening permission dialog.
 
 Configured Azure DevOps discovery offers team suggestions and typed project
 search inside one dropdown, without an embedded rail or pre-clone artifact
@@ -93,22 +95,40 @@ reload do not repeat the attempt; the Connect control remains for explicit retry
 GitHub Copilot sign-in is not reused as an Azure DevOps token. Tokens stay in
 memory and are discarded on disconnect or close; no persistent cache is added.
 
-**Cloning is independent of automatic handoff.** Explicit **Confirm and clone**
-creates one checkout at the displayed managed destination after fresh account,
+**Cloning is independent of atomic handoff.** **Clone and open Spec Kit**
+creates one checkout and requests a new App session after fresh account,
 source, workspace and activity checks. These are observations, not an atomic App
 reservation. Busy, unknown or stale observations reject without queued retry.
 Completion shows **Clone complete** and a copyable path; completed checkouts
 remain available after reconnecting. The current App workspace is not changed.
 
-**Open in Copilot App** is a separate explicit action on a completed checkout.
-It uses an already-installed native `copilot app` launcher to open a new App
-session, preserving the old one. Confirm the folder in the App's **Open session?**
-prompt when shown. No restart, model prompt, or workflow is initiated by the
-button. The response reports only that opening was requested; unsupported or busy
-hosts keep the copy-path fallback. Windows App 1.1.21 and CLI 1.0.83 were verified
-with owned synthetic repositories, including opening while the App was running.
+New clones use `~/SpecKitCanvas/repositories/<repository-name>`. A matching copy
+already in the managed root is reviewed and opened through **Open existing Spec
+Kit repository**, preserving local commits, branch and dirty files without
+fetching or resetting. Wrong-origin collisions and changed-after-review content
+are rejected without repair. Selection discloses migration of verified older
+UUID/checkout copies into repository-named folders. A Windows-locked older
+checkout is copied locally and reverified, preserving the old session's folder
+without remote clone/fetch. Later selections prefer the named preparation,
+and superseded operation IDs cannot reopen the old UUID path.
 
-Automatic switching remains blocked because the installed public SDK does not
+The selection discloses **New session + original canvas** before confirmation.
+It uses an already-installed native `copilot app` launcher, preserving the source
+session. Confirm the folder in the App's **Open session?** prompt when shown.
+The target extension claims a short-lived persisted request once, verifies the
+checkout or registered App worktree, and opens `sdd-canvas-direct` automatically:
+no second **"Open Spec-Driven Development"** prompt or chooser. The same extension
+must already be installed in the target session. Launcher acceptance and target
+canvas acknowledgment are separate states; neither claims atomic App activation.
+Unsupported launchers retain **Confirm and clone** and the copy-path fallback.
+Completed checkouts offer **Open in Copilot App** for explicit recovery, with
+unknown submitted outcomes blocking duplicate requests. No restart, model prompt,
+workflow, or implicit installation occurs.
+The public launcher cannot suppress approval for another folder or explicitly
+set the session title. New folder basenames match repository names, but actual
+desktop session titles and visible automatic canvas opening remain unverified.
+
+Atomic switching of the source session remains blocked because the public SDK does not
 supply the verified App activation and reconciliation contract. Unsupported
 handoff controls are hidden. Manual opening, private IPC or cwd-only mutation
 does not count as `workspace_activated` or independently verified `canvas_ready`.
@@ -144,6 +164,10 @@ the SDD dashboard"). The agent matches your request to this canvas
 side panel. In this development build it opens the chooser; continue locally or
 request `sdd-canvas-direct` for the original dashboard. There is no slash command or menu entry — discovery is the agent
 matching the canvas name/description.
+
+The exception is a confirmed clone-and-open request: when its new repository
+session loads this extension, the original dashboard opens without another chat
+request. A normal session without such a request retains the existing launch UX.
 
 Once the original dashboard is open you can drive it two ways:
 

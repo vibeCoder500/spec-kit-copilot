@@ -38,7 +38,8 @@ export async function startFixture({ canvas, pluginRoot, markdown, allowMutation
             return { ok: true };
         },
         log: async () => {},
-        rpc: { metadata: { snapshot: async () => ({ workingDirectory: fixture.workspace }) } },
+        rpc: { metadata: { snapshot: async () => ({ sessionId: fixture.id, workingDirectory: fixture.workspace }),
+            activity: async () => ({ hasActiveWork: false, abortable: false }) } },
     };
     try {
         if (canvas === "wizard") {
@@ -103,6 +104,24 @@ export async function startFixture({ canvas, pluginRoot, markdown, allowMutation
                             await beforeOpen?.();
                             if (appLaunchError) throw Object.assign(new Error("Synthetic App launch result."), { code: appLaunchError });
                             appLaunches.push({ destination });
+                            const runtime = await import(pathToFileURL(join(extension, "vendor/repository-browser/server.mjs")).href);
+                            const targetSessionId = `app-target-${fixture.id}`;
+                            let targetOpened = false;
+                            const host = runtime.createHostHandoffAdapter({ sessionId: targetSessionId, extensionId: "project:sdd-canvas",
+                                metadata: { snapshot: async () => ({ sessionId: targetSessionId, workingDirectory: destination }),
+                                    activity: async () => ({ hasActiveWork: false, abortable: false }) },
+                                canvas: { open: async ({ canvasId, instanceId }) => {
+                                    const binding = await runtime.createWorkflowBinding({ host, providerId: "project:sdd-canvas", instanceId, ...repositoryFixture.options.cloneOptions });
+                                    const target = await module.startServer({ workspacePath: destination, profileStatus: { state: "unconfigured" },
+                                        workflowBinding: binding, verifyWorkspace: binding.verify, bindingOptions: repositoryFixture.options.cloneOptions, disposeHost: () => host.dispose() });
+                                    targetEntries.set(instanceId, target); await binding.ready();
+                                    targetOpened = true;
+                                    return { extensionId: "project:sdd-canvas", canvasId, instanceId };
+                                } } });
+                            try {
+                                await runtime.openRequestedAppCanvas({ host, homeDirectory: repositoryFixture.options.cloneOptions.homeDirectory,
+                                    verifyPrepared: record => runtime.verifyPreparedRepository({ record, ...repositoryFixture.options.cloneOptions }) });
+                            } finally { if (!targetOpened) host.dispose(); }
                             return { status: "requested" };
                         } }, inspectWorkspace: async () => entryRepository ? {
                         workingDirectory: fixture.workspace, worktreeRoot: fixture.workspace, gitCommonDirectory: join(fixture.workspace, ".git"),

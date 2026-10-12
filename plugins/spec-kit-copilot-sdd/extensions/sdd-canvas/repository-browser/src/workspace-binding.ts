@@ -117,7 +117,7 @@ export async function verifyPreparedRepository(options: PreparationVerificationO
         if (!identity || identity.workingDirectory !== record.destination || identity.worktreeRoot !== record.destination || identity.gitCommonDirectory !== record.gitCommonDirectory ||
             identity.origin !== record.originIdentity || identity.head !== record.sourceCommit || identity.branch !== record.branch) throw new Error();
         const execute = await readOnlyGit(record.destination, options, signal);
-        if (await execute(["status", "--porcelain=v1", "--untracked-files=all"])) throw new Error();
+        if (!record.reused && await execute(["status", "--porcelain=v1", "--untracked-files=all"])) throw new Error();
         if (await fingerprintCheckout(record.destination, signal) !== record.initialWorktreeFingerprint || signal.aborted) throw new Error();
         return identity;
     } catch { throw new RepositoryError("clone_identity_changed"); }
@@ -170,6 +170,36 @@ export async function verifyReadyRepository(options: PreparationVerificationOpti
     } catch { throw new RepositoryError("clone_identity_changed"); }
 }
 
+async function verifyLocalPreparation(record: PreparedRepositoryRecord, local: LocalRepositoryIdentity | null, options: Omit<PreparationVerificationOptions, "record">) {
+    try {
+        await createPreparationStore({ homeDirectory: options.homeDirectory }).verifyOwnership(record);
+        if (record.handoff || record.acceptedTarget || !local || local.gitCommonDirectory !== record.gitCommonDirectory ||
+            local.origin !== record.originIdentity || !local.head || !local.branch) throw new Error();
+        const execute = await readOnlyGit(local.worktreeRoot, { ...options, record }, AbortSignal.timeout(10_000));
+        const registrations = (await execute(["worktree", "list", "--porcelain", "-z"])).split("\0\0").map(block => block.split("\0"));
+        let matches = 0;
+        for (const fields of registrations) {
+            const path = fields.find(field => field.startsWith("worktree "))?.slice(9);
+            if (!path || !isAbsolute(path)) continue;
+            if (await realpath(path).catch(() => undefined) !== local.worktreeRoot) continue;
+            if (fields.some(field => field === "bare" || field === "detached" || field.startsWith("prunable")) ||
+                !fields.includes(`branch ${local.branch}`) || !fields.includes(`HEAD ${local.head}`)) throw new Error();
+            matches++;
+        }
+        if (matches !== 1) throw new Error();
+    } catch { throw new RepositoryError("entry_required"); }
+}
+
+export async function verifyAppCanvasRepository({ record, workspacePath, ...options }: PreparationVerificationOptions & { workspacePath: string }) {
+    await verifyPreparedRepository({ record, ...options });
+    const local = await inspectCurrentRepository({ workspacePath, ...options });
+    await verifyLocalPreparation(record, local, options);
+    if (local?.head !== record.sourceCommit ||
+        await fingerprintCheckout(local.worktreeRoot, options.signal ?? AbortSignal.timeout(10_000)) !== record.initialWorktreeFingerprint) {
+        throw new RepositoryError("clone_identity_changed");
+    }
+}
+
 export async function createWorkflowBinding({ host, providerId, instanceId, homeDirectory = homedir(), runner, executable }: {
     host: HostHandoffAdapter;
     providerId: string;
@@ -194,27 +224,8 @@ export async function createWorkflowBinding({ host, providerId, instanceId, home
         throw new RepositoryError("entry_required");
     }
     const locallyOpened = Boolean(prepared && !prepared.handoff);
-    async function verifyLocalPreparation(record: PreparedRepositoryRecord, local: LocalRepositoryIdentity | null) {
-        try {
-            await store.verifyOwnership(record);
-            if (record.handoff || record.acceptedTarget || !local || local.gitCommonDirectory !== record.gitCommonDirectory ||
-                local.origin !== record.originIdentity || !local.head || !local.branch) throw new Error();
-            const execute = await readOnlyGit(local.worktreeRoot, { ...options, record }, AbortSignal.timeout(10_000));
-            const registrations = (await execute(["worktree", "list", "--porcelain", "-z"])).split("\0\0").map(block => block.split("\0"));
-            let matches = 0;
-            for (const fields of registrations) {
-                const path = fields.find(field => field.startsWith("worktree "))?.slice(9);
-                if (!path || !isAbsolute(path)) continue;
-                if (await realpath(path).catch(() => undefined) !== local.worktreeRoot) continue;
-                if (fields.some(field => field === "bare" || field === "detached" || field.startsWith("prunable")) ||
-                    !fields.includes(`branch ${local.branch}`) || !fields.includes(`HEAD ${local.head}`)) throw new Error();
-                matches++;
-            }
-            if (matches !== 1) throw new Error();
-        } catch { throw new RepositoryError("entry_required"); }
-    }
     if (prepared && locallyOpened) {
-        await verifyLocalPreparation(prepared, identity);
+        await verifyLocalPreparation(prepared, identity, options);
     } else if (prepared && !prepared.acceptedTarget) {
         const attempt = prepared.handoff;
         if (!attempt?.activation || attempt.status !== "workspace_activated" || attempt.instanceId !== instanceId || !providerId) throw new RepositoryError("entry_required");
@@ -237,7 +248,7 @@ export async function createWorkflowBinding({ host, providerId, instanceId, home
                 if (current.sessionId !== initial.sessionId || current.contextRevision !== initial.contextRevision || current.workingDirectory !== initial.workingDirectory) {
                     throw new RepositoryError("context_changed");
                 }
-                await verifyLocalPreparation(latest, await inspectCurrentRepository({ ...options, workspacePath: current.workingDirectory }));
+                await verifyLocalPreparation(latest, await inspectCurrentRepository({ ...options, workspacePath: current.workingDirectory }), options);
                 return;
             }
             const attempt = latest.handoff;
@@ -260,7 +271,7 @@ export async function createWorkflowBinding({ host, providerId, instanceId, home
             }
             if (prepared) {
                 const latest = await store.read(prepared.operationId);
-                if (locallyOpened) await verifyLocalPreparation(latest, local);
+                if (locallyOpened) await verifyLocalPreparation(latest, local, options);
                 else if (!latest.acceptedTarget || latest.handoff?.status !== "canvas_ready" || latest.gitCommonDirectory !== local?.gitCommonDirectory || latest.originIdentity !== local?.origin) {
                     throw new RepositoryError("entry_required");
                 }

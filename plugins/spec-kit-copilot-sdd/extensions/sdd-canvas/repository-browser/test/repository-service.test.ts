@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
-import { mkdir, mkdtemp, readdir, realpath, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -310,10 +310,14 @@ async function handoffFixture(run: (proof: {
     entry: Awaited<ReturnType<typeof repositoryModule.createEntryCoordinator>>; counts: { clones: number; transitions: number; opens: number; lookups: number };
     events: string[]; setOutcome(value: HandoffOutcome["status"]): void; setProvider(value: boolean): void; setActivity(value: "idle" | "busy"): void;
     appLaunches: { workspacePath: string; destination: string }[]; beforeAppLaunch(callback: () => void): void;
+    setAppAvailable(value: boolean): void;
+    setCurrentCheckout(destination: string): void;
+    supersede(operationId: string): Promise<string>;
     prepare(): Promise<string>; afterClone(callback: () => void): void; record(operationId: string): ReturnType<ReturnType<typeof createPreparationStore>["read"]>;
-}) => Promise<void>, { cloneOnly = false } = {}) {
+}) => Promise<void>, { cloneOnly = false, appAvailable = false } = {}) {
     const home = await realpath(await mkdtemp(join(tmpdir(), "sdd-entry-handoff-")));
     let currentDirectory = home;
+    let currentOrigin: string | null = null;
     let revision = "original";
     let activity: HostWorkspaceSnapshot["activity"] = "idle";
     let activityRevision = 0;
@@ -333,7 +337,10 @@ async function handoffFixture(run: (proof: {
     const host: HostHandoffAdapter = cloneOnly ? repositoryModule.createHostHandoffAdapter({ sessionId: "owned-session", metadata: {
         snapshot: async () => ({ sessionId: "owned-session", workingDirectory: currentDirectory }),
         activity: async () => ({ hasActiveWork: activity === "busy", abortable: activity === "busy" }),
-    }, canvas: { open: async () => { counts.opens++; return assert.fail("Clone-only entry cannot open a canvas"); } } }) : {
+    }, canvas: { open: async input => {
+        counts.opens++;
+        return { canvasId: input.canvasId, extensionId: "project:sdd-canvas", instanceId: input.instanceId };
+    } } }) : {
         inspectCurrent: async () => snapshot(),
         admitPreparation: async (input, start) => {
             assert.equal(input.expectedSource.contextRevision, revision);
@@ -368,14 +375,17 @@ async function handoffFixture(run: (proof: {
         account: { tenantId: profile.tenantId, localAccountId: repositoryId, homeAccountId: "synthetic-account", username: "synthetic@example.invalid" } }) as AuthenticationResult;
     const entry = await repositoryModule.createEntryCoordinator({ host, profileStatus: { state: "configured", profile },
         handoffOptions: { verifyPrepared: async () => { events.push("preparation_verified"); } },
-        appLauncher: { available: async () => true, async launch(workspacePath, destination, beforeOpen) {
+        appLauncher: { available: async () => appAvailable, async launch(workspacePath, destination, beforeOpen) {
             beforeAppLaunch(); await beforeOpen?.(); appLaunches.push({ workspacePath, destination }); return { status: "requested" };
         } },
-        inspectWorkspace: async path => ({ workingDirectory: path, worktreeRoot: path, gitCommonDirectory: join(path, ".git"), origin: null, head: "a".repeat(40), branch: "refs/heads/original" }),
+        inspectWorkspace: async path => ({ workingDirectory: path, worktreeRoot: path, gitCommonDirectory: join(path, ".git"), origin: currentOrigin, head: "a".repeat(40), branch: "refs/heads/original" }),
         cloneOptions: { homeDirectory: home, executable: join(home, "trusted-git"), runner: async ({ args, cwd }) => {
             if (args.includes("clone")) { counts.clones++; await mkdir(join(args.at(-1)!, ".git"), { recursive: true }); afterClone(); return ""; }
             if (args.includes("get-url")) return `https://dev.azure.com/Synthetic/Project/_git/${repositoryId}`;
-            if (args.includes("symbolic-ref")) return `speckit/canvas-${cwd.split(/[\\/]/).at(-2)}`;
+            if (args.includes("symbolic-ref")) {
+                const entries = await readdir(join(home, "SpecKitCanvas", "repositories"));
+                return `speckit/canvas-${entries.find(name => /^[a-f0-9]{32}$/.test(name))}`;
+            }
             if (args.includes("--git-common-dir")) return join(cwd, ".git");
             if (args.includes("HEAD")) return "a".repeat(40);
             return "";
@@ -394,9 +404,22 @@ async function handoffFixture(run: (proof: {
         assert.equal(typeof Reflect.get(entry, "handoff"), "function");
         await entry.connect().completion;
         await run({ entry, counts, events, appLaunches, beforeAppLaunch(callback) { beforeAppLaunch = callback; },
+            setAppAvailable(value) { appAvailable = value; },
+            setCurrentCheckout(destination) { currentDirectory = destination; currentOrigin = `https://dev.azure.com/Synthetic/Project/_git/${repositoryId}`; },
             setOutcome(value) { outcome = value; }, setProvider(value) { provider = value; },
             setActivity(value) { activity = value; activityRevision++; },
             afterClone(callback) { afterClone = callback; }, record: store.read,
+            async supersede(previousId) {
+                const previous = await store.read(previousId);
+                const replacementId = "f".repeat(32);
+                const root = join(home, "SpecKitCanvas", "repositories", replacementId);
+                await mkdir(root);
+                await writeFile(join(root, ".sdd-clone-owner.json"), JSON.stringify({
+                    kind: "sdd-repository-clone", operationId: replacementId, destination: previous.destination,
+                }));
+                await store.write({ ...previous, operationId: replacementId, reused: true, completedAt: previous.completedAt + 1 });
+                return replacementId;
+            },
             async prepare() {
                 const state = await entry.state();
                 const selection = await entry.select(repositoryId, state.localContext.contextId);
@@ -443,8 +466,23 @@ test("Clone-only completion stays complete when the host becomes busy and never 
     assert.deepEqual(counts, { clones: 1, transitions: 0, opens: 0, lookups: 0 });
 }, { cloneOnly: true }));
 
-test("Explicit checkout opening reuses one authorized launch and never clones or hands off", () => handoffFixture(async ({ entry, prepare, counts, record, appLaunches }) => {
+test("Opening the already-current retained checkout opens locally without another App permission request", () => handoffFixture(async ({
+    entry, prepare, counts, record, appLaunches, setCurrentCheckout,
+}) => {
     const operationId = await prepare();
+    setCurrentCheckout((await record(operationId)).destination);
+    const state = await entry.state();
+    await entry.openCheckout(operationId, state.localContext.contextId, "local-open");
+    await entry.openCheckout(operationId, state.localContext.contextId, "local-open");
+    assert.equal(counts.opens, 1);
+    assert.equal(appLaunches.length, 0);
+    assert.equal((await record(operationId)).appCanvas, undefined);
+    assert.equal((await entry.state()).phase, "ready");
+}, { cloneOnly: true }));
+
+test("Explicit checkout opening reuses one authorized launch and never clones or hands off", () => handoffFixture(async ({ entry, prepare, counts, record, appLaunches, setAppAvailable }) => {
+    const operationId = await prepare();
+    setAppAvailable(true);
     const before = await entry.state();
     assert.equal(before.host.canOpenClone, true);
     assert.equal(appLaunches.length, 0);
@@ -464,8 +502,9 @@ test("Explicit checkout opening reuses one authorized launch and never clones or
     assert.equal(appLaunches.length, 1);
 }, { cloneOnly: true }));
 
-test("Checkout opening rejects stale, busy and changed-during-launch states", () => handoffFixture(async ({ entry, prepare, setActivity, beforeAppLaunch, appLaunches }) => {
+test("Checkout opening rejects stale, busy and changed-during-launch states", () => handoffFixture(async ({ entry, prepare, setActivity, beforeAppLaunch, appLaunches, setAppAvailable }) => {
     const operationId = await prepare();
+    setAppAvailable(true);
     const before = await entry.state();
     await assert.rejects(entry.openCheckout(operationId, "stale-context", "stale-open"), { code: "context_changed" });
     setActivity("busy");
@@ -476,6 +515,44 @@ test("Checkout opening rejects stale, busy and changed-during-launch states", ()
     await assert.rejects(entry.openCheckout(operationId, before.localContext.contextId, "late-busy-open"), { code: "session_busy" });
     assert.equal(appLaunches.length, 0);
 }, { cloneOnly: true }));
+
+test("Superseded retained operation IDs cannot reopen an older checkout", () => handoffFixture(async ({
+    entry, prepare, supersede, appLaunches, counts, setAppAvailable,
+}) => {
+    const previousId = await prepare();
+    const replacementId = await supersede(previousId);
+    setAppAvailable(true);
+    const before = await entry.state();
+    assert.deepEqual((await entry.preparations()).items.map(item => item.operationId), [replacementId]);
+    await assert.rejects(entry.openCheckout(previousId, before.localContext.contextId, "stale-retained-open"), { code: "resource_unavailable" });
+    assert.equal(appLaunches.length, 0);
+    await entry.openCheckout(replacementId, before.localContext.contextId, "latest-retained-open");
+    assert.equal(appLaunches.length, 1);
+    assert.equal(counts.clones, 1);
+}, { cloneOnly: true }));
+
+test("Clone consent opens one new App session and persists the target canvas request", () => handoffFixture(async ({ entry, prepare, counts, record, appLaunches }) => {
+    const operationId = await prepare();
+    assert.equal(appLaunches.length, 1);
+    const saved = await record(operationId);
+    assert.equal(saved.appCanvas?.sourceSessionId, "owned-session");
+    assert.equal(saved.appCanvas?.launchStatus, "requested");
+    assert.equal(saved.appCanvas?.canvasStatus, "pending");
+    assert.equal(saved.handoff, undefined);
+    assert.equal((await entry.state()).phase, "prepared");
+    await assert.rejects(entry.openCheckout(operationId, (await entry.state()).localContext.contextId, "duplicate-open"), { code: "app_launch_unknown" });
+    assert.equal(appLaunches.length, 1);
+    assert.deepEqual(counts, { clones: 1, transitions: 0, opens: 0, lookups: 0 });
+}, { cloneOnly: true, appAvailable: true }));
+
+test("Automatic App opening rejects post-clone activity changes without a queued retry", () => handoffFixture(async ({ entry, prepare, afterClone, setActivity, appLaunches }) => {
+    afterClone(() => setActivity("busy"));
+    await prepare();
+    assert.equal((await entry.state()).operation?.error, "session_busy");
+    setActivity("idle");
+    await entry.state(); await entry.settled();
+    assert.equal(appLaunches.length, 0);
+}, { cloneOnly: true, appAvailable: true }));
 
 test("Entry persists each handoff phase and reaches readiness only after target verification", () => handoffFixture(async ({ entry, prepare, counts, events }) => {
     await prepare();

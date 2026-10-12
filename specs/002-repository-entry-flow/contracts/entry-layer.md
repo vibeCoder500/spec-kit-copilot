@@ -35,11 +35,18 @@ kept distinct from the required, not-yet-available host contract in
 | Suggestion failure/empty | Separate retry/empty state; search and local continuation still available. |
 | Select remote result | Repository/account/ref/full commit/default destination summary; no artifact preview or clone. |
 | Current repository selected | Offer current-workspace continuation rather than duplicate preparation. |
+| Matching managed copy already exists | Review local HEAD and offer **Open existing Spec Kit repository**; verify and reuse without clone/fetch/reset or local file changes. |
+| Wrong-origin collision, unsafe repository name, or post-review content change | Reject explicitly without overwriting, repairing, moving, or deleting existing content. |
+| Retained checkout already current | Open the original canvas locally without native session launch or additional folder-opening approval. |
 | Missing clone-admission support or busy/unknown state | **Confirm and clone** unavailable with a bounded reason; no queued intent. |
 | Checked cloning supported, automatic handoff unsupported | Explicit clone is available; confirmation states that the App workspace stays unchanged. |
 | Confirm and clone | Exactly one admitted preparation, progress, and explicit cancel. |
 | Successful standalone clone | **Clone complete**, retained checkout path and copy control; no handoff request or unsupported retry. |
 | Explicitly open a completed checkout | **Open in Copilot App** submits one guarded launch request; normal App approval remains, and the original session is retained. |
+| Select with supported native launcher (2026-10-11) | Disclose **New session + original canvas** and offer **Clone and open Spec Kit**; one confirmation authorizes one clone plus one guarded launch. |
+| Clone-and-open completes with unchanged idle source context | Persist a ten-minute checkout-bound intent before native launch; preserve the source session and normal App folder approval. |
+| New target session loads this extension | Verify the original checkout or registered linked worktree, claim intent once, open `sdd-canvas-direct` without another prompt/chooser, and persist canvas RPC acknowledgment separately from atomic handoff. |
+| Missing target extension or uncertain submitted outcome | Retain checkout and copy control; no implicit installation, duplicate launch, model prompt, or manufactured readiness. |
 | Successful automatic handoff | Original target-workspace canvas; entry controls leave the view. |
 | Failed handoff | Retained clone, explicit **Retry handoff**, or return to original workspace. |
 | Busy after clone | Retained clone; retry enabled only after idle, never auto-invoked. |
@@ -49,6 +56,12 @@ The dropdown contains repositories only, not artifact roots/files. Use the
 existing accessible combobox/list semantics, keyboard selection, Escape, focus
 restoration, icon buttons with tooltips, and bounded responsive layout. No
 separate repository rail. Do not display provider/raw exception output.
+New entry clones use a repository-named managed folder. Verified older managed
+copies migrate there after disclosed consent; a Windows-locked checkout uses a
+verified local copy while preserving its old session's folder. Retained surfaces
+prefer the named preparation and reject superseded operation IDs.
+The public native launcher does not expose approval suppression
+or session-title setting; displayed App titles are not asserted by this contract.
 
 Automatic connection is scoped to the initial server-owned connection generation,
 not each renderer mount. Refresh, polling, SSE, and page reload cannot reconnect

@@ -1,11 +1,11 @@
 import { constants } from "node:fs";
 import { link, lstat, mkdir, open, opendir, realpath, rename, unlink } from "node:fs/promises";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { homedir } from "node:os";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { parseDocument } from "yaml";
 import { knownRepositoryError, RepositoryError } from "./errors.ts";
-import type { CanvasReadiness, HandoffAttempt, PreparedRepositoryRecord, WorkspaceActivation } from "./types.ts";
+import type { AppCanvasRequest, CanvasReadiness, HandoffAttempt, LocalCanvasAcknowledgment, PreparedRepositoryRecord, WorkspaceActivation } from "./types.ts";
 
 const operationPattern = /^[a-f0-9]{32}$/;
 const digestPattern = /^[a-f0-9]{64}$/;
@@ -31,7 +31,7 @@ function origin(value: unknown, repositoryId: unknown): value is string {
     try {
         const url = new URL(value);
         return url.origin === "https://dev.azure.com" && !url.username && !url.password && !url.search && !url.hash &&
-            url.pathname.split("/").length === 5 && url.pathname.endsWith(`/_git/${repositoryId}`);
+            url.pathname.split("/").length === 5 && url.pathname.split("/")[3] === "_git" && Boolean(url.pathname.split("/")[4]);
     } catch { return false; }
 }
 
@@ -106,20 +106,48 @@ async function boundedJson(path: string, maximum: number) {
 
 function validateRecord(input: unknown): PreparedRepositoryRecord {
     const value = object(input);
-    if (Object.keys(value).some(field => ![...fields, "handoff", "acceptedTarget"].includes(field)) || fields.some(field => !Object.hasOwn(value, field))) return invalid();
+    if (Object.keys(value).some(field => ![...fields, "handoff", "acceptedTarget", "appCanvas", "reused"].includes(field)) || fields.some(field => !Object.hasOwn(value, field))) return invalid();
     if (value.schemaVersion !== 2 || value.kind !== "sdd-prepared-repository" || !safeText(value.operationId, 32) || !operationPattern.test(value.operationId) ||
         !safeText(value.repositoryId, 36) || !repositoryPattern.test(value.repositoryId) || !origin(value.originIdentity, value.repositoryId) ||
         !safeText(value.sourceCommit, 40) || !commitPattern.test(value.sourceCommit) || !namedRef(value.defaultRef) ||
-        value.branch !== `refs/heads/speckit/canvas-${value.operationId}` ||
+        (value.reused !== undefined && value.reused !== true) ||
+        (value.reused ? !namedRef(value.branch) : value.branch !== `refs/heads/speckit/canvas-${value.operationId}`) ||
         ![value.initialWorktreeFingerprint, value.profileFingerprint, value.accountKey].every(item => safeText(item, 64) && digestPattern.test(item)) ||
         ![value.createdAt, value.completedAt].every(time => Number.isSafeInteger(time) && Number(time) >= 0) || Number(value.completedAt) < Number(value.createdAt) ||
         !safeText(value.destination) || !safeText(value.gitCommonDirectory)) return invalid();
     const handoff = value.handoff === undefined ? undefined : validateAttempt(value.handoff, value.operationId);
+    if (value.appCanvas !== undefined) validateAppCanvas(value.appCanvas);
     if (handoff && handoff.createdAt < Number(value.completedAt)) return invalid();
     if ((handoff?.status === "canvas_ready") !== Boolean(value.acceptedTarget)) return invalid();
     if (value.acceptedTarget !== undefined && JSON.stringify(value.acceptedTarget) !== JSON.stringify(handoff?.result)) return invalid();
     if (Buffer.byteLength(JSON.stringify(value)) > 8192) return invalid();
     return structuredClone(value) as unknown as PreparedRepositoryRecord;
+}
+
+function validateAppCanvas(input: unknown): AppCanvasRequest {
+    const value = object(input);
+    const required = ["requestId", "sourceSessionId", "requestedAt", "expiresAt", "launchStatus", "canvasStatus"];
+    if (required.some(field => !Object.hasOwn(value, field)) ||
+        Object.keys(value).some(field => ![...required, "targetSessionId", "targetWorkingDirectory", "acknowledgment", "errorCode"].includes(field)) ||
+        !safeText(value.requestId, 32) || !operationPattern.test(value.requestId) || !safeText(value.sourceSessionId, 256) ||
+        !Number.isSafeInteger(value.requestedAt) || Number(value.requestedAt) < 0 || !Number.isSafeInteger(value.expiresAt) ||
+        Number(value.expiresAt) <= Number(value.requestedAt) || Number(value.expiresAt) - Number(value.requestedAt) > 600_000 ||
+        !["pending", "requested", "failed", "unknown"].includes(String(value.launchStatus)) ||
+        !["pending", "opening", "opened", "failed", "unknown"].includes(String(value.canvasStatus)) ||
+        (value.errorCode !== undefined && knownRepositoryError(value.errorCode).code !== value.errorCode)) return invalid();
+    if (value.targetSessionId !== undefined && (!safeText(value.targetSessionId, 256) || value.targetSessionId === value.sourceSessionId)) return invalid();
+    if (value.targetSessionId !== undefined && (!safeText(value.targetWorkingDirectory) || !isAbsolute(value.targetWorkingDirectory))) return invalid();
+    if (value.targetSessionId === undefined && value.targetWorkingDirectory !== undefined) return invalid();
+    if (["opening", "opened", "unknown"].includes(String(value.canvasStatus)) && !value.targetSessionId) return invalid();
+    if ((value.canvasStatus === "opened") !== Boolean(value.acknowledgment)) return invalid();
+    if (value.acknowledgment) {
+        const ack = object(value.acknowledgment);
+        const keys = ["sessionId", "contextRevision", "workingDirectory", "providerId", "instanceId"];
+        if (Object.keys(ack).length !== keys.length || keys.some(key => !safeText(ack[key], key === "workingDirectory" ? 4096 : 256)) ||
+            ack.sessionId !== value.targetSessionId || ack.workingDirectory !== value.targetWorkingDirectory ||
+            ack.instanceId !== `entry-app-${value.requestId}`) return invalid();
+    }
+    return structuredClone(value) as unknown as AppCanvasRequest;
 }
 
 export function createPreparationStore({ homeDirectory = homedir() }: { homeDirectory?: string } = {}) {
@@ -138,10 +166,18 @@ export function createPreparationStore({ homeDirectory = homedir() }: { homeDire
     }
     async function ownership(operationId: string, destination: string, gitCommonDirectory: string) {
         const root = join(await home(), "SpecKitCanvas", "repositories", operationId);
-        if (destination !== join(root, "checkout") || gitCommonDirectory !== join(destination, ".git")) return invalid();
+        if (gitCommonDirectory !== join(destination, ".git")) return invalid();
         if (await regularPath(destination, true) !== destination || await regularPath(gitCommonDirectory, true) !== gitCommonDirectory) return invalid();
         const marker = await boundedJson(join(root, ".sdd-clone-owner.json"), 1024);
-        if (Object.keys(marker).length !== 2 || marker.kind !== "sdd-repository-clone" || marker.operationId !== operationId) return invalid();
+        if (marker.kind !== "sdd-repository-clone" || marker.operationId !== operationId) return invalid();
+        if (marker.destination === undefined) {
+            if (Object.keys(marker).length !== 2 || destination !== join(root, "checkout")) return invalid();
+        } else {
+            const parent = dirname(root);
+            const legacyCheckout = basename(destination) === "checkout" && /^[a-f0-9]{32}$/.test(basename(dirname(destination))) && dirname(dirname(destination)) === parent;
+            if (Object.keys(marker).length !== 3 || marker.destination !== destination ||
+                (dirname(destination) !== parent && !legacyCheckout) || destination === root) return invalid();
+        }
     }
     async function read(operationId: string) {
         if (!operationPattern.test(operationId)) return invalid();
@@ -151,6 +187,16 @@ export function createPreparationStore({ homeDirectory = homedir() }: { homeDire
             await ownership(record.operationId, record.destination, record.gitCommonDirectory);
             return record;
         } catch { return invalid(); }
+    }
+    async function checkoutLock<Result>(destination: string, action: () => Promise<Result>, create = false) {
+        const parent = await directory(create);
+        const filename = join(parent, `.checkout-${createHash("sha256").update(destination).digest("hex")}.lock`);
+        const lock = await open(filename, "wx", 0o600).catch(error => {
+            if ((error as NodeJS.ErrnoException).code === "EEXIST") throw new RepositoryError("clone_conflict");
+            throw error;
+        });
+        try { return await action(); }
+        finally { await lock.close(); await unlink(filename); }
     }
     async function change(operationId: string, update: (record: PreparedRepositoryRecord) => PreparedRepositoryRecord) {
         if (!operationPattern.test(operationId)) return invalid();
@@ -164,7 +210,7 @@ export function createPreparationStore({ homeDirectory = homedir() }: { homeDire
         try {
             const previous = await read(operationId);
             const next = validateRecord(update(structuredClone(previous)));
-            if (fields.some(field => Reflect.get(next, field) !== Reflect.get(previous, field))) return invalid();
+            if ([...fields, "reused"].some(field => Reflect.get(next, field) !== Reflect.get(previous, field))) return invalid();
             if (JSON.stringify(next) === JSON.stringify(previous)) return previous;
             temporary = join(parent, `.${operationId}-${randomBytes(12).toString("hex")}.tmp`);
             const handle = await open(temporary, "wx", 0o600);
@@ -182,6 +228,48 @@ export function createPreparationStore({ homeDirectory = homedir() }: { homeDire
     }
     const store = {
         read,
+        async requestAppCanvas(operationId: string, sourceSessionId: string, now = Date.now()) {
+            if (!safeText(sourceSessionId, 256) || !Number.isSafeInteger(now) || now < 0) return invalid();
+            const original = await read(operationId);
+            return checkoutLock(original.destination, async () => {
+                const latest = await store.list();
+                if (latest.hasMore || !latest.items.some(item => item.operationId === operationId)) throw new RepositoryError("context_changed");
+                return change(operationId, record => {
+                const previous = record.appCanvas;
+                if (previous && previous.launchStatus !== "failed" && previous.canvasStatus !== "failed" &&
+                    (previous.launchStatus === "unknown" || previous.canvasStatus === "opening" || previous.canvasStatus === "unknown" || previous.expiresAt > now)) {
+                    throw new RepositoryError("app_launch_unknown");
+                }
+                return { ...record, appCanvas: { requestId: randomBytes(16).toString("hex"), sourceSessionId,
+                    requestedAt: now, expiresAt: now + 600_000, launchStatus: "pending", canvasStatus: "pending" } };
+                });
+            });
+        },
+        async updateAppLaunch(operationId: string, requestId: string, launchStatus: AppCanvasRequest["launchStatus"], errorCode?: string) {
+            return change(operationId, record => {
+                const request = record.appCanvas;
+                if (!request || request.requestId !== requestId || request.launchStatus !== "pending" || launchStatus === "pending") return invalid();
+                return { ...record, appCanvas: { ...request, launchStatus, ...(errorCode ? { errorCode } : {}) } };
+            });
+        },
+        async claimAppCanvas(operationId: string, requestId: string, targetSessionId: string, now = Date.now(), targetWorkingDirectory?: string) {
+            return change(operationId, record => {
+                const request = record.appCanvas;
+                if (!request || request.requestId !== requestId || request.canvasStatus !== "pending" || request.launchStatus === "failed" ||
+                    !safeText(targetSessionId, 256) || request.sourceSessionId === targetSessionId || request.expiresAt <= now) return invalid();
+                return { ...record, appCanvas: { ...request, targetSessionId, targetWorkingDirectory: targetWorkingDirectory ?? record.destination, canvasStatus: "opening" } };
+            });
+        },
+        async finishAppCanvas(operationId: string, requestId: string, targetSessionId: string,
+            result: LocalCanvasAcknowledgment | { errorCode: string; unknown: boolean }) {
+            return change(operationId, record => {
+                const request = record.appCanvas;
+                if (!request || request.requestId !== requestId || request.targetSessionId !== targetSessionId || request.canvasStatus !== "opening") return invalid();
+                return { ...record, appCanvas: "errorCode" in result ?
+                    { ...request, canvasStatus: result.unknown ? "unknown" : "failed", errorCode: result.errorCode } :
+                    { ...request, canvasStatus: "opened", acknowledgment: result } };
+            });
+        },
         async verifyOwnership(input: PreparedRepositoryRecord) {
             try {
                 const record = validateRecord(input);
@@ -223,10 +311,12 @@ export function createPreparationStore({ homeDirectory = homedir() }: { homeDire
             });
         },
         async write(input: PreparedRepositoryRecord) {
+            const validated = validateRecord(input);
+            return checkoutLock(validated.destination, async () => {
             let temporary: string | undefined;
             try {
-                const record = validateRecord(input);
-                if (record.handoff || record.acceptedTarget) return invalid();
+                const record = validated;
+                if (record.handoff || record.acceptedTarget || record.appCanvas) return invalid();
                 await ownership(record.operationId, record.destination, record.gitCommonDirectory);
                 const parent = await directory(true);
                 const filename = join(parent, `${record.operationId}.json`);
@@ -235,6 +325,16 @@ export function createPreparationStore({ homeDirectory = homedir() }: { homeDire
                     if (JSON.stringify(await read(record.operationId)) !== JSON.stringify(record)) return invalid();
                     return;
                 } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+                const prior = await store.list();
+                if (prior.hasMore) throw new RepositoryError("clone_conflict");
+                for (const item of prior.items) {
+                    if (item.destination !== record.destination || !item.record) continue;
+                    const request = item.record.appCanvas;
+                    if (request && request.launchStatus !== "failed" && request.canvasStatus !== "failed" &&
+                        (request.launchStatus === "unknown" || ["opening", "unknown"].includes(request.canvasStatus) ||
+                            request.canvasStatus !== "opened" && request.expiresAt > record.completedAt)) throw new RepositoryError("app_launch_unknown");
+                    if (item.record.completedAt >= record.completedAt) throw new RepositoryError("context_changed");
+                }
                 temporary = join(parent, `.${record.operationId}-${randomBytes(12).toString("hex")}.tmp`);
                 const handle = await open(temporary, "wx", 0o600);
                 try { await handle.writeFile(JSON.stringify(record)); await handle.sync(); }
@@ -244,8 +344,9 @@ export function createPreparationStore({ homeDirectory = homedir() }: { homeDire
                 catch (error) {
                     if ((error as NodeJS.ErrnoException).code !== "EEXIST" || JSON.stringify(await read(record.operationId)) !== JSON.stringify(record)) throw error;
                 }
-            } catch { return invalid(); }
+            } catch (error) { if (error instanceof RepositoryError) throw error; return invalid(); }
             finally { if (temporary) await unlink(temporary).catch(() => undefined); }
+            }, true);
         },
         async list() {
             const items: Array<{ operationId: string; destination: string; legacy: boolean; actionable: boolean; record?: PreparedRepositoryRecord }> = [];
@@ -276,7 +377,16 @@ export function createPreparationStore({ homeDirectory = homedir() }: { homeDire
                     } catch { continue; }
                 }
             } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") return invalid(); }
-            return { items, inspected, hasMore };
+            const managed = join(await home(), "SpecKitCanvas", "repositories");
+            const latest = items.filter(item => !item.record || !items.some(other => other.record &&
+                (other.record.destination === item.record!.destination && other.record.gitCommonDirectory === item.record!.gitCommonDirectory ||
+                    basename(item.record!.destination) === "checkout" && dirname(dirname(item.record!.destination)) === managed &&
+                    dirname(other.record.destination) === managed && other.record.reused === true) &&
+                other.record.repositoryId === item.record!.repositoryId &&
+                other.record.profileFingerprint === item.record!.profileFingerprint && other.record.accountKey === item.record!.accountKey &&
+                (other.record.completedAt > item.record!.completedAt ||
+                    other.record.completedAt === item.record!.completedAt && other.operationId > item.operationId)));
+            return { items: latest, inspected, hasMore };
         },
     };
     return store;

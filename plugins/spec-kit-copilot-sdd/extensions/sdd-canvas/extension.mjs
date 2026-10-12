@@ -18,7 +18,7 @@ import { joinSession, createCanvas, CanvasError } from "@github/copilot-sdk/exte
 import { createSddReviewService } from "./artifact-review.mjs";
 import { handleArtifactReview } from "./vendor/artifact-review.mjs";
 import { ArtifactReadError } from "./vendor/artifact-read.mjs";
-import { createEntryCoordinator, createHostHandoffAdapter, createRepositoryService, createWorkflowBinding, handleEntryRequest, handleRepositoryRequest, loadEntrySettings } from "./vendor/repository-browser/server.mjs";
+import { createEntryCoordinator, createHostHandoffAdapter, createRepositoryService, createWorkflowBinding, handleEntryRequest, handleRepositoryRequest, loadEntrySettings, openRequestedAppCanvas } from "./vendor/repository-browser/server.mjs";
 import {
     scanFeatures,
     readArtifact,
@@ -714,4 +714,13 @@ const directCanvas = createCanvas({ ...canvasDefinition, id: "sdd-canvas-direct"
 const session = await joinSession({ canvases: [canvas, directCanvas] });
 const metadata = await session.rpc.metadata.snapshot();
 PROJECT_ROOT = findProjectRoot(metadata.workingDirectory);
-await session.log("sdd-canvas ready — open the Spec-Driven Development canvas to drive the core SDD workflow.", { ephemeral: true });
+const appEntryHost = sessionHost({}, metadata);
+let appCanvasOpened = false;
+try {
+    const result = await openRequestedAppCanvas({ host: appEntryHost });
+    appCanvasOpened = result.status === "opened";
+    if (appCanvasOpened) await session.log("Opened the requested Spec-Driven Development canvas in this repository session.", { ephemeral: true });
+} catch (error) {
+    await session.log(`Repository canvas auto-open was not completed (${error.code ?? "canvas_unavailable"}). Open the current-workspace canvas directly to continue.`, { ephemeral: true });
+} finally { appEntryHost.dispose(); }
+await session.log(appCanvasOpened ? "sdd-canvas ready." : "sdd-canvas ready — open the Spec-Driven Development canvas to drive the core SDD workflow.", { ephemeral: true });

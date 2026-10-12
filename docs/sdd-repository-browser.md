@@ -3,12 +3,31 @@
 Unreleased development build on `plan/canvas-repository-discovery`. Marketplace
 versions and historical preview ZIPs are unchanged.
 
-**Current scope:** **Confirm and clone** can create a checkout independently of
-automatic workspace switching, as requested on 2026-09-21. The current App
-workspace stays unchanged; completion shows a copyable checkout path. Automatic
-handoff remains unavailable because the installed App's supported workspace
-activation contract is unverified. Clone completion is not handoff evidence. See the
+**Current scope (2026-10-12):** **Clone and open Spec Kit** confirms one clone,
+requests a new App session, and lets the installed target extension automatically
+open the original canvas for that repository. No second chat prompt is sent.
+The source session stays unchanged; ordinary App folder approval still applies.
+Without the supported launcher, **Confirm and clone** retains the checkout and
+copyable path. Atomic in-session handoff remains unverified; launcher completion
+and target canvas acknowledgment are separate states. See the
 [acceptance report](../specs/002-repository-entry-flow/evidence/acceptance.md).
+
+New clones use `~/SpecKitCanvas/repositories/<repository-name>`. If a verified
+matching copy exists, **Open existing Spec Kit repository** reuses it in place
+without fetching, resetting, or changing local files, commits, or branches.
+Unrelated name collisions are rejected, not overwritten. Selection discloses
+migration of a verified older UUID/checkout copy to the repository-named folder.
+If an older Windows session prevents moving it, a verified local copy is made
+without fetching or cloning, retaining the old folder for that session. Subsequent
+selection and retained-checkout opening use the named preparation; stale older
+operation IDs cannot reopen the superseded path.
+**Use current workspace** opens the canvas in the current session without calling
+the native launcher or introducing an **Open session?** dialog. The documented App
+launcher has no folder-approval suppression or explicit session-title option.
+A repository-named directory avoids the generic `checkout` basename. Native
+testing verified the repository-named left-rail group and automatic original
+canvas opening after App approval. The chat title remains host-controlled
+(`CLI Session` in the tested App).
 
 ## One-Time Local Setup
 
@@ -70,15 +89,16 @@ Opening the canvas does not itself run setup or a workflow.
 5. Focus the empty search box for team suggestions, or type a repository name
    and pause for one second. Select the intended result from the configured
    Azure DevOps project. Selection alone does not clone anything.
-6. Review the account, default branch, full commit, and destination. When the
-   session is idle, choose **Confirm and clone** once and wait for **Clone
-   complete**. The source workspace and its files stay unchanged.
-7. Choose **Open in Copilot App**. In the App's **Open session?** dialog, verify
+6. Review the account, default branch, full commit, destination, and disclosed
+   **New session + original canvas** outcome. When idle, choose **Clone and open
+   Spec Kit** once. The source session and its files stay unchanged.
+7. In the App's **Open session?** dialog, verify
    the folder and choose **Allow**. The App opens a new session for the checkout;
    the previous session remains available. A restart is not normally required.
-8. In that new session, say **"Open Spec-Driven Development"** again, then choose
-   **Use current workspace**. The original dashboard opens against the cloned
-   repository.
+8. The target extension verifies the checkout or registered App worktree and
+   opens the original dashboard directly. Do not send another **"Open
+   Spec-Driven Development"** prompt. If the target extension is missing or opening
+   is blocked, the retained checkout remains available for explicit recovery.
 9. Select an existing feature and its **View** action to read the specification,
    plan, tasks, or constitution. To start new work, intentionally complete the
    dashboard's setup step if shown, then use **New feature** and the normal
@@ -184,25 +204,33 @@ selected repository is already the actual current repository, use local entry.
 Cloning does not require automatic App handoff. It uses the current Microsoft
 connection, the existing guarded native Git engine, and a separate managed path.
 
-1. Review the selection and choose **Confirm and clone** explicitly. A preview or
+1. Review the selection and choose **Clone and open Spec Kit** explicitly when
+   available, or **Confirm and clone** on unsupported hosts. A preview or
    cancelled selection creates no checkout. Consent expires after 120 seconds;
    changed account, source revision, context or capabilities require reconfirmation.
 2. The extension rereads the actual session context and activity before admission.
    Busy, unknown or stale observations reject without queueing or automatic resume.
    Intervening activity events invalidate the consent even if the next read is idle.
 3. The managed destination is
-   `~/SpecKitCanvas/repositories/<operation-id>/checkout`. A new preparation branch
-   pins the reviewed commit. Existing checkouts are never reused or overwritten.
+   `~/SpecKitCanvas/repositories/<repository-name>`. A new preparation branch
+   pins the reviewed commit. A matching existing checkout is instead verified
+   and reused without Git mutations; review displays its local commit and
+   preserves its branch and dirty files. Identity or content changes after
+   review require a new confirmation. Wrong-origin collisions and unsafe names
+   stop explicitly without modifying the existing directory.
 4. Native Git runs without a shell, fallback credentials, hooks, recursive
    submodules or LFS smudge. Credentials are not placed in Git arguments or remote
    URLs. Progress is bounded and **Cancel preparation** stops only owned work.
 5. A completed clone shows **Clone complete**, the destination, and **Copy checkout
    path**. The current workspace stays unchanged. Reconnecting lists the retained
    checkout under **Cloned repositories** without cloning again.
-6. Choose **Open in Copilot App** beside the completed or retained checkout. If
+6. With clone-and-open consent, successful cloning automatically requests
+   **Open in Copilot App** once while the original idle/context checks still match. If
    the App shows **Open session?**, verify the folder and select **Allow**. This
    opens a new App session for that checkout; the previous session is retained.
-   Open the original Spec Kit canvas in that new session when ready.
+   The target extension automatically opens the original Spec Kit canvas.
+   Retained checkouts also offer an explicit **Open in Copilot App** recovery
+   action; no recovery action clones again.
 
 Clone-only admission is a checked preflight, not an atomic host reservation: the
 App may start unrelated work after the observation. The clone is isolated from
@@ -211,7 +239,8 @@ advertised and no App activity is cancelled or paused.
 
 ## Open In Copilot App
 
-This explicit action uses the existing native Copilot CLI's documented
+This action, automatic after disclosed clone-and-open consent or explicit for a
+retained checkout, uses the existing native Copilot CLI's documented
 [`copilot app` command](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference#command-line-commands)
 with the verified checkout as its working directory. It works with an already
 running App and can start the App when closed. The button never quits or restarts
@@ -231,8 +260,12 @@ or SDK session variables. Busy/unknown state disables opening without queueing.
 
 **Open request sent** means the launcher accepted the request, not that the App
 approved it. The App may show an external-link approval or its download page if
-no handler is available. Failure or uncertain completion retains the checkout and
-copy control; inspect the App before explicitly trying again. **Copy checkout
+no handler is available. **Original Spec Kit canvas acknowledged in the new repository
+session** means that the
+target session acknowledged the original canvas RPC, not that desktop visibility
+or atomic activation was independently observed. Failure or uncertain completion
+retains the checkout and copy control; unknown submitted outcomes block duplicate
+launches rather than blindly retrying. **Copy checkout
 path** and the App's ordinary **Open folder** remain available as manual fallbacks.
 
 An explicitly opened managed clone, including a registered App worktree, uses
@@ -241,6 +274,15 @@ local workspace/Git verification without a fabricated `workspace_activated` or
 handoffs still require their own guarded binding and cannot use this route as a
 bypass.
 
+The launch intent expires after ten minutes and is persisted separately from
+atomic handoff records. Only one target process can claim it. The source session,
+unrelated repositories, failed launches, expired requests, busy targets, and
+changed checkout contents cannot consume it. Linked targets must share the
+canonical Git common directory, be registered named worktrees at the reviewed
+commit, and match the initial file fingerprint. Target session identifiers never
+reach the browser state. The same development extension must already be installed
+in the new session; entry does not install it or send a model prompt.
+
 ## Automatic Handoff
 
 Automatic switching remains gated by
@@ -248,8 +290,8 @@ Automatic switching remains gated by
 `workspace_activated`, guarded target-canvas opening, independent identity
 verification and `canvas_ready`. An attested registered linked worktree may use a
 different branch while preserving the original preparation. Unsupported hosts
-show no **Retry handoff** action. The separate **Open in Copilot App** button is
-an explicit launch request, not automatic switching after clone completion.
+show no **Retry handoff** action. Clone-and-open uses a separate native launch
+request and target extension bootstrap, not an atomic switch of the source session.
 
 Changing only a canvas heading or working-directory variable, manual folder
 selection, a separate SDK client, private IPC, or a sequence of idle-read/cwd-write

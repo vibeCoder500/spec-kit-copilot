@@ -8,6 +8,26 @@
 blocks automatic App handoff, not the independent clone action. This plan does
 not claim that automatic App handoff has been verified.
 
+**2026-10-11 amendment**: The supported native launcher now runs once after
+disclosed clone-and-open consent, with fresh source checks. Persist a bounded
+launch intent in the existing preparation store before submitting it. On target
+extension startup, independently verify the checkout or registered linked
+worktree, atomically claim the intent, and open `sdd-canvas-direct` without a model
+prompt. Store launch outcome and target canvas acknowledgment separately from
+G-HOST handoff state. Unknown submissions never auto-repeat. Preserve the source
+session, ordinary App folder approval, clone-only fallback, direct/local entry,
+and the canvas team's renderer and workflow engine. Target extension availability
+is a prerequisite; no implicit installation occurs.
+
+**2026-10-12 amendment**: New entry clones use a repository-named direct child
+of the managed repositories root. Reverify and reuse matching existing copies
+read-only, preserving local branches, commits and dirty files; retain old managed
+paths. Bind existing identity and file fingerprint to consent. Serialize
+preparation-record writes and launch admission per destination, and expose only
+the latest matching record. Current-repository opening routes to local canvas
+entry without the launcher. App folder approval and title control remain
+host-owned; no unsupported suppression or title-setting API is used.
+
 ## Summary
 
 Replace the embedded rail and remote reader with an optional, separately rendered
@@ -227,7 +247,9 @@ external prerequisite with explicit failure behavior, not an assumed API.
   and capability generation. Revalidate the current default ref at start; a
   changed revision requires a fresh confirmation, not silently cloning the old
   cached review snapshot.
-- Clone once under the existing user-managed operation directory. At completion
+- Clone once into the repository-named managed destination, or verify and reuse
+  an existing matching checkout. Operation ownership metadata remains separate.
+  At completion
   persist an owned, token-free record before requesting host transition, because
   the old extension may terminate during session replacement.
 - Attempt handoff automatically only within the still-valid, uninterrupted

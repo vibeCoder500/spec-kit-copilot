@@ -19,6 +19,41 @@ the isolated clone must never retarget or modify that work.
 
 ## Clarifications
 
+### Session 2026-10-12
+
+- New clone destinations use the repository's safe exact name under the managed
+  repositories root. Reuse an existing verified matching copy instead of cloning
+  again; preserve its local commit, branch, and dirty files without fetch/reset.
+  Review the local commit, bind its fingerprint to consent, and reject collisions
+  or post-review changes without modifying existing content.
+- If the retained repository is already current, open the original canvas
+  locally; do not request another native session or folder approval.
+- Repository-named directories address new clone naming, not explicit App title
+  control. The installed public launcher exposes neither title setting nor
+  approval suppression. Host-owned approval for another folder remains intact.
+  The user subsequently authorized disclosed migration of verified older managed
+  UUID/checkout copies to repository-named folders. If an active Windows session
+  prevents the move, preserve its folder and make a verified local copy without
+  remote clone/fetch. New sessions and retained preparations use the named copy.
+
+### Session 2026-10-11
+
+- User decision: One disclosed **Clone and open Spec Kit** confirmation authorizes
+  one clone and a supported native request for a new Copilot App session. The
+  source session remains unchanged; ordinary App folder approval is preserved.
+- The installed target extension must automatically open the original direct
+  canvas without a second model prompt or chooser. Persist a ten-minute
+  checkout-bound request, independently verify the checkout or registered named
+  linked worktree at the reviewed commit and initial file fingerprint, claim once,
+  and record the target canvas acknowledgment separately from atomic handoff.
+- Keep unsupported-launcher clone-only completion, current-workspace/direct entry,
+  explicit retained-checkout recovery, and all existing workflow prerequisites.
+  Reject stale/busy/unknown contexts without queued retries. Unknown submitted
+  outcomes must not trigger duplicate launch or canvas requests.
+- This amendment supersedes the earlier separate-button/second-prompt journey,
+  not G-HOST's atomic activation contract. Full desktop acceptance remains distinct
+  from native Git, browser, and synthetic host verification.
+
 ### Session 2026-09-21
 
 - User decision: Complete standalone cloning even when automatic workspace

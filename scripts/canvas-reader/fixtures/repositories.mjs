@@ -19,6 +19,7 @@ export async function createRepositoryFixture({ sourceWorkspace } = {}) {
     let browserOpens = 0;
     let holdClone = false;
     const gitCalls = [];
+    const branches = new Map();
     const repository = { id: repositoryId, name: "Synthetic repository 1", defaultBranch: "refs/heads/main", project: { name: "SyntheticProject" }, isDisabled: false };
     const profile = { schemaVersion: 1, enabled: true, tenantId, clientId: "22222222-2222-4222-8222-222222222222", organization: "SyntheticOrg", project: "SyntheticProject" };
     const result = (nonce) => ({ accessToken: "synthetic-token", tenantId, scopes: ["vso.code", "vso.project", "vso.work"], expiresOn: new Date(Date.now() + 600_000), idTokenClaims: { nonce },
@@ -27,6 +28,7 @@ export async function createRepositoryFixture({ sourceWorkspace } = {}) {
         bindingOptions: { homeDirectory: cloneHome },
         cloneOptions: { homeDirectory: cloneHome, executable: join(cloneHome, "synthetic-git.exe"), runner: async ({ args, cwd, signal }) => {
             gitCalls.push(args);
+            if (args.includes("checkout") && args.includes("-b")) branches.set(cwd, args[args.indexOf("-b") + 1]);
             if (args.includes("clone")) {
                 await mkdir(join(args.at(-1), ".git"), { recursive: true });
                 if (sourceWorkspace) for (const name of [".specify", ".github", "specs"]) await cp(join(sourceWorkspace, name), join(args.at(-1), name), { recursive: true, errorOnExist: true, force: false });
@@ -37,8 +39,9 @@ export async function createRepositoryFixture({ sourceWorkspace } = {}) {
                 return "";
             }
             if (args.includes("get-url")) return `https://dev.azure.com/SyntheticOrg/SyntheticProject/_git/${repositoryId}`;
-            if (args.includes("symbolic-ref")) return `${args.includes("--short") ? "" : "refs/heads/"}speckit/canvas-${cwd.split(/[\\/]/).at(-2)}`;
+            if (args.includes("symbolic-ref")) return `${args.includes("--short") ? "" : "refs/heads/"}${branches.get(cwd)}`;
             if (args.includes("--show-toplevel")) return cwd;
+            if (args.includes("worktree")) return `worktree ${cwd}\0HEAD ${commit}\0branch refs/heads/${branches.get(cwd)}\0\0`;
             if (args.includes("HEAD")) return commit;
             if (args.includes("--git-common-dir")) return join(cwd, ".git");
             return "";

@@ -1,8 +1,8 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { spawn } from "node:child_process";
-import { lstat, mkdir, open, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
+import { cp, lstat, mkdir, open, readFile, readdir, realpath, rename, rm, unlink, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { delimiter, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { basename, delimiter, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import type { RepositoryConnection } from "./auth.ts";
 import { knownRepositoryError, RepositoryError } from "./errors.ts";
 import type { RepositoryProfile } from "./profile.ts";
@@ -25,6 +25,10 @@ export interface CloneState {
     localBranch: string;
     destination: string;
     error?: string;
+    appCanvas?: import("./types.ts").AppCanvasState;
+    reused?: boolean;
+    checkoutCommit?: string;
+    migrateFrom?: string;
 }
 
 interface Operation {
@@ -38,6 +42,9 @@ interface Operation {
     completion?: Promise<void>;
     root?: string;
     durable?: boolean;
+    existing?: { head: string; branch: string; origin: string; fingerprint: string };
+    checkoutCreated?: boolean;
+    migrated?: boolean;
 }
 
 export interface GitExecution {
@@ -54,6 +61,34 @@ const operationIdPattern = /^[a-f0-9]{32}$/;
 const digest = (value: string) => createHash("sha256").update(value).digest("hex");
 const sameSecret = (value: string, expected: string) => typeof value === "string" && value.length <= 256 &&
     timingSafeEqual(Buffer.from(digest(value), "hex"), Buffer.from(expected, "hex"));
+
+export function repositoryFolderName(name: string) {
+    if (!name || name.length > 120 || /[<>:"/\\|?*\p{Cc}\p{Cf}]/u.test(name) || /[. ]$/.test(name) ||
+        name === "." || name === ".." || /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(name) ||
+        /^[a-f0-9]{32}$/i.test(name)) throw new RepositoryError("invalid_repository_name");
+    return name;
+}
+
+async function existingCheckout(destination: string, remote: string, namedRemote: string, git: string, runner: GitRunner, home: string) {
+    try {
+        for (const path of [destination, join(destination, ".git")]) {
+            const info = await lstat(path);
+            if (!info.isDirectory() || info.isSymbolicLink() || await realpath(path) !== resolve(path)) throw new Error();
+        }
+        const env = cloneEnvironment({ token: "", remote, home, emptyFile: process.platform === "win32" ? "NUL" : "/dev/null" });
+        delete env.GIT_CONFIG_KEY_0; delete env.GIT_CONFIG_VALUE_0;
+        env.GIT_CONFIG_COUNT = "0"; env.GIT_OPTIONAL_LOCKS = "0";
+        const signal = AbortSignal.timeout(10_000);
+        const execute = (args: string[]) => runner({ executable: git, args: ["-c", "core.fsmonitor=false", "-c", "core.hooksPath=", ...args], cwd: destination, env, signal });
+        const origin = await execute(["remote", "get-url", "origin"]);
+        if (![remote, namedRemote].some(value => value.toLowerCase() === origin.replace(/\/$/, "").toLowerCase())) throw new Error();
+        const head = await execute(["rev-parse", "HEAD"]);
+        const branch = await execute(["symbolic-ref", "--short", "HEAD"]);
+        const common = await execute(["rev-parse", "--path-format=absolute", "--git-common-dir"]);
+        if (!COMMIT.test(head) || !branch || await realpath(common) !== join(destination, ".git")) throw new Error();
+        return { head, branch, origin, fingerprint: await fingerprintCheckout(destination, signal) };
+    } catch { throw new RepositoryError("existing_repository_conflict"); }
+}
 
 export async function fingerprintCheckout(checkout: string, signal: AbortSignal): Promise<string> {
     const root = await realpath(checkout);
@@ -189,13 +224,14 @@ async function ensureParents(path: string) {
     }
 }
 
-async function removeOwnedStage(root: string, operationId: string) {
+async function removeOwnedStage(root: string, operationId: string, ownedCheckout?: string) {
     try {
         const marker = JSON.parse(await readFile(join(root, ".sdd-clone-owner.json"), "utf8"));
         if (marker.operationId !== operationId || marker.kind !== "sdd-repository-clone") return;
+        if (ownedCheckout && (marker.destination !== ownedCheckout || dirname(ownedCheckout) !== dirname(root))) return;
         const children = await readdir(root, { withFileTypes: true });
         if (children.some((child) => ![".sdd-clone-owner.json", "config", "checkout"].includes(child.name) || child.isSymbolicLink())) return;
-        const queue = [root];
+        const queue = [root, ...(ownedCheckout ? [ownedCheckout] : [])];
         let count = 0;
         while (queue.length) {
             const directory = queue.pop()!;
@@ -206,6 +242,7 @@ async function removeOwnedStage(root: string, operationId: string) {
                 else if (!entry.isFile()) return;
             }
         }
+        if (ownedCheckout) await rm(ownedCheckout, { recursive: true });
         await rm(root, { recursive: true });
     } catch { return; }
 }
@@ -255,7 +292,8 @@ export function createCloneService({ readSource, connection, profile, workspaceP
             const root = join(parent, operation.public.operationId);
             await mkdir(root);
             operation.root = root;
-            await writeFile(join(root, ".sdd-clone-owner.json"), JSON.stringify({ kind: "sdd-repository-clone", operationId: operation.public.operationId }), { flag: "wx" });
+            await writeFile(join(root, ".sdd-clone-owner.json"), JSON.stringify({ kind: "sdd-repository-clone", operationId: operation.public.operationId,
+                destination: operation.public.destination }), { flag: "wx" });
             const config = join(root, "config"); await mkdir(config);
             const hooks = join(config, "hooks"); await mkdir(hooks);
             const emptyFile = join(config, "empty"); await writeFile(emptyFile, "", { flag: "wx" });
@@ -270,30 +308,77 @@ export function createCloneService({ readSource, connection, profile, workspaceP
                 return runner({ executable: git, args: [...policy, ...args], cwd, env: environment!, signal });
             };
             update(operation, "preparing");
-            await gitCommand(["clone", "--no-checkout", "--no-recurse-submodules", "--single-branch", "--branch", source.repository.defaultBranch!.slice(11), "--", remote, operation.public.destination]);
-            update(operation, "verifying");
-            try { await gitCommand(["cat-file", "-e", `${source.sourceVersion}^{commit}`], operation.public.destination); }
-            catch {
-                if (signal.aborted) throw new RepositoryError("clone_cancelled");
-                await gitCommand(["fetch", "--no-tags", "--no-recurse-submodules", "origin", source.sourceVersion], operation.public.destination);
-                await gitCommand(["cat-file", "-e", `${source.sourceVersion}^{commit}`], operation.public.destination);
+            if (operation.existing) {
+                const namedRemote = `https://dev.azure.com/${[profile.organization, profile.project, "_git", source.repository.name].map(encodeURIComponent).join("/")}`;
+                const current = await existingCheckout(operation.public.migrateFrom ?? operation.public.destination, remote, namedRemote, git, runner, canonicalHome);
+                if (JSON.stringify(current) !== JSON.stringify(operation.existing)) throw new RepositoryError("clone_identity_changed");
+                if (operation.public.migrateFrom) {
+                    const lockPath = join(parent, `.migration-${digest(operation.public.destination)}.lock`);
+                    const lock = await open(lockPath, "wx");
+                    try {
+                        try { await lstat(operation.public.destination); throw new RepositoryError("existing_repository_conflict"); }
+                        catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+                        access.assertCurrent(); if (signal.aborted) throw new RepositoryError("clone_cancelled");
+                        try {
+                            await rename(operation.public.migrateFrom, operation.public.destination);
+                            operation.migrated = true;
+                        } catch (error) {
+                            if (!["EPERM", "EBUSY", "EACCES"].includes((error as NodeJS.ErrnoException).code ?? "")) throw error;
+                            await mkdir(operation.public.destination);
+                            operation.checkoutCreated = true;
+                            let copied = 0;
+                            const copyOptions = {
+                                recursive: true, force: false, errorOnExist: true, preserveTimestamps: true,
+                                filter: async (path: string) => {
+                                    if (signal.aborted) throw new RepositoryError("clone_cancelled");
+                                    const info = await lstat(path);
+                                    if (++copied > 100_000 || info.isSymbolicLink() || (!info.isFile() && !info.isDirectory())) {
+                                        throw new RepositoryError("clone_identity_changed");
+                                    }
+                                    return true;
+                                },
+                            };
+                            for (const entry of await readdir(operation.public.migrateFrom)) {
+                                await cp(join(operation.public.migrateFrom, entry), join(operation.public.destination, entry), copyOptions);
+                            }
+                        }
+                    } finally { await lock.close(); await unlink(lockPath); }
+                }
+            } else {
+                try { await lstat(operation.public.destination); throw new RepositoryError("existing_repository_conflict"); }
+                catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+                await mkdir(operation.public.destination);
+                operation.checkoutCreated = true;
+                await gitCommand(["clone", "--no-checkout", "--no-recurse-submodules", "--single-branch", "--branch", source.repository.defaultBranch!.slice(11), "--", remote, operation.public.destination]);
             }
-            await gitCommand(["checkout", "--no-recurse-submodules", "-b", operation.public.localBranch, source.sourceVersion, "--"], operation.public.destination);
+            update(operation, "verifying");
+            if (!operation.existing) {
+                try { await gitCommand(["cat-file", "-e", `${source.sourceVersion}^{commit}`], operation.public.destination); }
+                catch {
+                    if (signal.aborted) throw new RepositoryError("clone_cancelled");
+                    await gitCommand(["fetch", "--no-tags", "--no-recurse-submodules", "origin", source.sourceVersion], operation.public.destination);
+                    await gitCommand(["cat-file", "-e", `${source.sourceVersion}^{commit}`], operation.public.destination);
+                }
+                await gitCommand(["checkout", "--no-recurse-submodules", "-b", operation.public.localBranch, source.sourceVersion, "--"], operation.public.destination);
+            }
             const head = await gitCommand(["rev-parse", "HEAD"], operation.public.destination);
             const origin = await gitCommand(["remote", "get-url", "origin"], operation.public.destination);
             const branch = await gitCommand(["symbolic-ref", "--short", "HEAD"], operation.public.destination);
-            if (head !== source.sourceVersion || origin !== remote || branch !== operation.public.localBranch) throw new RepositoryError("clone_conflict");
+            if (head !== (operation.existing?.head ?? source.sourceVersion) || origin !== (operation.existing?.origin ?? remote) ||
+                branch !== operation.public.localBranch) throw new RepositoryError("clone_conflict");
             const common = await gitCommand(["rev-parse", "--path-format=absolute", "--git-common-dir"], operation.public.destination);
             const gitDirectory = await realpath(common);
-            if (!inside(root, gitDirectory)) throw new RepositoryError("clone_conflict");
+            if (gitDirectory !== join(operation.public.destination, ".git")) throw new RepositoryError("clone_conflict");
             access.assertCurrent(); if (signal.aborted) throw new RepositoryError("clone_cancelled");
             if (onPrepared) {
-                if (await gitCommand(["status", "--porcelain=v1", "--untracked-files=all"], operation.public.destination)) throw new RepositoryError("clone_identity_changed");
+                if (!operation.existing && await gitCommand(["status", "--porcelain=v1", "--untracked-files=all"], operation.public.destination)) throw new RepositoryError("clone_identity_changed");
                 const initialWorktreeFingerprint = await fingerprintCheckout(operation.public.destination, signal);
+                if (operation.existing && initialWorktreeFingerprint !== operation.existing.fingerprint) throw new RepositoryError("clone_identity_changed");
                 access.assertCurrent(); if (signal.aborted) throw new RepositoryError("clone_cancelled");
-                await onPrepared({ operationId: operation.public.operationId, repositoryId: source.repository.id, originIdentity: remote,
+                await onPrepared({ operationId: operation.public.operationId, repositoryId: source.repository.id, originIdentity: origin,
                     defaultRef: source.repository.defaultBranch!, sourceCommit: head, destination: await realpath(operation.public.destination),
-                    gitCommonDirectory: gitDirectory, branch: `refs/heads/${branch}`, initialWorktreeFingerprint });
+                    gitCommonDirectory: gitDirectory, branch: `refs/heads/${branch}`, initialWorktreeFingerprint,
+                    ...(operation.existing ? { reused: true } : {}) });
             } else {
                 const metadataDirectory = join(canonicalHome, ".speckit-canvas", "preparations");
                 await ensureParents(metadataDirectory);
@@ -304,9 +389,18 @@ export function createCloneService({ readSource, connection, profile, workspaceP
             operation.durable = true;
             update(operation, onPrepared ? "prepared" : "prepared_for_manual_open");
         } catch (error) {
+            if (operation.migrated && !operation.durable) {
+                try { await rename(operation.public.destination, operation.public.migrateFrom!); }
+                catch {
+                    update(operation, "failed", "clone_migration_recovery_required");
+                    return;
+                }
+                operation.migrated = false;
+            }
             const cancelled = controller.signal.aborted || deadline.aborted || (error as { code?: unknown })?.code === "clone_cancelled";
-            update(operation, cancelled ? "cancelled" : "failed", cancelled ? "clone_cancelled" : "clone_conflict");
-            if (operation.root && !operation.durable) await removeOwnedStage(operation.root, operation.public.operationId);
+            update(operation, cancelled ? "cancelled" : "failed", cancelled ? "clone_cancelled" : error instanceof RepositoryError ? error.code : "clone_conflict");
+            if (operation.root && !operation.durable) await removeOwnedStage(operation.root, operation.public.operationId,
+                operation.checkoutCreated && dirname(operation.public.destination) === dirname(operation.root) ? operation.public.destination : undefined);
         } finally {
             if (environment) { delete environment.GIT_CONFIG_VALUE_0; delete environment.GIT_CONFIG_KEY_0; }
             if (active === operation) active = undefined;
@@ -322,13 +416,46 @@ export function createCloneService({ readSource, connection, profile, workspaceP
             if (source.generation !== access.generation) throw new RepositoryError("invalid_context");
             const canonicalHome = await realpath(homeDirectory);
             const operationId = randomBytes(16).toString("hex");
+            const folder = repositoryFolderName(source.repository.name);
+            const parent = join(canonicalHome, "SpecKitCanvas", "repositories");
+            const destination = onPrepared ? join(parent, folder) : join(parent, operationId, "checkout");
+            const records = await createPreparationStore({ homeDirectory }).list();
+            if (records.hasMore) throw new RepositoryError("clone_conflict");
+            const matchingRecords = records.items.filter(item => item.record?.repositoryId === source.repository.id &&
+                item.record.profileFingerprint === digest(JSON.stringify(profile)) &&
+                item.record.accountKey === digest(JSON.stringify([access.tenantId, access.accountId])));
+            const named = matchingRecords.filter(item => item.destination === destination);
+            const matching = named.length ? named : matchingRecords;
+            if (matching.length > 1) throw new RepositoryError("existing_repository_conflict");
+            let migrateFrom: string | undefined;
+            if (onPrepared && matching[0] && matching[0].destination !== destination) {
+                const previous = matching[0].destination;
+                if (basename(previous) !== "checkout" || !operationIdPattern.test(basename(dirname(previous))) ||
+                    dirname(dirname(previous)) !== parent) throw new RepositoryError("existing_repository_conflict");
+                try { await lstat(destination); }
+                catch (error) {
+                    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+                    migrateFrom = previous;
+                }
+            }
+            let existing: Operation["existing"];
+            try {
+                await lstat(migrateFrom ?? destination);
+                const remote = `https://dev.azure.com/${[profile.organization, profile.project, "_git", source.repository.id].map(encodeURIComponent).join("/")}`;
+                const namedRemote = `https://dev.azure.com/${[profile.organization, profile.project, "_git", source.repository.name].map(encodeURIComponent).join("/")}`;
+                existing = await existingCheckout(migrateFrom ?? destination, remote, namedRemote, executable ?? await findGitExecutable(workspacePath), runner, canonicalHome);
+                const request = matching[0]?.record?.appCanvas;
+                if (request && request.launchStatus !== "failed" && request.canvasStatus !== "failed" &&
+                    (request.launchStatus === "unknown" || ["opening", "unknown"].includes(request.canvasStatus) ||
+                        request.canvasStatus !== "opened" && request.expiresAt > now())) throw new RepositoryError("app_launch_unknown");
+            } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
             const confirmation = randomBytes(32).toString("base64url");
             const state: CloneState = { operationId, state: "awaiting_confirmation", repositoryName: source.repository.name,
-                sourceCommit: source.sourceVersion, branch: source.repository.defaultBranch, localBranch: `speckit/canvas-${operationId}`,
-                destination: join(canonicalHome, "SpecKitCanvas", "repositories", operationId, "checkout") };
+                sourceCommit: source.sourceVersion, branch: source.repository.defaultBranch, localBranch: existing?.branch ?? `speckit/canvas-${operationId}`,
+                destination, ...(migrateFrom ? { migrateFrom } : {}), ...(existing ? { reused: true, checkoutCommit: existing.head } : {}) };
             for (const [key, operation] of operations) if (!operation.completion && operation.expiresAt <= now()) operations.delete(key);
             if (operations.size >= 32) throw new RepositoryError("clone_conflict");
-            operations.set(operationId, { public: state, source, contextId, confirmation: digest(confirmation), account: identity(access), expiresAt: now() + 120_000 });
+            operations.set(operationId, { public: state, source, contextId, confirmation: digest(confirmation), account: identity(access), expiresAt: now() + 120_000, existing });
             return { ...state, confirmation, accountLabel: connection.snapshot().accountLabel ?? "Microsoft account" };
         },
         async start(operationId: string, confirmation: string) {
@@ -400,8 +527,9 @@ export function createEntryCloneService({ host, readSource, connection, profile,
         onPrepared: async target => {
             const consent = consents.get(target.operationId);
             if (!consent) throw new RepositoryError("invalid_context");
+            const previous = (await store.list()).items.flatMap(item => item.record?.destination === target.destination ? [item.record.completedAt] : []);
             await store.write({ ...target, schemaVersion: 2, kind: "sdd-prepared-repository", profileFingerprint, accountKey: consent.accountKey,
-                createdAt: consent.createdAt, completedAt: now() });
+                createdAt: consent.createdAt, completedAt: Math.max(now(), ...previous.map(time => time + 1)) });
         } });
     return {
         async confirm(selectionId: string, expected: HostWorkspaceSnapshot) {
@@ -439,8 +567,6 @@ export function createEntryCloneService({ host, readSource, connection, profile,
                         source.repository.defaultBranch !== consent.source.repository.defaultBranch || source.generation !== consent.source.generation) throw new RepositoryError("source_changed");
                     const snapshot = await host.inspectCurrent(); guard(snapshot, consent.expected);
                     if (now() >= consent.expiresAt) throw new RepositoryError("confirmation_expired");
-                    try { await lstat(dirname(core.status(operationId).destination)); throw new RepositoryError("clone_conflict"); }
-                    catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
                     const state = await host.admitPreparation({ operationId, expectedSource: { sessionId: snapshot.sessionId, contextRevision: snapshot.contextRevision },
                         capabilityGeneration: snapshot.capabilityGeneration, activityRevision: snapshot.activityRevision }, async () => {
                         access.assertCurrent();

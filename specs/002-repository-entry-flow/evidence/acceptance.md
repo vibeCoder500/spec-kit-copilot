@@ -1,5 +1,213 @@
 # Repository Entry Implementation Evidence
 
+## 2026-10-12 Current Build: Named Rail And Automatic Canvas
+
+This result supersedes the stale-target naming/canvas observations below.
+The user authorized migration of the test checkout and a backed-up user-scoped
+extension update. Native Windows UI Automation then verified the current build
+against the installed App without a model prompt, target canvas/menu action,
+private IPC, workflow, approval-policy change, or App restart/update.
+
+| Native check | Latest result |
+| --- | --- |
+| Verified older managed checkout migration | PASS: consent targeted a repository-named destination. An active older Windows session prevented rename, so a verified local copy preserved its old folder without remote cloning/fetching. |
+| Repository-named left-rail group | PASS: the new session appeared beneath the repository name, not an operation UUID or generic checkout group. Existing historical groups are retained; the chat title remains host-controlled. |
+| Automatic original target canvas | PASS twice: after migration and again on final-build named-copy reuse, with zero chat prompts or manual target canvas actions. |
+| Durable target acknowledgment | PASS: opened status and session/context/cwd/provider/instance acknowledgment identify the named checkout independently of launcher submission. |
+| Visible original repository features | PASS: original feature-stage controls appeared, not a chooser or fabricated readiness state. |
+| Launch timing | Final reuse acknowledgment observed approximately 21 seconds after accepting the App dialog. |
+| Existing named-copy reuse | PASS: same named checkout, commit, branch and clean status; no remote clone/fetch/reset. |
+| Current-workspace continuation | Earlier native PASS, without another session approval. |
+| Strict approval-free one-click | NOT SATISFIED: the repository action still requires the App-owned folder approval. Accepted it only to test the target outcome; production never silently approves it. |
+| Fresh remote clone in native App | NOT RUN. Real Git clone and controlled browser clone-to-canvas checks remain distinct from desktop proof. |
+
+The current extension is an explicit installation prerequisite. Automatic
+prompt dispatch is unnecessary with the current target bootstrap.
+Runtime build hash:
+`c0677754d95cf2dee46211159dcb5bfc47f544c1f43e43c1a79fe1bdeb2357fd`.
+Private paths, repository identity and session IDs remain in session evidence.
+Native observation does not establish the separate G-HOST atomic contract.
+
+Final automated gates passed: 117 repository-entry tests, 95 original SDD/shared
+regressions, and 23 controlled Edge journeys; typecheck, package lint, generated
+runtime verification, extension syntax, editor diagnostics and whitespace checks
+also passed. Real Git coverage includes locked-folder migration, local-content
+preservation and explicit rollback-recovery failure; retained-ID tests block
+superseded operations. These remain separate from the native outcomes above.
+
+## 2026-10-12 Second-Approval Follow-Through
+
+The user explicitly requested continuation after the additional App approval.
+Since the preceding test had denied that dialog, approval was recreated using
+one explicit documented launcher call from the same reviewed checkout, then
+**Allow** was accepted. No prompt or canvas-opening control was invoked.
+
+- The App opened a new idle session bound to the reviewed existing checkout.
+- The left rail grouped it under the legacy operation-directory/checkout label,
+  not the repository name. This does not validate naming for fresh named clones.
+- No original SDD canvas pane/document or canvas tab appeared during the initial
+  eight-second and additional twenty-second observations.
+- Persisted launch status remained `requested` and canvas status `pending`; the
+  intent was still unexpired when checked during observation.
+- The target lacked the current project-local extension and the old global
+  extension remained unchanged. Automatic opening with a current target
+  installation is therefore still unverified, not disproved by this setup.
+- Checkout HEAD, branch and clean status were preserved. The target session was
+  left open; no workflow, setup, restart or repository modification occurred.
+
+This proves native second-approval session opening, but not a passing named-rail
+or automatic-canvas outcome in the installed target configuration. Private
+labels, paths and identity remain in the session report.
+
+## 2026-10-12 Final Scripted Native App Test
+
+This result supersedes the historical unexecuted/tool-unavailable notes below.
+Windows UI Automation operated the actual installed App; the separate browser
+connection did not need to attach to its desktop window.
+
+| Native check | Result |
+| --- | --- |
+| Exact current project-local extension | PASS: its chooser visibly loaded in the owned fixture session. |
+| Authenticated search and Spec Kit-enabled repository selection | PASS: native search returned the known test repository and selection offered reuse of its existing copy. |
+| Current-workspace continuation | PASS: one action opened the original dashboard, constitution and fixture feature/stage controls; zero additional session approvals. |
+| Existing-copy reuse and preservation | PASS: selection reviewed the existing checkout; HEAD, branch and clean status matched before/after. No existing copy was removed, moved or repaired to force cloning. |
+| Strict single-action remote opening | FAIL: one Open existing Spec Kit repository action was followed by the App's Open session? dialog for the reviewed checkout. |
+| Post-action approval | Not accepted. The additional request was denied after observing the failure. |
+| Remote target canvas and native session title | NOT VERIFIED: stopped at the extra approval; target current-build installation was not established. |
+| Fresh native clone-to-canvas | NOT RUN: real Git clone and controlled browser coverage remain distinct from native desktop proof. |
+| Source and environment preservation | PASS: source fixture remained clean at its baseline commit/branch; global extension unchanged; no App restart/update or workflow dispatched. |
+
+The initial owned-fixture folder approval was accepted only as test setup, before
+the measured repository action. The post-action approval is a separate, directly
+observed failure of the user's one-click criterion, not inferred from setup.
+No private paths, account data or repository contents are published here.
+
+The implementation therefore does **not** satisfy strict native one-click
+acceptance. The documented launcher has no approval-suppression or explicit
+session-title contract. UI Automation observes this limitation; it must not
+silently approve dialogs in production or be treated as G-HOST atomic proof.
+
+## 2026-10-12 Initial Scripted Native Desktop Observation
+
+A process-scoped Windows UI Automation inspection of the running Copilot App
+successfully read its real accessibility controls. A bounded walk found an
+on-screen **Open session?** dialog and enabled **Allow** button for the exact
+new current-payload sideload fixture. The earlier launcher submission was still
+waiting for folder approval, not proof of a loaded extension or visible canvas.
+
+At this initial observation, no approval was clicked, clone started, or canvas result asserted. This was native
+evidence of the initial sideload launch being blocked, not an observed post-clone
+journey. Clone-button-to-target-canvas acceptance was then **UNEXECUTED / NOT
+PASSED**. UI observation does not establish G-HOST atomic handoff. No other session
+was changed; private paths and control metadata remain in the session evidence.
+
+## 2026-10-12 Current-Payload Project Sideload
+
+Following explicit user authorization, the exact current verified runtime was
+sideloaded into a new owned synthetic Spec Kit Git repository using the documented
+`.github/extensions/sdd-canvas` location. Every copied file matched the staging
+manifest; no profile injection or global replacement occurred. `copilot app`
+was submitted once there and returned exit code 0. The App remained running,
+fixture status stayed clean, and the global extension hash stayed unchanged.
+Private fixture identity and hashes are retained in the session report.
+
+This is verified sideload plus launcher-submission evidence, **not visible desktop
+E2E acceptance**. The browser tools still control a separate browser. GitHub
+documents Computer Use for desktop interaction, but its tools are not exposed in
+this VS Code session; enabling an App/CLI session's Computer Use is separate from
+attaching Playwright to the desktop. No private debugger endpoint, native UI
+automation, approval bypass, forced restart, or manufactured activation was used.
+Strict single-click clone-to-canvas acceptance remains unverified.
+
+## 2026-10-12 Strict Real-App Single-Click Acceptance
+
+**BLOCKED / NOT VERIFIED, not passed.** The running installed desktop App was
+rechecked. The user-scoped extension still differs from the development payload;
+the available browser connection is not attached to the desktop App. There is
+no supported native click/observation surface available for the requested real
+clone-to-canvas journey. No new native launch or installation was performed.
+
+The earlier user-observed folder approval is an additional action. The documented
+launcher has no approval-suppression option, so strict one-click acceptance for a
+different cloned repository is not established. Passing automated journeys and
+once-only bootstrap tests are not desktop acceptance. Current-repository local
+opening does not prove the different-repository journey. No private IPC or native
+UI automation was used to manufacture that result.
+
+## 2026-10-12 Repository Naming And Existing-Copy Reuse
+
+New entry clones use a safe exact repository name beneath the managed root.
+Existing matching copies are reviewed and reverified rather than cloned again,
+preserving local commits, branch and dirty/untracked files without fetch/reset.
+Wrong-origin collisions and changes after consent reject without repair.
+Destination-level record/launch locks and latest-record selection guard reuse.
+A retained repository already current opens the original canvas locally, with
+zero native launcher calls in the coordinator test.
+
+| Check | Result |
+| --- | --- |
+| Entry typecheck, package lint and unit tests | PASS: 116 tests, zero failures. |
+| Real Git named clone/reuse | PASS: exactly one clone; local commit/branch/uncommitted content preserved; wrong-origin collision and post-review changes rejected. |
+| Original SDD and shared packaging regressions | PASS: 95 tests, zero failures. |
+| Repository browser journeys | PASS: 23 Edge journeys, including reselect/open-existing with clone count unchanged. |
+| Runtime package integrity | PASS: persisted runtime verified against current production sources. |
+| Changed shared-file lint, extension syntax and whitespace | PASS: focused lint supplies the actual Node/browser globals missing from shared config. |
+| Installed App | Running; documented launcher still exposes only current-directory opening, not title setting or approval suppression. |
+| Latest payload native session/canvas acceptance | NOT VERIFIED: neither global extension nor earlier launched fixture was replaced with this amendment. |
+
+Repository-named directories correct the basename for new clones, not a verified
+desktop session title. Older UUID-root checkouts remain in place. Host-owned
+folder approval for another repository cannot be suppressed using the documented
+launcher; local canvas entry avoids invoking that launcher at all.
+Reusing dirty files does not authorize an App-created linked worktree to omit
+them: target fingerprint mismatch still blocks automatic canvas opening without
+repair. No private IPC, native UI automation, global installation, commit or push.
+
+## 2026-10-12 Installed Desktop App Attempt
+
+With explicit fixture-staging approval, the development payload passed the existing
+staging verifier and was installed project-locally in an owned synthetic Spec Kit
+Git fixture. The documented `copilot app` command was submitted once from that
+fixture, returned exit code 0, and reported opening the session. The desktop App
+remained running; fixture Git status stayed clean and the older global extension
+hash was unchanged. Private fixture identity and hashes are in the session report.
+
+This is **launcher submission evidence only**. Available browser tools are not
+connected to the desktop App, and no supported desktop inspection/control surface
+is available. Folder approval, target session activation, extension loading,
+current-workspace canvas visibility, and clone-to-auto-open acceptance are
+**NOT VERIFIED**. No user-observed result was supplied; the user requested
+autonomous verification. No private IPC or native UI automation was used.
+The launched fixture is retained in case the App is using it.
+
+## 2026-10-11 Clone-And-Open Amendment
+
+The development branch implements disclosed **Clone and open Spec Kit** consent,
+one native App launch request after cloning, and once-only target extension
+bootstrap into the original direct canvas. The source session remains unchanged.
+Launcher completion and canvas RPC acknowledgment are tracked separately; neither
+is fabricated G-HOST atomic activation evidence.
+
+| Check | Result |
+| --- | --- |
+| Entry TypeScript, ESLint, unit tests | PASS: 112 tests, zero failures; typecheck and package lint pass. |
+| Original SDD and shared packaging regressions | PASS: 95 tests, zero failures. |
+| Repository entry browser journeys | PASS: 22 tests at 360, 768, 1280, and 1920 px, including new-session original-canvas and offline local entry. |
+| Real Git owned Spec Kit clone and linked worktree | PASS: actual local clone and registered worktree pass independent target verification; source branch/commit retained and dirty target rejected without repair. |
+| Two existing Spec Kit workspaces | PASS: five features each; filesystem/Git identity and ordinary binding verified read-only, with HEAD, branch/detached state, and dirty-file status unchanged. Host metadata was synthetic, not desktop App evidence. |
+| Native launcher detection | PASS on Windows: trusted installed native launcher found. No desktop launch submitted in this validation. |
+| Runtime build/package verification | PASS; built runtime and manifest persisted. |
+| Changed shared fixture lint and extension syntax | PASS. Full shared-reader lint reports five existing errors in unchanged exporter, preview runner, and asset synchronizer files; left out of scope. |
+| Actual desktop clone-to-session-to-canvas acceptance | NOT RUN: installed user extension is an older payload. No global extension replacement or private desktop automation performed. |
+| G-HOST atomic source-session switch | BLOCKED, unchanged. This amendment uses a new session, not an atomic source-session switch. |
+
+Native versions inspected: Copilot CLI 1.0.87-0, Copilot App 1.1.23, developer
+Node 24.19.0. The extension must already be installed in the target session;
+normal App folder approval remains required. No second model prompt, setup,
+workflow dispatch, commit, push, or deployment is part of repository entry.
+See the updated [entry guide](../../../docs/sdd-repository-browser.md) and
+[validation guide](../quickstart.md). Historical evidence below is retained.
+
 Date: 2026-09-21
 
 Branch: `plan/canvas-repository-discovery`
