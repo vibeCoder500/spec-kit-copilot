@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "kind": "sdd-repository-browser",
-  "sourceHash": "b7f465896dd8f9c2f41b40af68a5edcaa3bf61e1ed904c821dbf093d8d8ea744",
-  "buildHash": "c0677754d95cf2dee46211159dcb5bfc47f544c1f43e43c1a79fe1bdeb2357fd",
+  "sourceHash": "22e33624c50d22de21229b3d093fed260bc961444924d3c34fb2a817f649f4a1",
+  "buildHash": "a81abaa2f9f3b3d9973f23b1e51efdd6df6b8a72cf458a78de069532f7f6ea37",
   "sources": [
     {
       "path": "build-runtime.mjs",
@@ -34,7 +34,7 @@
     },
     {
       "path": "src/clone.ts",
-      "sha256": "ab03027d3c3e63d0c0b857f02ce3aef2a73c3d5a10e63571089b84fac31884c6"
+      "sha256": "cf8a52e0ec3a55c20ee1c29dad6af064048598a6f9fffda6af730903167c4531"
     },
     {
       "path": "src/continuations.ts",
@@ -74,7 +74,7 @@
     },
     {
       "path": "src/repository-service.ts",
-      "sha256": "15c7f3093f8d37a169ab886f32b1616e75830323701cb84a0c520adb76bd69f0"
+      "sha256": "a1e9f1ff51429b99194d7869446bbc3205729491dc82fb4ec8d198dfc6c587ae"
     },
     {
       "path": "src/ui/api.ts",
@@ -86,7 +86,7 @@
     },
     {
       "path": "src/ui/repository-entry.ts",
-      "sha256": "4987130d0f0149c187152bff071a8cdb236d274d2f4867c872dbca615d9bb29a"
+      "sha256": "34f5adb49fc528981de7a1bacbfded97d4ba85401d3bfcea94fda83aed9cc5e4"
     },
     {
       "path": "src/workspace-binding.ts",
@@ -263,13 +263,13 @@
     },
     {
       "path": "ui/repository-entry.js",
-      "bytes": 40538,
-      "sha256": "55a8db184ce399771fde17795e3f032071497b66c6005621a26dd5b140c78ca5"
+      "bytes": 42174,
+      "sha256": "7e2cec1b5f0f7ca132a2346a28979da2f2b4b26701b85f13bbd36ea70ac1a5a0"
     },
     {
       "path": "vendor/repository-browser/server.mjs",
-      "bytes": 1027066,
-      "sha256": "bed765be27bb4855d61e9faf1958ca4ca34499f6f87bb138bb14dd86b5e98990"
+      "bytes": 1029995,
+      "sha256": "4c01e9f89a1a36ebb87a330fd2ff4fa9f8e93f6ecc8e3ea65abb45ffb6ac4bca"
     },
     {
       "path": "vendor/repository-browser/THIRD_PARTY_NOTICES.txt",

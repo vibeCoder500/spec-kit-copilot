@@ -180,6 +180,128 @@ test("Existing name collisions are preserved and do not trigger a clone", () => 
     assert.equal(await readFile(join(destination, "user.txt"), "utf8"), "Preserve");
 }));
 
+test("Real Git copy choices clone the reviewed remote into numbered destinations and preserve all existing checkouts", async () => {
+    const home = await realpath(await mkdtemp(join(tmpdir(), "sdd-native-copy-")));
+    const seed = join(home, "seed");
+    await mkdir(join(seed, ".specify", "memory"), { recursive: true });
+    await writeFile(join(seed, ".specify", "memory", "constitution.md"), "# Owned remote constitution\n");
+    const executable = await findGitExecutable(home);
+    const git = (args: string[], cwd = seed) => execFileSync(executable, ["-c", "core.autocrlf=false", "-c", "core.hooksPath=",
+        "-c", "user.name=Owned Test", "-c", "user.email=owned@example.invalid", ...args],
+    { cwd, encoding: "utf8", windowsHide: true, stdio: ["ignore", "pipe", "pipe"] }).trim();
+    const remote = `https://dev.azure.com/Synthetic/Project/_git/${repositoryId}`;
+    const calls: GitExecution[] = [];
+    let service: ReturnType<typeof cloneModule.createEntryCloneService> | undefined;
+    try {
+        git(["init", "-b", "main"]); git(["add", "."]); git(["commit", "-m", "Owned remote fixture"]);
+        const commit = git(["rev-parse", "HEAD"]);
+        const snapshot: HostWorkspaceSnapshot = { sessionId: "source", contextRevision: "source", workingDirectory: home,
+            activity: "idle", activityRevision: "idle", capabilityGeneration: "test",
+            capabilities: { localCanvas: true, atomicPreparation: true, atomicHandoff: false, targetAcknowledgment: false, handoffReconciliation: false } };
+        const host: HostHandoffAdapter = { inspectCurrent: async () => snapshot, admitPreparation: async (_input, start) => start(),
+            openCurrentCanvas: async () => assert.fail("No implicit canvas"), handoffPrepared: async () => assert.fail("No handoff"),
+            getHandoffOutcome: async () => assert.fail("No handoff"), dispose() {} };
+        const connection = { snapshot: () => ({ accountLabel: "owned@example.invalid" }), access: async () => ({ accessToken: "synthetic",
+            tenantId: profile.tenantId, accountId: "account", connectionId: "connection", generation: 1,
+            signal: new AbortController().signal, assertCurrent() {} }) } as unknown as RepositoryConnection;
+        service = cloneModule.createEntryCloneService({ host, connection, profile, homeDirectory: home, workspacePath: home, executable,
+            readSource: async () => ({ ...source, sourceVersion: commit }), runner: async input => {
+                calls.push(input);
+                if (input.args.includes("clone")) {
+                    const args = [...input.args]; args[args.length - 2] = seed;
+                    await runGit({ ...input, args: ["-c", "protocol.file.allow=always", ...args] });
+                    git(["remote", "set-url", "origin", remote], input.args.at(-1)!);
+                    return "";
+                }
+                return runGit(input);
+            } });
+        const original = await service.confirm("selection", snapshot);
+        assert.equal(original.copyDestination, undefined);
+        await assert.rejects(service.start(original.operationId, original.confirmation, "forged-copy", "copy"), { code: "invalid_request" });
+        assert.equal(calls.length, 0);
+        await service.start(original.operationId, original.confirmation, "original");
+        await service.completion(original.operationId);
+        git(["checkout", "-b", "local-work"], original.destination);
+        await writeFile(join(original.destination, "local-committed.txt"), "Local commit\n");
+        git(["add", "."], original.destination); git(["commit", "-m", "Owned local work"], original.destination);
+        const localCommit = git(["rev-parse", "HEAD"], original.destination);
+        await writeFile(join(original.destination, "local-notes.txt"), "Uncommitted local notes\n");
+        const localStatus = git(["status", "--porcelain=v1", "--untracked-files=all"], original.destination);
+        const store = createPreparationStore({ homeDirectory: home });
+        const originalRecord = await store.read(original.operationId);
+        for (const [index, suffix] of ["-Copy", "-Copy-2"].entries()) {
+            const beforeReview = calls.length;
+            const preview = await service.confirm("selection", snapshot);
+            assert.equal(preview.reused, true);
+            assert.equal(preview.destination, original.destination);
+            assert.equal(preview.checkoutCommit, localCommit);
+            assert.equal(preview.copyDestination, `${original.destination}${suffix}`);
+            assert(calls.slice(beforeReview).every(call => !call.args.some(arg => ["clone", "checkout", "fetch", "reset", "clean"].includes(arg))));
+            const requestId = `copy-${index}`;
+            await Promise.all([service.start(preview.operationId, preview.confirmation, requestId, "copy"),
+                service.start(preview.operationId, preview.confirmation, requestId, "copy")]);
+            await service.completion(preview.operationId);
+            await assert.rejects(service.start(preview.operationId, preview.confirmation, requestId, "reuse"), { code: "clone_conflict" });
+            const copied = await store.read(preview.operationId);
+            assert.equal(service.status(preview.operationId).state, "prepared");
+            assert.equal(copied.destination, preview.copyDestination);
+            assert.equal(copied.sourceCommit, commit);
+            assert.equal(copied.reused, undefined);
+            assert.equal(copied.branch, `refs/heads/speckit/canvas-${preview.operationId}`);
+            assert.equal(git(["rev-parse", "HEAD"], copied.destination), commit);
+            assert.equal(git(["status", "--porcelain=v1", "--untracked-files=all"], copied.destination), "");
+            await assert.rejects(readFile(join(copied.destination, "local-notes.txt")), { code: "ENOENT" });
+            await verifyAppCanvasRepository({ record: copied, workspacePath: copied.destination, homeDirectory: home, executable });
+            assert.equal(git(["rev-parse", "HEAD"], original.destination), localCommit);
+            assert.equal(git(["symbolic-ref", "--short", "HEAD"], original.destination), "local-work");
+            assert.equal(git(["status", "--porcelain=v1", "--untracked-files=all"], original.destination), localStatus);
+            assert.equal(await readFile(join(original.destination, "local-notes.txt"), "utf8"), "Uncommitted local notes\n");
+            assert.equal(calls.filter(call => call.args.includes("clone")).length, index + 2);
+        }
+        assert.equal((await store.list()).items.length, 3);
+        const race = await service.confirm("selection", snapshot);
+        assert.equal(race.copyDestination, `${original.destination}-Copy-3`);
+        await mkdir(race.copyDestination!);
+        await writeFile(join(race.copyDestination!, "user.txt"), "Preserve concurrent destination\n");
+        await service.start(race.operationId, race.confirmation, "occupied-after-review", "copy");
+        await service.completion(race.operationId);
+        assert.equal(service.status(race.operationId).error, "existing_repository_conflict");
+        assert.equal(await readFile(join(race.copyDestination!, "user.txt"), "utf8"), "Preserve concurrent destination\n");
+        assert.equal(calls.filter(call => call.args.includes("clone")).length, 3);
+        const numbered = await service.confirm("selection", snapshot);
+        assert.equal(numbered.copyDestination, `${original.destination}-Copy-4`);
+        service.cancel(numbered.operationId);
+        const preserved = join(home, "saved-original");
+        await rename(original.destination, preserved);
+        const newOriginal = await service.confirm("selection", snapshot);
+        assert.equal(newOriginal.destination, original.destination);
+        assert.equal(newOriginal.reused, undefined);
+        assert.equal(newOriginal.copyDestination, undefined);
+        assert.equal(git(["rev-parse", "HEAD"], preserved), localCommit);
+        assert.equal((await store.list()).items.length, 2);
+        const legacyRoot = join(home, "SpecKitCanvas", "repositories", original.operationId);
+        const legacyCheckout = join(legacyRoot, "checkout");
+        await rename(preserved, legacyCheckout);
+        await writeFile(join(legacyRoot, ".sdd-clone-owner.json"), JSON.stringify({
+            kind: "sdd-repository-clone", operationId: original.operationId,
+        }));
+        const originalRecordPath = join(home, ".speckit-canvas", "preparations", `${original.operationId}.json`);
+        await writeFile(originalRecordPath, JSON.stringify({ ...originalRecord,
+            destination: legacyCheckout, gitCommonDirectory: join(legacyCheckout, ".git") }));
+        const legacyCopy = await service.confirm("selection", snapshot);
+        assert.equal(legacyCopy.migrateFrom, legacyCheckout);
+        assert.equal(legacyCopy.copyDestination, `${original.destination}-Copy-4`);
+        await service.start(legacyCopy.operationId, legacyCopy.confirmation, "copy-without-migration", "copy");
+        await service.completion(legacyCopy.operationId);
+        assert.equal(service.status(legacyCopy.operationId).state, "prepared");
+        assert.equal(service.status(legacyCopy.operationId).migrateFrom, undefined);
+        assert.equal(git(["rev-parse", "HEAD"], legacyCheckout), localCommit);
+        assert.equal(git(["status", "--porcelain=v1", "--untracked-files=all"], legacyCheckout), localStatus);
+        await assert.rejects(readFile(join(original.destination, ".specify", "memory", "constitution.md")), { code: "ENOENT" });
+        assert.equal(calls.filter(call => call.args.includes("clone")).length, 4);
+    } finally { service?.dispose(); await service?.settled(); await rm(home, { recursive: true, force: true }); }
+});
+
 async function fixture(run: (value: { home: string; service: ReturnType<typeof createCloneService>; calls: GitExecution[]; switchAccount(): void; deny(): void }) => Promise<void>) {
     const home = await mkdtemp(join(tmpdir(), "sdd-clone-test-"));
     let generation = 1;

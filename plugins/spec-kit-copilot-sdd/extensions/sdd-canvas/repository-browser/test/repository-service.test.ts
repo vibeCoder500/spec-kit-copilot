@@ -215,11 +215,15 @@ test("Local entry rejects missing repositories, wrong context and changed openin
 test("Entry preparation routes accept only opaque bindings and preserve guarded mutation statuses", async () => {
     const operationId = "a".repeat(32);
     let calls = 0;
+    const cloneModes: string[] = [];
     let failure: ConstructorParameters<typeof RepositoryError>[0] | undefined;
     const handleEntry = Reflect.get(repositoryModule, "handleEntryRequest");
     const entry = { state: async () => ({}), local: async () => ({}),
         select: async (repository: string, context: string) => { calls++; return { repository, context, selectionId: "selection" }; },
-        clone: async () => { calls++; if (failure) throw new RepositoryError(failure); return { operationId, state: "preparing" }; },
+        clone: async (...args: [string, string, string, ("reuse" | "copy")?]) => {
+            calls++; cloneModes.push(args[3]!);
+            if (failure) throw new RepositoryError(failure); return { operationId, state: "preparing" };
+        },
         operation: async (id: string) => { if (id !== operationId) throw new RepositoryError("resource_unavailable"); return { operationId, state: "preparing" }; },
         cancel: async (id: string, requestId: string) => { calls++; return { operationId: id, requestId, state: "cancelled" }; },
         preparations: async () => ({ items: [] }),
@@ -236,6 +240,8 @@ test("Entry preparation routes accept only opaque bindings and preserve guarded 
         const consent = { selectionId: "selection", confirmation: "nonce", requestId: "request" };
         assert.equal((await post("clone", consent)).status, 202);
         assert.equal((await post("clone", consent)).status, 202);
+        assert.equal((await post("clone", { ...consent, mode: "copy" })).status, 202);
+        assert.deepEqual(cloneModes, ["reuse", "reuse", "copy"]);
         for (const [code, status] of [["session_busy", 409], ["activity_unknown", 412], ["host_handoff_unsupported", 412], ["source_changed", 409], ["confirmation_expired", 409]] as const) {
             failure = code;
             const response = await post("clone", consent);
@@ -243,7 +249,8 @@ test("Entry preparation routes accept only opaque bindings and preserve guarded 
             assert.equal((await response.json()).error.code, code);
         }
         const previous = calls;
-        for (const extra of [{ destination: "/private" }, { sourceCommit: "a".repeat(40) }, { sessionId: "forged" }, { supported: true }, { targetBranch: "refs/heads/forged" }]) {
+        for (const extra of [{ destination: "/private" }, { copyDestination: "/private" }, { sourceCommit: "a".repeat(40) },
+            { sessionId: "forged" }, { supported: true }, { targetBranch: "refs/heads/forged" }, { mode: "invalid" }, { mode: null }, { mode: true }]) {
             assert.equal((await post("clone", { ...consent, ...extra })).status, 400);
         }
         assert.equal(calls, previous);
@@ -329,6 +336,7 @@ async function handoffFixture(run: (proof: {
     let beforeAppLaunch: () => void = () => undefined;
     const appLaunches: { workspacePath: string; destination: string }[] = [];
     const counts = { clones: 0, transitions: 0, opens: 0, lookups: 0 };
+    const branches = new Map<string, string>();
     const events: string[] = [];
     const store = createPreparationStore({ homeDirectory: home });
     const snapshot = (): HostWorkspaceSnapshot => ({ sessionId: "owned-session", contextRevision: revision, workingDirectory: currentDirectory,
@@ -380,12 +388,10 @@ async function handoffFixture(run: (proof: {
         } },
         inspectWorkspace: async path => ({ workingDirectory: path, worktreeRoot: path, gitCommonDirectory: join(path, ".git"), origin: currentOrigin, head: "a".repeat(40), branch: "refs/heads/original" }),
         cloneOptions: { homeDirectory: home, executable: join(home, "trusted-git"), runner: async ({ args, cwd }) => {
+            if (args.includes("checkout") && args.includes("-b")) branches.set(cwd, args[args.indexOf("-b") + 1]!);
             if (args.includes("clone")) { counts.clones++; await mkdir(join(args.at(-1)!, ".git"), { recursive: true }); afterClone(); return ""; }
             if (args.includes("get-url")) return `https://dev.azure.com/Synthetic/Project/_git/${repositoryId}`;
-            if (args.includes("symbolic-ref")) {
-                const entries = await readdir(join(home, "SpecKitCanvas", "repositories"));
-                return `speckit/canvas-${entries.find(name => /^[a-f0-9]{32}$/.test(name))}`;
-            }
+            if (args.includes("symbolic-ref")) return branches.get(cwd)!;
             if (args.includes("--git-common-dir")) return join(cwd, ".git");
             if (args.includes("HEAD")) return "a".repeat(40);
             return "";
@@ -479,6 +485,80 @@ test("Opening the already-current retained checkout opens locally without anothe
     assert.equal((await record(operationId)).appCanvas, undefined);
     assert.equal((await entry.state()).phase, "ready");
 }, { cloneOnly: true }));
+
+test("Selecting an existing managed checkout offers new-session reuse even when it is already current", () => handoffFixture(async ({
+    entry, prepare, counts, record, appLaunches, setCurrentCheckout, setAppAvailable,
+}) => {
+    const originalId = await prepare();
+    const original = await record(originalId);
+    setCurrentCheckout(original.destination);
+    setAppAvailable(true);
+    const state = await entry.state();
+    const selection = await entry.select(repositoryId, state.localContext.contextId);
+    assert.equal(selection.matchesCurrentWorkspace, true);
+    assert.equal(selection.reused, true);
+    assert.equal(selection.openInApp, true);
+    assert.equal(selection.destination, original.destination);
+    assert.equal(selection.copyDestination, `${original.destination}-Copy`);
+    assert.ok(selection.confirmation);
+    await entry.clone(selection.selectionId, selection.confirmation, "existing-new-session");
+    await entry.settled();
+    assert.deepEqual(appLaunches, [{ workspacePath: original.destination, destination: original.destination }]);
+    assert.equal((await record(selection.operationId)).appCanvas?.canvasStatus, "pending");
+    assert.equal((await entry.state()).localContext.contextId, state.localContext.contextId);
+    assert.equal(counts.clones, 1);
+    assert.equal(counts.opens, 0);
+}, { cloneOnly: true }));
+
+test("Copy choice opens a separate named checkout and retains the original preparation", () => handoffFixture(async ({
+    entry, prepare, counts, record, appLaunches, setCurrentCheckout, setAppAvailable,
+}) => {
+    const originalId = await prepare();
+    const original = await record(originalId);
+    setCurrentCheckout(original.destination);
+    setAppAvailable(true);
+    for (const [index, suffix] of ["-Copy", "-Copy-2"].entries()) {
+        const state = await entry.state();
+        const selection = await entry.select(repositoryId, state.localContext.contextId);
+        assert.equal(selection.destination, original.destination);
+        assert.equal(selection.copyDestination, `${original.destination}${suffix}`);
+        assert.ok(selection.confirmation);
+        const requestId = `copy-${index}`;
+        const accepted = await entry.clone(selection.selectionId, selection.confirmation, requestId, "copy");
+        await entry.clone(selection.selectionId, selection.confirmation, requestId, "copy");
+        await assert.rejects(entry.clone(selection.selectionId, selection.confirmation, requestId, "reuse"), { code: "clone_conflict" });
+        await entry.settled();
+        const copy = await record(accepted.operationId);
+        assert.equal(copy.destination, selection.copyDestination);
+        assert.equal(copy.reused, undefined);
+        assert.equal(copy.appCanvas?.canvasStatus, "pending");
+        assert.equal(copy.appCanvas?.sourceSessionId, "owned-session");
+        assert.deepEqual(appLaunches[index], { workspacePath: original.destination, destination: copy.destination });
+        assert.equal((await entry.state()).localContext.contextId, state.localContext.contextId);
+    }
+    const retained = await entry.preparations();
+    assert.deepEqual(retained.items.map(item => item.destination).sort(),
+        [original.destination, `${original.destination}-Copy`, `${original.destination}-Copy-2`].sort());
+    assert.equal(counts.clones, 3);
+    assert.equal(counts.opens, 0);
+    assert.equal(counts.transitions, 0);
+    assert.equal((await record(originalId)).appCanvas, undefined);
+}, { cloneOnly: true }));
+
+test("A forged copy choice without an existing checkout cannot consume normal clone consent", () => handoffFixture(async ({
+    entry, counts, appLaunches,
+}) => {
+    const state = await entry.state();
+    const selection = await entry.select(repositoryId, state.localContext.contextId);
+    assert.equal(selection.copyDestination, null);
+    assert.ok(selection.confirmation);
+    await assert.rejects(entry.clone(selection.selectionId, selection.confirmation, "forged-copy", "copy"), { code: "invalid_request" });
+    assert.equal(counts.clones, 0);
+    await entry.clone(selection.selectionId, selection.confirmation, "normal-clone");
+    await entry.settled();
+    assert.equal(counts.clones, 1);
+    assert.equal(appLaunches.length, 1);
+}, { cloneOnly: true, appAvailable: true }));
 
 test("Explicit checkout opening reuses one authorized launch and never clones or hands off", () => handoffFixture(async ({ entry, prepare, counts, record, appLaunches, setAppAvailable }) => {
     const operationId = await prepare();

@@ -162,7 +162,8 @@ export async function startFixture({ canvas, pluginRoot, markdown, allowMutation
                 if (code !== undefined && !["app_launch_failed", "app_launch_unknown"].includes(code)) throw new Error("Unknown synthetic launch outcome.");
                 appLaunchError = code;
             },
-            targetUrl: () => [...targetEntries.values()].find(target => target.workspacePath !== fixture.workspace)?.url ?? null,
+            targetUrl: (destination) => [...targetEntries.values()].find(target => target.workspacePath !== fixture.workspace &&
+                (destination === undefined || target.workspacePath === destination))?.url ?? null,
             currentUrl: () => [...targetEntries.values()].find(target => target.workspacePath === fixture.workspace)?.url ?? null,
             dispatchCount: () => dispatches,
             blockedWrites: () => deniedWrites,

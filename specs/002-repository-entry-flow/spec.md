@@ -21,9 +21,18 @@ the isolated clone must never retarget or modify that work.
 
 ### Session 2026-10-12
 
+- Existing-checkout choice amendment: a verified matching managed checkout offers
+  primary **Open existing in new session** and secondary **Clone another copy
+  (-Copy)**. The primary requests a new App session, including when that managed
+  checkout is already current; the independent **Use current workspace** and
+  retained-current-checkout routes still open locally.
+- User decision: occupied `-Copy` destinations use the first available numbered
+  name (`-Copy-2`, `-Copy-3`, ...). Review the exact copy destination and remote
+  default-branch commit before consent. The copy is a fresh remote clone, not a
+  copy of local changes. Never overwrite or silently renumber after confirmation.
 - New clone destinations use the repository's safe exact name under the managed
-  repositories root. Reuse an existing verified matching copy instead of cloning
-  again; preserve its local commit, branch, and dirty files without fetch/reset.
+  repositories root. Default to reusing an existing verified matching copy;
+  preserve its local commit, branch, and dirty files without fetch/reset.
   Review the local commit, bind its fingerprint to consent, and reject collisions
   or post-review changes without modifying existing content.
 - If the retained repository is already current, open the original canvas
@@ -322,9 +331,9 @@ entry, with actual session and canvas targets verified in each case.
 - **FR-005**: Selecting a search result MUST NOT clone, initialize, open workflows,
   or replace the active session's workspace.
 - **FR-006**: Before cloning, the user MUST see the selected repository, account,
-  branch/revision, and default clone destination and explicitly choose **Confirm
-  and clone**.
-- **FR-007**: A confirmed clone MUST use the displayed default managed destination
+  branch/revision, and chosen clone destination and explicitly confirm the clone
+  action (**Confirm and clone**, **Clone and open Spec Kit**, or the copy action).
+- **FR-007**: A confirmed clone MUST use the displayed chosen managed destination
   without requiring a directory picker and MUST NOT overwrite existing content.
 - **FR-008**: Each confirmation MUST authorize at most one clone and MUST become
   invalid if its account, repository, source revision, or session context changes.
@@ -377,7 +386,8 @@ entry, with actual session and canvas targets verified in each case.
   when idle; a new explicit user action is required. An already-running clone may
   finish, but its handoff MUST wait for the same idle-session and consent checks.
 - **FR-019**: Selecting the current session's repository MUST offer local
-  continuation rather than require another clone.
+  continuation rather than require another clone. A matching managed checkout
+  MAY additionally offer explicit new-session reuse and a separate copy clone.
 - **FR-020**: Authentication secrets MUST remain outside displayed URLs, files,
   screenshots, reports, prompts, and repository contents.
 - **FR-021**: Stale selection, confirmation, or session state MUST be rejected
@@ -387,6 +397,12 @@ entry, with actual session and canvas targets verified in each case.
   paths, alongside automated regression coverage.
 - **FR-023**: The delivery report MUST distinguish actual-host evidence from
   synthetic checks and identify any blocked or unverified requirement explicitly.
+- **FR-024**: A verified existing managed checkout MUST offer primary new-session
+  reuse and secondary fresh cloning into a displayed `-Copy` or numbered-copy
+  destination when preparation is available. The original checkout MUST remain
+  unchanged. Consent MUST bind the selected action and exact destination;
+  duplicates MUST NOT switch actions or create another clone. Occupied
+  destinations after review MUST reject without overwriting or renumbering.
 
 ### Key Entities *(include if feature involves data)*
 

@@ -3,8 +3,18 @@
 ## 2026-10-12 Naming And Reuse Acceptance
 
 - Verify a fresh clone uses the exact safe repository basename in the managed
-  root. Reselect it and confirm **Open existing Spec Kit repository**: clone count
+  root. Reselect it and confirm primary **Open existing in new session**: clone count
   stays one, and local commits, branch and dirty files remain unchanged.
+- Verify secondary **Clone another copy (-Copy)** is visibly secondary and shows
+  its exact destination and remote default-branch commit before confirmation.
+  Clone into `-Copy`, then `-Copy-2`; verify independent records and original
+  target canvases, source preservation and no workflow dispatch.
+- Occupy the reviewed copy path after selection: verify rejection, no overwrite
+  and no hidden renumbering. Reselect to review the next available name. Replaying
+  an accepted request with a different mode must reject without another clone.
+- When the managed original is already current, primary reuse must still request
+  a distinct session. **Use current workspace** and retained-current-checkout
+  opening remain local and must not acquire a session-approval dependency.
 - Verify wrong-origin name collisions and changes after review stop without
   repairing or overwriting existing content. Pending/unknown launches must block
   duplicate preparation.

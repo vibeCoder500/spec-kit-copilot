@@ -13,8 +13,25 @@ and target canvas acknowledgment are separate states. See the
 [acceptance report](../specs/002-repository-entry-flow/evidence/acceptance.md).
 
 New clones use `~/SpecKitCanvas/repositories/<repository-name>`. If a verified
-matching copy exists, **Open existing Spec Kit repository** reuses it in place
-without fetching, resetting, or changing local files, commits, or branches.
+matching copy exists, the chooser offers two actions:
+
+- **Open existing in new session** (primary): reuse the existing checkout without
+  fetching, resetting, or changing local files, commits, or branches. With the
+  supported App launcher, this requests a new session even if that managed
+  checkout is already current, and the target extension opens the original canvas.
+- **Clone another copy (-Copy)** (secondary): clone the reviewed remote
+  default-branch commit, not the existing checkout's local changes, into
+  `<repository-name>-Copy`. If occupied, use the first available numbered name
+  such as `<repository-name>-Copy-2` or `<repository-name>-Copy-3`.
+
+Both destinations and the copy's remote commit are displayed before confirmation.
+One confirmation starts only the chosen action; duplicate requests cannot switch
+choices or start another clone. If the copy destination becomes occupied after
+review, preparation fails without overwriting it or silently choosing a new path.
+Reselect the repository to review the next available name. Without the supported
+launcher, existing-checkout verification and copy cloning retain their copyable
+paths rather than promise a new session.
+
 Unrelated name collisions are rejected, not overwritten. Selection discloses
 migration of a verified older UUID/checkout copy to the repository-named folder.
 If an older Windows session prevents moving it, a verified local copy is made

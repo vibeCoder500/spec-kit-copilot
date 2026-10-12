@@ -1,5 +1,38 @@
 # Repository Entry Implementation Evidence
 
+## 2026-10-12 Existing-Checkout Primary/Secondary Choices
+
+Implemented primary **Open existing in new session** and secondary **Clone another
+copy (-Copy)** for verified matching managed checkouts. The user chose numbered
+destinations when occupied: `-Copy`, `-Copy-2`, `-Copy-3`, etc. Both paths and the
+copy's remote commit are reviewed before consent. Reuse preserves local work;
+the secondary action is a fresh clone of the remote commit. Requests cannot
+switch modes after admission, overwrite an occupied path, or silently renumber.
+
+| Check | Result |
+| --- | --- |
+| Actual native Git copy behavior | PASS: independent copies of the reviewed remote, original local commit/branch/dirty-file preservation, numbered destinations and collision rejection. |
+| Current managed original | PASS in coordinator tests: primary reuse requests a distinct session rather than taking the local shortcut. |
+| API consent and retained records | PASS: one request/mode; forged paths or modes and mode-switch replays reject; original and copy records remain independent. |
+| Responsive UI and copy target | PASS: primary/secondary order/style, exact disclosed destinations, original copy-root/features and no workflow dispatch at four viewport widths. |
+| Automated gates | PASS: 121 entry tests, 95 original SDD/shared regressions, 27 complete Edge journeys and five final focused UI journeys; typecheck, lint, package, syntax, diagnostics and whitespace checks. |
+| New native desktop choices | BLOCKED / NOT VERIFIED: the named source's ordinary canvas stayed on `Loading canvas...`; scoped reopen could not continue when native foreground input became unavailable. No primary or secondary action was invoked. |
+| Native original/copy state | Original clean commit/branch preserved; no native copy clone started or copy folder created. |
+
+The first complete browser run alongside other checks observed one
+`invalid_context` failure in an existing bootstrap journey. Five isolated
+repeats and the later complete 27-journey run passed; the transient cause is not
+established. No production guard was weakened. Copy tests now select their exact
+destination-specific fixture target rather than the first previously opened
+canvas, avoiding a misleading earlier-target assertion.
+
+Current runtime build hash:
+`a81abaa2f9f3b3d9973f23b1e51efdd6df6b8a72cf458a78de069532f7f6ea37`.
+The earlier native passes below are preceding-build evidence, not acceptance of
+these new controls. No App restart/update, private IPC, prompt/workflow,
+approval-policy change, or GUID test group was used for this attempt.
+Private installation and observation details remain in session evidence.
+
 ## 2026-10-12 Current Build: Named Rail And Automatic Canvas
 
 This result supersedes the stale-target naming/canvas observations below.

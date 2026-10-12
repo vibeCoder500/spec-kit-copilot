@@ -16,6 +16,8 @@ export interface PreparationSource {
     repository: RepositorySummary;
 }
 
+export type CloneMode = "reuse" | "copy";
+
 export interface CloneState {
     operationId: string;
     state: "awaiting_confirmation" | "preparing" | "verifying" | "prepared_for_manual_open" | "prepared" | "cancelled" | "failed";
@@ -29,6 +31,7 @@ export interface CloneState {
     reused?: boolean;
     checkoutCommit?: string;
     migrateFrom?: string;
+    copyDestination?: string;
 }
 
 interface Operation {
@@ -45,6 +48,7 @@ interface Operation {
     existing?: { head: string; branch: string; origin: string; fingerprint: string };
     checkoutCreated?: boolean;
     migrated?: boolean;
+    mode?: CloneMode;
 }
 
 export interface GitExecution {
@@ -67,6 +71,16 @@ export function repositoryFolderName(name: string) {
         name === "." || name === ".." || /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(name) ||
         /^[a-f0-9]{32}$/i.test(name)) throw new RepositoryError("invalid_repository_name");
     return name;
+}
+
+async function availableCopyDestination(parent: string, folder: string) {
+    const entries = await readdir(parent);
+    if (entries.length > 100_000) throw new RepositoryError("clone_conflict");
+    const occupied = new Set(entries.map(name => name.toLowerCase()));
+    let index = 1;
+    let name = `${folder}-Copy`;
+    while (occupied.has(name.toLowerCase())) name = `${folder}-Copy-${++index}`;
+    return join(parent, name);
 }
 
 async function existingCheckout(destination: string, remote: string, namedRemote: string, git: string, runner: GitRunner, home: string) {
@@ -425,7 +439,8 @@ export function createCloneService({ readSource, connection, profile, workspaceP
                 item.record.profileFingerprint === digest(JSON.stringify(profile)) &&
                 item.record.accountKey === digest(JSON.stringify([access.tenantId, access.accountId])));
             const named = matchingRecords.filter(item => item.destination === destination);
-            const matching = named.length ? named : matchingRecords;
+            const matching = named.length ? named : matchingRecords.filter(item => basename(item.destination) === "checkout" &&
+                operationIdPattern.test(basename(dirname(item.destination))) && dirname(dirname(item.destination)) === parent);
             if (matching.length > 1) throw new RepositoryError("existing_repository_conflict");
             let migrateFrom: string | undefined;
             if (onPrepared && matching[0] && matching[0].destination !== destination) {
@@ -452,21 +467,34 @@ export function createCloneService({ readSource, connection, profile, workspaceP
             const confirmation = randomBytes(32).toString("base64url");
             const state: CloneState = { operationId, state: "awaiting_confirmation", repositoryName: source.repository.name,
                 sourceCommit: source.sourceVersion, branch: source.repository.defaultBranch, localBranch: existing?.branch ?? `speckit/canvas-${operationId}`,
-                destination, ...(migrateFrom ? { migrateFrom } : {}), ...(existing ? { reused: true, checkoutCommit: existing.head } : {}) };
+                destination, ...(migrateFrom ? { migrateFrom } : {}), ...(existing ? { reused: true, checkoutCommit: existing.head,
+                    ...(onPrepared ? { copyDestination: await availableCopyDestination(parent, folder) } : {}) } : {}) };
             for (const [key, operation] of operations) if (!operation.completion && operation.expiresAt <= now()) operations.delete(key);
             if (operations.size >= 32) throw new RepositoryError("clone_conflict");
             operations.set(operationId, { public: state, source, contextId, confirmation: digest(confirmation), account: identity(access), expiresAt: now() + 120_000, existing });
             return { ...state, confirmation, accountLabel: connection.snapshot().accountLabel ?? "Microsoft account" };
         },
-        async start(operationId: string, confirmation: string) {
+        async start(operationId: string, confirmation: string, mode: CloneMode = "reuse") {
             if (disposed || !operationIdPattern.test(operationId)) throw new RepositoryError("clone_conflict");
             const operation = operations.get(operationId);
             if (!operation || !sameSecret(confirmation, operation.confirmation)) throw new RepositoryError("clone_conflict");
+            if (mode !== "reuse" && mode !== "copy") throw new RepositoryError("invalid_request");
             const access = await connection.access();
             if (operation.account !== identity(access)) throw new RepositoryError("invalid_context");
-            if (operation.completion) return { ...operation.public };
+            if (operation.completion) {
+                if (operation.mode !== mode) throw new RepositoryError("clone_conflict");
+                return { ...operation.public };
+            }
             if (operation.public.state === "cancelled") throw new RepositoryError("clone_cancelled");
             if (active || operation.expiresAt <= now()) throw new RepositoryError("clone_conflict");
+            if (mode === "copy") {
+                if (!operation.existing || !operation.public.copyDestination) throw new RepositoryError("invalid_request");
+                operation.public = { ...operation.public, destination: operation.public.copyDestination, localBranch: `speckit/canvas-${operationId}` };
+                delete operation.public.reused; delete operation.public.checkoutCommit; delete operation.public.migrateFrom;
+                operation.existing = undefined;
+            }
+            operation.mode = mode;
+            delete operation.public.copyDestination;
             operation.controller = new AbortController(); active = operation;
             update(operation, "preparing");
             operation.completion = prepare(operation);
@@ -508,7 +536,7 @@ export function createEntryCloneService({ host, readSource, connection, profile,
     onChange?: () => void;
 }) {
     type Consent = { selectionId: string; source: PreparationSource; expected: HostWorkspaceSnapshot; account: string; accountKey: string;
-        digest: string; createdAt: number; expiresAt: number; requestId?: string; start?: Promise<CloneState>; revoked: boolean };
+        digest: string; createdAt: number; expiresAt: number; requestId?: string; mode?: CloneMode; start?: Promise<CloneState>; revoked: boolean };
     const consents = new Map<string, Consent>();
     const store = createPreparationStore({ homeDirectory });
     const profileFingerprint = digest(JSON.stringify(profile));
@@ -546,19 +574,21 @@ export function createEntryCloneService({ host, readSource, connection, profile,
                 digest: digest(preview.confirmation), createdAt, expiresAt: createdAt + 120_000, revoked: false });
             return { ...preview, expiresAt: createdAt + 120_000 };
         },
-        async start(operationId: string, confirmation: string, requestId: string) {
+        async start(operationId: string, confirmation: string, requestId: string, mode: CloneMode = "reuse") {
             const consent = consents.get(operationId);
             if (disposed || !consent || !requestId || requestId.length > 256 || !sameSecret(confirmation, consent.digest)) throw new RepositoryError("clone_conflict");
+            if (mode !== "reuse" && mode !== "copy") throw new RepositoryError("invalid_request");
+            if (mode === "copy" && !consent.start && !core.status(operationId).copyDestination) throw new RepositoryError("invalid_request");
             const access = await connection.access();
             if (identity(access) !== consent.account) throw new RepositoryError("invalid_context");
             if (consent.start) {
-                if (consent.requestId !== requestId) throw new RepositoryError("clone_conflict");
+                if (consent.requestId !== requestId || consent.mode !== mode) throw new RepositoryError("clone_conflict");
                 await consent.start;
                 return core.status(operationId);
             }
             if (consent.revoked || now() >= consent.expiresAt) throw new RepositoryError("confirmation_expired");
             if (starting) throw new RepositoryError("clone_conflict");
-            starting = operationId; consent.requestId = requestId;
+            starting = operationId; consent.requestId = requestId; consent.mode = mode;
             consent.start = (async () => {
                 try {
                     const source = await readSource(consent.selectionId);
@@ -571,7 +601,7 @@ export function createEntryCloneService({ host, readSource, connection, profile,
                         capabilityGeneration: snapshot.capabilityGeneration, activityRevision: snapshot.activityRevision }, async () => {
                         access.assertCurrent();
                         if (disposed || consent.revoked) throw new RepositoryError("confirmation_expired");
-                        return core.start(operationId, confirmation);
+                        return core.start(operationId, confirmation, mode);
                     });
                     return state;
                 } catch (error) { consent.revoked = true; throw knownRepositoryError((error as { code?: unknown })?.code); }

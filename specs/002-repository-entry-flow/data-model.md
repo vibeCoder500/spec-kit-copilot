@@ -61,13 +61,20 @@ repository/default-ref metadata only, not spec content or a local checkout.
 | `selectionId` | Selection being confirmed | Must remain current in the entry instance. |
 | `destination` | Proposed managed checkout | Canonical managed root plus safe repository name, or verified older managed copy; never a caller-selected path. |
 | `reused`, `checkoutCommit` | Existing checkout review | Capture verified local HEAD, branch, origin and file fingerprint; do not reset to the remote default commit. |
+| `copyDestination` | Optional alternative to an existing checkout | Server-derived first available `-Copy` or numbered-copy path under the same managed root. Display with the remote commit; do not accept caller paths or change it after consent. |
 | `confirmationDigest` | Server-side binding of opaque browser nonce | Timing-safe validation; do not persist nonce or digest after consumption. |
 | `binding` | Account generation, profile, repository/ref/commit, destination, source host context, capability generation | All checked again before admission/start. |
 | `createdAt`, `expiresAt` | Consent window | 120 seconds; clock injected for tests. |
-| `consumedBy` | Idempotent accepted start | A confirmation can authorize only one operation. |
+| `consumedBy`, `mode` | Idempotent accepted start and chosen action | A confirmation can authorize only one operation/request/mode. `reuse` is the default; `copy` requires a previewed alternative and cannot be substituted after admission. |
 
-Receiving a preview is not approval. Only the user's **Confirm and clone** action
-submits the nonce for start. Busy, unknown, unsupported clone-admission, stale, or expired states
+Receiving a preview is not approval. Only the user's explicit primary or
+secondary action submits the nonce for start. Reuse preserves the reviewed local
+checkout; copy mode selects the already-reviewed alternative and clones the remote
+commit into a fresh generated branch. Delete the unused alternative from operation
+state after admission; no nonce or mode is added to durable preparation records.
+An occupied copy path after review rejects, rather than renumbering. Copies have
+independent destination/ownership records and never replace the original's record.
+Busy, unknown, unsupported clone-admission, stale, or expired states
 cannot start Git. A default-ref change before start requires a fresh preview and
 confirmation. Expiry after admitted start does not cancel that running clone.
 Unsupported automatic handoff alone does not prevent checked standalone cloning.
@@ -110,7 +117,10 @@ into the named destination, preserving its fingerprint, HEAD, branch and origin.
 When Windows locks the original folder, copy its regular files/directories
 locally and reverify the result; retain the original for its existing session.
 Listing suppresses superseded legacy records, and authorization rejects their
-stale operation IDs. Unrelated destinations are never overwritten or repaired.
+stale operation IDs. Copy records remain separate and are not candidates for
+original-checkout migration. Choosing the fresh copy action does not migrate or
+change a reviewed legacy checkout. Unrelated destinations are never overwritten
+or repaired.
 
 Version 1 migration verifies owned destination, common directory, origin, HEAD,
 and branch first. Missing origin-account or host state cannot be guessed: show a

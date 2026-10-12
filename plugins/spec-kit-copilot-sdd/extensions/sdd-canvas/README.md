@@ -103,9 +103,22 @@ Completion shows **Clone complete** and a copyable path; completed checkouts
 remain available after reconnecting. The current App workspace is not changed.
 
 New clones use `~/SpecKitCanvas/repositories/<repository-name>`. A matching copy
-already in the managed root is reviewed and opened through **Open existing Spec
-Kit repository**, preserving local commits, branch and dirty files without
-fetching or resetting. Wrong-origin collisions and changed-after-review content
+already in the managed root offers a primary **Open existing in new session**
+action, preserving local commits, branch and dirty files without fetching or
+resetting. It requests a new session even when the managed checkout is current;
+**Use current workspace** remains the separate same-session shortcut.
+
+The secondary **Clone another copy (-Copy)** action clones the reviewed remote
+default-branch commit into `<repository-name>-Copy`, then the first available
+numbered name (`-Copy-2`, `-Copy-3`, ...). The chooser displays the exact copy
+destination and remote commit before consent. Local changes in the original are
+not copied or modified. One consent authorizes only the chosen action; replaying
+it with a different choice is rejected. A destination occupied after review
+rejects without overwriting or renumbering behind the user's back. Both actions
+use the same guarded automatic target-canvas opening when the App launcher is
+available; otherwise they retain the verified/prepared path.
+
+Wrong-origin collisions and changed-after-review content
 are rejected without repair. Selection discloses migration of verified older
 UUID/checkout copies into repository-named folders. A Windows-locked older
 checkout is copied locally and reverified, preserving the old session's folder
@@ -125,8 +138,8 @@ Completed checkouts offer **Open in Copilot App** for explicit recovery, with
 unknown submitted outcomes blocking duplicate requests. No restart, model prompt,
 workflow, or implicit installation occurs.
 The public launcher cannot suppress approval for another folder or explicitly
-set the session title. New folder basenames match repository names, but actual
-desktop session titles and visible automatic canvas opening remain unverified.
+set the chat title. Native testing has verified repository-named rail groups and
+automatic original canvas opening after App approval; neither is atomic handoff.
 
 Atomic switching of the source session remains blocked because the public SDK does not
 supply the verified App activation and reconciliation contract. Unsupported

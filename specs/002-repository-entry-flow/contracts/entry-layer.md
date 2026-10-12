@@ -34,10 +34,13 @@ kept distinct from the required, not-yet-available host contract in
 | Clear query | Restore independent team-suggestion state. |
 | Suggestion failure/empty | Separate retry/empty state; search and local continuation still available. |
 | Select remote result | Repository/account/ref/full commit/default destination summary; no artifact preview or clone. |
-| Current repository selected | Offer current-workspace continuation rather than duplicate preparation. |
-| Matching managed copy already exists | Review local HEAD and offer **Open existing Spec Kit repository**; verify and reuse without clone/fetch/reset or local file changes. |
+| Current repository selected outside the managed root, with no matching managed copy | Offer current-workspace continuation rather than duplicate preparation. |
+| Matching managed copy already exists | Review local HEAD; primary **Open existing in new session** verifies and reuses it without clone/fetch/reset or local file changes. Secondary **Clone another copy (-Copy)** clones the reviewed remote commit into the displayed copy destination. |
+| A copy destination is occupied before selection | Preview the first available `-Copy`, `-Copy-2`, `-Copy-3`, ... name. Count any existing file/directory as occupied. |
+| Copy destination becomes occupied after review | Reject without overwriting, changing destination, or automatically retrying; reselect for a new preview. |
 | Wrong-origin collision, unsafe repository name, or post-review content change | Reject explicitly without overwriting, repairing, moving, or deleting existing content. |
 | Retained checkout already current | Open the original canvas locally without native session launch or additional folder-opening approval. |
+| Explicit primary new-session reuse for a current managed checkout | Request a distinct App session, not the local shortcut; normal folder approval and target bootstrap still apply. |
 | Missing clone-admission support or busy/unknown state | **Confirm and clone** unavailable with a bounded reason; no queued intent. |
 | Checked cloning supported, automatic handoff unsupported | Explicit clone is available; confirmation states that the App workspace stays unchanged. |
 | Confirm and clone | Exactly one admitted preparation, progress, and explicit cancel. |
@@ -103,7 +106,7 @@ RPC method names.
 | `GET /api/repositories/detail` | Repository ID | Revalidated status/default ref; metadata only. |
 | `POST /api/entry/local` | Expected opaque local context ID, request ID | Re-read current host/Git identity and open original canvas in the same session; no remote auth dependency. |
 | `POST /api/entry/selection` | Repository ID, expected local context ID | Readable selection and destination preview; short-lived confirmation only when prerequisites allow it. No directory creation. |
-| `POST /api/entry/clone` | Selection ID, opaque confirmation, request ID | Revalidate full consent/current ref and checked clone admission (or verified atomic admission); 202 for one accepted operation. Duplicate accepted request returns its state. |
+| `POST /api/entry/clone` | Selection ID, opaque confirmation, request ID, optional `mode` (`reuse` default or `copy`) | Revalidate full consent/current ref and checked clone admission (or verified atomic admission); 202 for one accepted operation. Copy mode requires the server-previewed copy destination. Same request/mode returns the accepted state; switching modes or supplying a path rejects. |
 | `GET /api/entry/operations/{id}` | Owned operation ID | Safe progress/recovery status; no raw Git output, credentials, or automatic mutation. |
 | `POST /api/entry/operations/{id}/cancel` | Request ID | Cancel only the incomplete owned preparation; completed clones remain. |
 | `GET /api/entry/preparations` | Current profile/account authorization when connected | Bounded validated retained-completion summaries; no unauthorized inventory. |

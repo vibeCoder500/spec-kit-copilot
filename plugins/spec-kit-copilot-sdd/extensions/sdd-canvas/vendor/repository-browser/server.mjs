@@ -11298,7 +11298,7 @@ var require_jsonwebtoken = __commonJS({
 // src/repository-service.ts
 var import_yaml4 = __toESM(require_dist(), 1);
 import { createHash as createHash8, randomBytes as randomBytes8 } from "node:crypto";
-import { realpath as realpath6 } from "node:fs/promises";
+import { lstat as lstat6, realpath as realpath6 } from "node:fs/promises";
 import { homedir as homedir6 } from "node:os";
 import { basename as basename3, join as join7 } from "node:path";
 
@@ -12395,6 +12395,15 @@ function repositoryFolderName(name3) {
   if (!name3 || name3.length > 120 || /[<>:"/\\|?*\p{Cc}\p{Cf}]/u.test(name3) || /[. ]$/.test(name3) || name3 === "." || name3 === ".." || /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(name3) || /^[a-f0-9]{32}$/i.test(name3)) throw new RepositoryError("invalid_repository_name");
   return name3;
 }
+async function availableCopyDestination(parent, folder) {
+  const entries = await readdir(parent);
+  if (entries.length > 1e5) throw new RepositoryError("clone_conflict");
+  const occupied = new Set(entries.map((name4) => name4.toLowerCase()));
+  let index = 1;
+  let name3 = `${folder}-Copy`;
+  while (occupied.has(name3.toLowerCase())) name3 = `${folder}-Copy-${++index}`;
+  return join4(parent, name3);
+}
 async function existingCheckout(destination, remote, namedRemote, git, runner, home) {
   try {
     for (const path3 of [destination, join4(destination, ".git")]) {
@@ -12861,7 +12870,7 @@ function createCloneService({
       if (records.hasMore) throw new RepositoryError("clone_conflict");
       const matchingRecords = records.items.filter((item) => item.record?.repositoryId === source.repository.id && item.record.profileFingerprint === digest(JSON.stringify(profile)) && item.record.accountKey === digest(JSON.stringify([access.tenantId, access.accountId])));
       const named = matchingRecords.filter((item) => item.destination === destination);
-      const matching = named.length ? named : matchingRecords;
+      const matching = named.length ? named : matchingRecords.filter((item) => basename2(item.destination) === "checkout" && operationIdPattern.test(basename2(dirname3(item.destination))) && dirname3(dirname3(item.destination)) === parent);
       if (matching.length > 1) throw new RepositoryError("existing_repository_conflict");
       let migrateFrom;
       if (onPrepared && matching[0] && matching[0].destination !== destination) {
@@ -12895,22 +12904,40 @@ function createCloneService({
         localBranch: existing?.branch ?? `speckit/canvas-${operationId}`,
         destination,
         ...migrateFrom ? { migrateFrom } : {},
-        ...existing ? { reused: true, checkoutCommit: existing.head } : {}
+        ...existing ? {
+          reused: true,
+          checkoutCommit: existing.head,
+          ...onPrepared ? { copyDestination: await availableCopyDestination(parent, folder) } : {}
+        } : {}
       };
       for (const [key, operation] of operations) if (!operation.completion && operation.expiresAt <= now()) operations.delete(key);
       if (operations.size >= 32) throw new RepositoryError("clone_conflict");
       operations.set(operationId, { public: state, source, contextId, confirmation: digest(confirmation), account: identity2(access), expiresAt: now() + 12e4, existing });
       return { ...state, confirmation, accountLabel: connection.snapshot().accountLabel ?? "Microsoft account" };
     },
-    async start(operationId, confirmation) {
+    async start(operationId, confirmation, mode = "reuse") {
       if (disposed || !operationIdPattern.test(operationId)) throw new RepositoryError("clone_conflict");
       const operation = operations.get(operationId);
       if (!operation || !sameSecret(confirmation, operation.confirmation)) throw new RepositoryError("clone_conflict");
+      if (mode !== "reuse" && mode !== "copy") throw new RepositoryError("invalid_request");
       const access = await connection.access();
       if (operation.account !== identity2(access)) throw new RepositoryError("invalid_context");
-      if (operation.completion) return { ...operation.public };
+      if (operation.completion) {
+        if (operation.mode !== mode) throw new RepositoryError("clone_conflict");
+        return { ...operation.public };
+      }
       if (operation.public.state === "cancelled") throw new RepositoryError("clone_cancelled");
       if (active || operation.expiresAt <= now()) throw new RepositoryError("clone_conflict");
+      if (mode === "copy") {
+        if (!operation.existing || !operation.public.copyDestination) throw new RepositoryError("invalid_request");
+        operation.public = { ...operation.public, destination: operation.public.copyDestination, localBranch: `speckit/canvas-${operationId}` };
+        delete operation.public.reused;
+        delete operation.public.checkoutCommit;
+        delete operation.public.migrateFrom;
+        operation.existing = void 0;
+      }
+      operation.mode = mode;
+      delete operation.public.copyDestination;
       operation.controller = new AbortController();
       active = operation;
       update(operation, "preparing");
@@ -13010,13 +13037,15 @@ function createEntryCloneService({ host, readSource, connection, profile, worksp
       });
       return { ...preview, expiresAt: createdAt + 12e4 };
     },
-    async start(operationId, confirmation, requestId) {
+    async start(operationId, confirmation, requestId, mode = "reuse") {
       const consent = consents.get(operationId);
       if (disposed || !consent || !requestId || requestId.length > 256 || !sameSecret(confirmation, consent.digest)) throw new RepositoryError("clone_conflict");
+      if (mode !== "reuse" && mode !== "copy") throw new RepositoryError("invalid_request");
+      if (mode === "copy" && !consent.start && !core.status(operationId).copyDestination) throw new RepositoryError("invalid_request");
       const access = await connection.access();
       if (identity2(access) !== consent.account) throw new RepositoryError("invalid_context");
       if (consent.start) {
-        if (consent.requestId !== requestId) throw new RepositoryError("clone_conflict");
+        if (consent.requestId !== requestId || consent.mode !== mode) throw new RepositoryError("clone_conflict");
         await consent.start;
         return core.status(operationId);
       }
@@ -13024,6 +13053,7 @@ function createEntryCloneService({ host, readSource, connection, profile, worksp
       if (starting) throw new RepositoryError("clone_conflict");
       starting = operationId;
       consent.requestId = requestId;
+      consent.mode = mode;
       consent.start = (async () => {
         try {
           const source = await readSource(consent.selectionId);
@@ -13040,7 +13070,7 @@ function createEntryCloneService({ host, readSource, connection, profile, worksp
           }, async () => {
             access.assertCurrent();
             if (disposed || consent.revoked) throw new RepositoryError("confirmation_expired");
-            return core.start(operationId, confirmation);
+            return core.start(operationId, confirmation, mode);
           });
           return state;
         } catch (error) {
@@ -24901,13 +24931,17 @@ async function createEntryCoordinator({
       remember(authorized.record, authorized.repository.name);
       const eligibility = automatic.get(operationId);
       const current = await readHost();
+      if (eligibility?.openInApp) {
+        phase = "prepared";
+        handoffError = void 0;
+        if (!sameSource(eligibility.source, current)) throw new RepositoryError(current.activity === "busy" ? "session_busy" : "context_changed");
+        await service.openCheckout(operationId, localContextId, `automatic-${operationId}`, true);
+        onChange();
+        return;
+      }
       if (!eligibility || !supportsRemotePreparation(eligibility.source) || !supportsRemotePreparation(current)) {
         phase = "prepared";
         handoffError = void 0;
-        if (eligibility?.openInApp) {
-          if (!sameSource(eligibility.source, current)) throw new RepositoryError(current.activity === "busy" ? "session_busy" : "context_changed");
-          await service.openCheckout(operationId, localContextId, `automatic-${operationId}`);
-        }
         onChange();
         return;
       }
@@ -24931,7 +24965,7 @@ async function createEntryCoordinator({
   async function readSelectionSource(selectionId) {
     const remote = remoteAvailable();
     const current = selected;
-    if (!current || current.selection.selectionId !== selectionId || current.selection.matchesCurrentWorkspace) throw new RepositoryError("context_changed");
+    if (!current || current.selection.selectionId !== selectionId || current.selection.matchesCurrentWorkspace && !current.prepareCurrent) throw new RepositoryError("context_changed");
     const access = await remote.connection.access();
     if (accountKey(access) !== current.selection.accountKey || access.generation !== current.selection.connectionGeneration) throw new RepositoryError("invalid_context");
     const repository = await remote.discovery.detail(current.selection.repository.id);
@@ -25078,6 +25112,16 @@ async function createEntryCoordinator({
       const namedOrigin = `https://dev.azure.com/${[remote.profile.organization, remote.profile.project, "_git", repository.name].map(encodeURIComponent).join("/")}`;
       const currentOrigin = local.repository?.origin?.replace(/\/$/, "").toLowerCase();
       const matchesCurrentWorkspace = currentOrigin === originIdentity.toLowerCase() || currentOrigin === namedOrigin.toLowerCase();
+      const home = await realpath6(cloneOptions?.homeDirectory ?? homedir6());
+      let prepareCurrent = false;
+      if (matchesCurrentWorkspace) {
+        try {
+          await lstat6(join7(home, "SpecKitCanvas", "repositories", repositoryFolderName(repository.name)));
+          prepareCurrent = true;
+        } catch (error) {
+          if (error.code !== "ENOENT") throw error;
+        }
+      }
       const profileFingerprint = createHash8("sha256").update(JSON.stringify(remote.profile)).digest("hex");
       const selection = {
         selectionId: `selection_${randomBytes8(24).toString("base64url")}`,
@@ -25089,14 +25133,13 @@ async function createEntryCoordinator({
         expectedSource: { sessionId: after.sessionId, contextRevision: after.contextRevision },
         matchesCurrentWorkspace
       };
-      const openInApp = !matchesCurrentWorkspace && !supportsRemotePreparation(after) && await appLauncher.available(after.workingDirectory);
-      if (generation !== selectionGeneration) throw new RepositoryError("context_changed");
-      selected = { selection, snapshot: after, contextId, openInApp };
+      if (generation !== selectionGeneration || contextId !== localContextId) throw new RepositoryError("context_changed");
+      selected = { selection, snapshot: after, contextId, openInApp: false, prepareCurrent };
       const operationId = randomBytes8(16).toString("hex");
-      const home = await realpath6(cloneOptions?.homeDirectory ?? homedir6());
       const reason = preparationReason(after) ?? (!repository.sourceVersion || !repository.defaultBranch || repository.operationalState !== "active" ? "source_unavailable" : null);
       const current = selected;
-      if (!matchesCurrentWorkspace && !reason) current.preview = await ensureClones(after).confirm(selection.selectionId, after);
+      if ((!matchesCurrentWorkspace || prepareCurrent) && !reason) current.preview = await ensureClones(after).confirm(selection.selectionId, after);
+      current.openInApp = Boolean(current.preview && (current.preview.reused || !supportsRemotePreparation(after)) && await appLauncher.available(after.workingDirectory));
       if (selected !== current || generation !== selectionGeneration) throw new RepositoryError("context_changed");
       phase = "selected";
       onChange();
@@ -25105,36 +25148,40 @@ async function createEntryCoordinator({
         repository,
         accountLabel: remote.connection.snapshot().accountLabel ?? "Microsoft account",
         matchesCurrentWorkspace,
-        openInApp,
+        openInApp: current.openInApp,
         operationId: current.preview?.operationId ?? operationId,
         destination: current.preview?.destination ?? (matchesCurrentWorkspace ? local.repository.worktreeRoot : join7(home, "SpecKitCanvas", "repositories", repositoryFolderName(repository.name))),
         reused: current.preview?.reused ?? false,
         migrateFrom: current.preview?.migrateFrom ?? null,
         checkoutCommit: current.preview?.checkoutCommit ?? null,
+        copyDestination: current.preview?.copyDestination ?? null,
         confirmation: current.preview?.confirmation ?? null,
         expiresAt: current.preview?.expiresAt ?? null,
         reason
       };
     },
-    async clone(selectionId, confirmation, requestId) {
+    async clone(selectionId, confirmation, requestId, mode = "reuse") {
       text(selectionId);
       text(confirmation);
       text(requestId);
+      if (mode !== "reuse" && mode !== "copy") throw new RepositoryError("invalid_request");
       const { snapshot } = await readLocal();
       const reason = preparationReason(snapshot);
       if (reason) throw new RepositoryError(reason);
       const current = selected;
       if (!current || current.selection.selectionId !== selectionId || current.contextId !== localContextId || !current.preview || !clones) throw new RepositoryError("context_changed");
+      if (mode === "copy" && !current.preview.copyDestination) throw new RepositoryError("invalid_request");
       activeOperationId = current.preview.operationId;
       const first = !automatic.has(activeOperationId);
       if (first) automatic.set(activeOperationId, { source: structuredClone(snapshot), eligible: supportsRemotePreparation(snapshot), openInApp: current.openInApp });
       try {
-        const started = await clones.start(activeOperationId, confirmation, requestId);
+        const started = await clones.start(activeOperationId, confirmation, requestId, mode);
         if (first) continueAfterPreparation(activeOperationId);
         return started;
       } catch (error) {
-        automatic.get(current.preview.operationId).eligible = false;
+        if (first) automatic.get(current.preview.operationId).eligible = false;
         if (clones.status(current.preview.operationId).state === "awaiting_confirmation") {
+          if (first) automatic.delete(current.preview.operationId);
           activeOperationId = void 0;
           phase = "selected";
           onChange();
@@ -25197,7 +25244,7 @@ async function createEntryCoordinator({
       retries.set(requestId, { operationId, contextId, completion });
       return completion;
     },
-    async openCheckout(operationId, contextId, requestId) {
+    async openCheckout(operationId, contextId, requestId, newSession = false) {
       text(operationId);
       text(contextId);
       text(requestId);
@@ -25205,7 +25252,7 @@ async function createEntryCoordinator({
       if (contextId !== localContextId) throw new RepositoryError("context_changed");
       if (local.snapshot.activity !== "idle") throw new RepositoryError(local.snapshot.activity === "busy" ? "session_busy" : "activity_unknown");
       const authorized = await authorizedRecord(operationId);
-      if (local.repository?.gitCommonDirectory === authorized.record.gitCommonDirectory && local.repository.origin === authorized.record.originIdentity) {
+      if (!newSession && local.repository?.gitCommonDirectory === authorized.record.gitCommonDirectory && local.repository.origin === authorized.record.originIdentity) {
         await service.local(contextId, requestId);
         return { status: "requested" };
       }
@@ -25409,7 +25456,7 @@ async function handleEntryRequest(req, res, url, entry) {
       ["local", ["contextId", "requestId"]],
       ["direct", ["requestId"]],
       ["selection", ["repositoryId", "contextId"]],
-      ["clone", ["selectionId", "confirmation", "requestId"]],
+      ["clone", ["selectionId", "confirmation", "requestId", "mode"]],
       ["operation-cancel", ["requestId"]],
       ["operation-handoff", ["contextId", "requestId"]],
       ["operation-open", ["contextId", "requestId"]]
@@ -25429,7 +25476,9 @@ async function handleEntryRequest(req, res, url, entry) {
       data = await entry.direct(text(body.requestId));
     } else if (route === "selection" && entry.select) data = await entry.select(text(body.repositoryId), text(body.contextId));
     else if (route === "clone" && entry.clone) {
-      data = await entry.clone(text(body.selectionId), text(body.confirmation), text(body.requestId));
+      const mode = body.mode === void 0 ? "reuse" : body.mode;
+      if (mode !== "reuse" && mode !== "copy") throw new RepositoryError("invalid_request");
+      data = await entry.clone(text(body.selectionId), text(body.confirmation), text(body.requestId), mode);
       status = 202;
     } else if (route === "operation" && entry.operation) data = await entry.operation(operation[1]);
     else if (route === "operation-cancel" && entry.cancel) data = await entry.cancel(operation[1], text(body.requestId));

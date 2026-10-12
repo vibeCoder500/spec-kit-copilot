@@ -182,19 +182,31 @@ export async function mountRepositoryEntry({ container, request }: { container: 
         const summary = document.createElement("dl"); summary.className = "entry-summary";
         for (const [name, value, field] of [["Account", selection.accountLabel, "account"], ["Default branch", selection.repository.defaultBranch ?? "Unavailable", "branch"],
             ["Commit", selection.checkoutCommit ?? selection.repository.sourceVersion ?? "Unavailable", "commit"], ["Destination", selection.destination, "destination"],
-            ["App workspace", snapshot?.host.canHandoff ? "Automatic handoff" : selection.openInApp ? "New session + original canvas" : "Unchanged", "workspace"]]) {
+            ["App workspace", selection.openInApp ? "New session + original canvas" : snapshot?.host.canHandoff ? "Automatic handoff" : "Unchanged", "workspace"]]) {
             const label = document.createElement("dt"); label.textContent = name!;
             const content = document.createElement("dd"); content.textContent = value!; content.dataset.field = field;
             summary.append(label, content);
         }
+        if (selection.copyDestination) {
+            for (const [name, value, field] of [["Copy destination", selection.copyDestination, "copy-destination"],
+                ["Copy commit", selection.repository.sourceVersion ?? "Unavailable", "copy-commit"]]) {
+                const label = document.createElement("dt"); label.textContent = name!;
+                const content = document.createElement("dd"); content.textContent = value!; content.dataset.field = field;
+                summary.append(label, content);
+            }
+        }
         const actions = document.createElement("div"); actions.className = "entry-selection-actions";
-        if (selection.matchesCurrentWorkspace) actions.append(button("Use current workspace", ArrowRight, () => { void open(false); }, true));
+        if (selection.matchesCurrentWorkspace && !selection.reused) actions.append(button("Use current workspace", ArrowRight, () => { void open(false); }, true));
         else {
-            const confirm = button(selection.reused ? "Open existing Spec Kit repository" :
+            const confirm = button(selection.reused ? selection.openInApp ? "Open existing in new session" : "Open existing Spec Kit repository" :
                 selection.openInApp ? "Clone and open Spec Kit" : "Confirm and clone", selection.reused ? FolderOpen : Download, () => { void confirmClone(); }, true); confirm.dataset.action = "confirm-clone";
             confirm.classList.add("entry-primary");
             confirm.disabled = submitting || !selection.confirmation || !snapshot?.host.canPrepareRemote || !selection.expiresAt || Date.now() >= selection.expiresAt;
             actions.append(confirm);
+            if (selection.copyDestination) {
+                const copy = button("Clone another copy (-Copy)", Download, () => { void confirmClone("copy"); }, true);
+                copy.dataset.action = "clone-copy"; copy.disabled = confirm.disabled; actions.append(copy);
+            }
         }
         const cancel = button("Cancel selection", X, () => { void cancelSelection(); }, true);
         cancel.dataset.action = "cancel-selection"; cancel.disabled = submitting; actions.append(cancel);
@@ -209,6 +221,12 @@ export async function mountRepositoryEntry({ container, request }: { container: 
             consent.textContent = `${selection.reused ? "Uses the existing checkout without fetching, resetting, or changing its files" : "Clones once into a repository-named folder"}, requests a new Copilot App session, and opens the original canvas when the target session loads this extension. The App may ask you to approve opening the folder. Your current session stays unchanged.`;
             selectionPanel.append(consent);
         }
+        if (selection.copyDestination) {
+            const copyConsent = document.createElement("p"); copyConsent.className = "entry-muted";
+            copyConsent.textContent = "Alternatively, clone the default-branch commit shown above into the copy destination. The existing checkout, including local changes, stays untouched. Copies use -Copy, then -Copy-2, -Copy-3, and so on; no existing folder is overwritten." +
+                (selection.openInApp ? " The copy also opens in a new session with the original canvas, subject to normal App folder approval." : "");
+            selectionPanel.append(copyConsent);
+        }
         const reason = selection.reason ?? snapshot?.host.reason;
         if (reason && !selection.matchesCurrentWorkspace) {
             const explanation = document.createElement("p"); explanation.className = "entry-muted"; explanation.textContent = knownRepositoryError(reason).message;
@@ -220,7 +238,8 @@ export async function mountRepositoryEntry({ container, request }: { container: 
         operationPanel.hidden = !operation;
         operationPanel.replaceChildren();
         if (!operation) return;
-        const labels: Record<Operation["state"], string> = { awaiting_confirmation: "Awaiting confirmation", preparing: "Cloning repository...", verifying: "Verifying repository...",
+        const labels: Record<Operation["state"], string> = { awaiting_confirmation: "Awaiting confirmation",
+            preparing: operation.reused ? "Verifying existing repository..." : "Cloning repository...", verifying: "Verifying repository...",
             prepared: snapshot?.host.canHandoff ? "Repository prepared. Handoff pending." : operation.reused ? "Existing repository verified." : "Clone complete.",
             prepared_for_manual_open: "Clone complete.", cancelled: "Repository preparation cancelled.", failed: "Repository preparation failed." };
         const phases: Partial<Record<EntrySnapshot["phase"], string>> = { waiting_user: "Repository prepared. Waiting for an explicit handoff.",
@@ -371,12 +390,13 @@ export async function mountRepositoryEntry({ container, request }: { container: 
         finally { if (current === selectionGeneration) selecting = false; render(); }
     }
 
-    async function confirmClone() {
+    async function confirmClone(mode: "reuse" | "copy" = "reuse") {
         if (!selection?.confirmation || !snapshot?.host.canPrepareRemote || submitting || disposed) return;
+        if (mode === "copy" && !selection.copyDestination) return;
         const current = selection;
         submitting = true; message.textContent = "Starting repository preparation..."; render();
         try {
-            operation = await api.call<Operation>("clone", {}, { selectionId: current.selectionId, confirmation: current.confirmation, requestId: requestId() });
+            operation = await api.call<Operation>("clone", {}, { selectionId: current.selectionId, confirmation: current.confirmation, requestId: requestId(), mode });
             if (disposed) return;
             discardSelection(); message.textContent = "";
             await refreshState();

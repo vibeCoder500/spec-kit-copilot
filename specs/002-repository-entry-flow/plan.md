@@ -21,12 +21,25 @@ is a prerequisite; no implicit installation occurs.
 
 **2026-10-12 amendment**: New entry clones use a repository-named direct child
 of the managed repositories root. Reverify and reuse matching existing copies
-read-only, preserving local branches, commits and dirty files; retain old managed
-paths. Bind existing identity and file fingerprint to consent. Serialize
+read-only, preserving local branches, commits and dirty files. Disclose verified
+legacy migration, retaining a Windows-locked older checkout for its old session.
+Bind existing identity and file fingerprint to consent. Serialize
 preparation-record writes and launch admission per destination, and expose only
 the latest matching record. Current-repository opening routes to local canvas
 entry without the launcher. App folder approval and title control remain
 host-owned; no unsupported suppression or title-setting API is used.
+
+**2026-10-12 existing-checkout choice amendment**: Extend the existing confirmation,
+not the canvas workflow, with a server-derived optional copy destination.
+Primary reuse requests a new App session, even for a current managed checkout;
+the local and retained-current shortcuts remain same-session operations.
+Secondary copy mode clones the reviewed remote commit into `-Copy`, then the first
+available numbered name. Display both destinations and distinguish local HEAD
+from the copy's remote commit. Bind idempotency to operation, request and chosen
+mode; do not accept client paths or switch modes after admission. Exclusive
+destination creation rejects post-review collisions without hidden renumbering.
+Keep each copy's preparation and target-canvas request independent, and ignore
+copy records when selecting/migrating the original destination.
 
 ## Summary
 
