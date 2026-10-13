@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
+import { reviewHttpSecurityTests } from "./review-http-security-fixture.mjs";
 import {
     existsSync,
     mkdirSync,
@@ -36,6 +37,8 @@ afterEach(() => {
     __resetRunTrackerForTests();
     setSession(null);
 });
+
+reviewHttpSecurityTests("wizard");
 
 describe("server", () => {
 // Tests for server.mjs — createHandler with mock req/res + injected deps.
@@ -131,6 +134,57 @@ function baseDeps(overrides = {}) {
 
 test("createHandler throws without token", () => {
     assert.throws(() => createHandler({}), /token/);
+});
+
+test("designer bundle inspection validates catalog identity and returns members without dispatch", async () => {
+    const calls = [];
+    const deps = baseDeps({
+        getState: async () => ({ catalog: { bundles: [{ id: "design-kit", source: "community" }] } }),
+        inspectBundle: async (id, cwd) => {
+            calls.push({ id, cwd });
+            return { source: "community", members: [{ kind: "presets", id: "design-style" }] };
+        },
+    });
+    const handler = createHandler(deps);
+    for (const query of ["id=bad%26command&source=community", "id=design-kit&source=copilot"]) {
+        const res = mockRes();
+        await handler(mockReq({ url: `/api/designer/bundle-members?token=secret-token&${query}` }), res);
+        assert.ok(res.statusCode >= 400);
+    }
+    const res = mockRes();
+    await handler(mockReq({
+        url: "/api/designer/bundle-members?token=secret-token&id=design-kit&source=community",
+    }), res);
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(JSON.parse(res.body), { members: [{ kind: "presets", id: "design-style" }] });
+    assert.deepEqual(calls, [{ id: "design-kit", cwd: "/proj" }]);
+    assert.deepEqual(deps._sessionCalls, []);
+});
+
+test("designer bundle inspection rejects mismatched CLI source explicitly", async () => {
+    const handler = createHandler(baseDeps({
+        getState: async () => ({ catalog: { bundles: [{ id: "design-kit", source: "copilot" }] } }),
+        inspectBundle: async () => ({ source: "community", members: [] }),
+    }));
+    const res = mockRes();
+    await handler(mockReq({
+        url: "/api/designer/bundle-members?token=secret-token&id=design-kit&source=copilot",
+    }), res);
+    assert.equal(res.statusCode, 502);
+    assert.match(JSON.parse(res.body).error, /different catalog/);
+});
+
+test("designer bundle inspection accepts a Default catalog bundle", async () => {
+    const handler = createHandler(baseDeps({
+        getState: async () => ({ catalog: { bundles: [{ id: "default-kit", source: "default" }] } }),
+        inspectBundle: async () => ({ source: "default", members: [{ kind: "presets", id: "core-style" }] }),
+    }));
+    const res = mockRes();
+    await handler(mockReq({
+        url: "/api/designer/bundle-members?token=secret-token&id=default-kit&source=default",
+    }), res);
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(JSON.parse(res.body), { members: [{ kind: "presets", id: "core-style" }] });
 });
 
 test("returns 401 when token is missing", async () => {
@@ -584,6 +638,31 @@ test("POST /api/phase/submit acknowledges before session.send completion and cle
 
         await new Promise((r) => setImmediate(r));
         assert.equal(activeRunMatches("inst-fail", "speckit.constitution", body.runId), false);
+    } finally {
+        rmSync(ws, { recursive: true, force: true });
+    }
+});
+
+test("POST /api/phase/submit rejects invalid clarification batches before dispatch", async () => {
+    const ws = tmpWorkspace();
+    try {
+        const invalid = Object.assign(new Error("batch too large"), { code: "invalid_request" });
+        const deps = baseDeps({
+            workspacePath: ws,
+            extras: { getInstance: () => ({ instanceId: "inst-review", workspacePath: ws, state: {},
+                reviewService: { validateClarifications: async () => { throw invalid; } } }) },
+        });
+        const h = createHandler(deps);
+        const res = mockRes();
+        await h(mockReq({
+            method: "POST", url: "/api/phase/submit?token=secret-token",
+            body: JSON.stringify({ commandName: "speckit.specify", args: "answer",
+                review: { contextId: "ctx_fixture", artifactId: "artifact_fixture",
+                    expectedRevision: `sha256:${"a".repeat(64)}`, answers: [] } }),
+        }), res);
+        assert.equal(res.statusCode, 400);
+        assert.match(JSON.parse(res.body).error, /invalid|limit/i);
+        assert.equal(deps._sessionCalls.length, 0);
     } finally {
         rmSync(ws, { recursive: true, force: true });
     }
