@@ -215,7 +215,7 @@ export interface HandoffOutcome {
 
 export interface HostHandoffAdapter {
     inspectCurrent(signal?: AbortSignal): Promise<HostWorkspaceSnapshot>;
-    openCurrentCanvas(expected: HostContextIdentity, instanceId: string, signal?: AbortSignal): Promise<LocalCanvasAcknowledgment>;
+    openCurrentCanvas(expected: HostContextIdentity, instanceId: string, signal?: AbortSignal, options?: { repositorySetup?: boolean }): Promise<LocalCanvasAcknowledgment>;
     admitPreparation<Result>(input: PreparationAdmission, start: () => Promise<Result>): Promise<Result>;
     handoffPrepared(input: HandoffRequest): Promise<HandoffOutcome>;
     getHandoffOutcome(attemptId: string): Promise<HandoffOutcome>;

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "kind": "sdd-repository-browser",
-  "sourceHash": "22e33624c50d22de21229b3d093fed260bc961444924d3c34fb2a817f649f4a1",
-  "buildHash": "a81abaa2f9f3b3d9973f23b1e51efdd6df6b8a72cf458a78de069532f7f6ea37",
+  "sourceHash": "3befa8d1522b4071eca1456e84ce7a49a351dc5582462204e57e043f83ada0e9",
+  "buildHash": "afd950314168b740718318c0dfde4b625708e30195d7fcdd80517ae100d821e1",
   "sources": [
     {
       "path": "build-runtime.mjs",
@@ -18,11 +18,11 @@
     },
     {
       "path": "src/app-canvas.ts",
-      "sha256": "7f3e0a39d4564e22d4957d66cb1d1ff065660494ded8135d08b35b2bbf963a4e"
+      "sha256": "c4b01b35f7a53d7c36270a4b8837eb52e0c01550d3d5326b663df7f147eafeda"
     },
     {
       "path": "src/app-launch.ts",
-      "sha256": "b36e254ecc720caae6b8b7c37ac9262718adb5407be645b7b336d363dccdc49b"
+      "sha256": "fc72ea50ce74592d53ef52d967170d4eb7dec63eb67c3b8e07edff007a5bfbcc"
     },
     {
       "path": "src/artifact-clock.ts",
@@ -46,11 +46,11 @@
     },
     {
       "path": "src/errors.ts",
-      "sha256": "e88c70250d0774708df7e602a769ce6b539f5aa7f62052fedb44134cd522f7c5"
+      "sha256": "25cb7ee3564336528a009af72641184cacb22c23f333e4e54737760f9044d63e"
     },
     {
       "path": "src/host-handoff.ts",
-      "sha256": "4507a7510540c8fe28a604dc1d46d196b686253a762762c40a122ae91635f2b6"
+      "sha256": "80b152c6fc09116da9e9a385428a75e1e5f72667d0ac69852ec3e22ea378ad96"
     },
     {
       "path": "src/msal-client.ts",
@@ -74,19 +74,31 @@
     },
     {
       "path": "src/repository-service.ts",
-      "sha256": "a1e9f1ff51429b99194d7869446bbc3205729491dc82fb4ec8d198dfc6c587ae"
+      "sha256": "9ebc71d8bcf6622c1aea709b8cca87960497c05a161ce0f3a8d025031c4cac60"
+    },
+    {
+      "path": "src/scaffolding.ts",
+      "sha256": "7e676893511a69139b3c014bd199f8e5f4d08ad6bb0bdfdbdb8c621b2eb371ee"
+    },
+    {
+      "path": "src/setup-process.ts",
+      "sha256": "b49c7e6aaffa3b93f106f95948d58d3e898819e53cec4294c9f75f901c65d331"
     },
     {
       "path": "src/ui/api.ts",
-      "sha256": "c9b163ade9d1f2ffb1e53a92786be454eb0cbed0501a261a2179b9d20cee2bb4"
+      "sha256": "4555375eb5838caafee77d1cb39319dbbabf6269f85dc8c844b254ea0df76340"
     },
     {
       "path": "src/ui/repository-entry.css",
-      "sha256": "f8649e8f8a876621412031ecb3950fa1d9e9e7eb3804cba3b956ff8e8bc60951"
+      "sha256": "5bba9aa3004f658a8371ca6fb18cb07aa3a09078e00e1b11aa49df7759219e8f"
     },
     {
       "path": "src/ui/repository-entry.ts",
-      "sha256": "34f5adb49fc528981de7a1bacbfded97d4ba85401d3bfcea94fda83aed9cc5e4"
+      "sha256": "b0a0b8f9a57bd129d01a23ba84183ed6e95549beedf627c9bd96520d1a874a32"
+    },
+    {
+      "path": "src/ui/repository-scaffolding.ts",
+      "sha256": "9dd1a90fb7bd8c6ec4e27df08887ae0719888d161ffb16fc50601f41fafa893c"
     },
     {
       "path": "src/workspace-binding.ts",
@@ -258,18 +270,18 @@
   "files": [
     {
       "path": "ui/repository-entry.css",
-      "bytes": 5863,
-      "sha256": "f8649e8f8a876621412031ecb3950fa1d9e9e7eb3804cba3b956ff8e8bc60951"
+      "bytes": 8531,
+      "sha256": "5bba9aa3004f658a8371ca6fb18cb07aa3a09078e00e1b11aa49df7759219e8f"
     },
     {
       "path": "ui/repository-entry.js",
-      "bytes": 42174,
-      "sha256": "7e2cec1b5f0f7ca132a2346a28979da2f2b4b26701b85f13bbd36ea70ac1a5a0"
+      "bytes": 57206,
+      "sha256": "45059590bb6d00750d91495d7117074f09404e1224702994c3c1dd65366366fd"
     },
     {
       "path": "vendor/repository-browser/server.mjs",
-      "bytes": 1029995,
-      "sha256": "4c01e9f89a1a36ebb87a330fd2ff4fa9f8e93f6ecc8e3ea65abb45ffb6ac4bca"
+      "bytes": 1088746,
+      "sha256": "62301db4605bec5f083e26cbf66f4cfce964577c1f9111897f1b0c5f88223269"
     },
     {
       "path": "vendor/repository-browser/THIRD_PARTY_NOTICES.txt",

@@ -1,7 +1,8 @@
 # SDD Repository Entry
 
-Unreleased development build on `plan/canvas-repository-discovery`. Marketplace
-versions and historical preview ZIPs are unchanged.
+Unreleased SDD 0.3.0 development build on `feat/add-scaffolding-layer`, based on
+`plan/canvas-repository-discovery`. Published installations and historical preview
+ZIPs are unchanged.
 
 **Current scope (2026-10-12):** **Clone and open Spec Kit** confirms one clone,
 requests a new App session, and lets the installed target extension automatically
@@ -11,6 +12,14 @@ Without the supported launcher, **Confirm and clone** retains the checkout and
 copyable path. Atomic in-session handoff remains unverified; launcher completion
 and target canvas acknowledgment are separate states. See the
 [acceptance report](../specs/002-repository-entry-flow/evidence/acceptance.md).
+
+**2026-10-14 automatic scaffolding amendment:** A verified target without Copilot
+skills-mode setup automatically runs the recommended organization bootstrap in
+the owned setup layer in that same SDD artifact. There is no initial Setup
+button. Repository continuation/clone-and-open discloses the bootstrap effects.
+The layer reports each step/component and returns to the original dashboard
+after artifact and actual session-skill verification. Already-enabled targets
+bypass scaffolding. Source preservation and normal App folder approval remain.
 
 New clones use `~/SpecKitCanvas/repositories/<repository-name>`. If a verified
 matching copy exists, the chooser offers two actions:
@@ -107,21 +116,28 @@ Opening the canvas does not itself run setup or a workflow.
    and pause for one second. Select the intended result from the configured
    Azure DevOps project. Selection alone does not clone anything.
 6. Review the account, default branch, full commit, destination, and disclosed
-   **New session + original canvas** outcome. When idle, choose **Clone and open
+   **New session + Spec Kit** outcome, including automatic setup if SDD is missing.
+   When idle, choose **Clone and open
    Spec Kit** once. The source session and its files stay unchanged.
 7. In the App's **Open session?** dialog, verify
    the folder and choose **Allow**. The App opens a new session for the checkout;
    the previous session remains available. A restart is not normally required.
 8. The target extension verifies the checkout or registered App worktree and
-   opens the original dashboard directly. Do not send another **"Open
+   opens the SDD artifact directly. An enabled repository shows the original
+   dashboard; a repository without setup shows the scaffolding layer. Do not send another **"Open
    Spec-Driven Development"** prompt. If the target extension is missing or opening
    is blocked, the retained checkout remains available for explicit recovery.
-9. Select an existing feature and its **View** action to read the specification,
-   plan, tasks, or constitution. To start new work, intentionally complete the
-   dashboard's setup step if shown, then use **New feature** and the normal
+9. If setup is missing, the background job starts automatically. Follow loading,
+   authentication waiting, completed, skipped, and error states in the canvas.
+   Complete normal browser consent/MFA if needed. Refresh/reopen attaches to the
+   same job; use **Cancel setup** or explicit **Retry organization setup**, never
+   another clone, for setup recovery.
+10. On verified completion the same artifact returns to the original dashboard.
+   Select an existing feature and its **View** action to read the specification,
+   plan, tasks, or constitution; then use **New feature** and the normal
    Specify, Clarify, Plan, Tasks, Analyze, Checklist, and Implement controls.
-   Setup and Run actions are separate approvals; launching, cloning, and opening
-   the canvas do not run those workflows for you.
+   Automatic setup does not run feature workflows; those Run actions retain
+   their normal separate approvals.
 
 If **Open in Copilot App** is disabled, wait for idle and refresh entry state.
 If the installed native Copilot CLI is unavailable to the extension, use **Copy
@@ -134,16 +150,74 @@ in, clones a private repository, or launches the real App.
 1. Ask Copilot to **Open Spec-Driven Development**. The normal
    enabled launch opens a separate repository chooser.
 2. Select **Use current workspace**. The extension rechecks the session's actual
-   Git identity and opens the original canvas in that session. This does not
-   require a connection profile, Microsoft sign-in, cloning, or remote handoff.
+   Git identity and opens Spec Kit in that session, automatically bootstrapping
+   the recommended bundle if SDD is missing. Entry does not require an Azure
+   DevOps profile/sign-in, cloning, or remote handoff; bootstrap may separately
+   need network access and GHES sign-in. Already-enabled repositories work offline.
 3. Alternatively, say **"Open Spec-Driven Development (Current Workspace)"**.
    This always offers the original canvas directly,
    independently of remote configuration or chooser-controller failure.
 
 Existing dirty files, untracked work, branches and drafts are not reset or stashed.
 The local shortcut is unavailable when the session has no verified repository.
-Direct entry retains the canvas's original explicit setup behavior for a project
-that is not initialized; opening a canvas does not run setup or a workflow.
+Explicit direct entry preserves the original dashboard and read-only artifact
+preview, including in projects whose stage execution is gated. Repository-chooser
+continuation and prepared targets automatically start the organization setup
+when core setup is missing. An already-started, incomplete job remains gated
+across reopening; direct entry cannot bypass its mutation protection. Ordinary
+direct read-only preview never initializes a project; neither entry runs a
+feature workflow.
+
+## Organization Bootstrap
+
+The
+[MSD registry README](https://msft.ghe.com/1eh-msd/msd-speckit-registry)
+defines the standard bootstrap. The canvas fetches its workflow and bundle
+metadata, checks compatibility, then executes the supported primitives
+individually to report progress without the workflow's terminal-only error gates:
+
+1. Find GitHub CLI or install it using Windows Package Manager; verify GHES
+   authentication and open `gh auth login --hostname msft.ghe.com --web
+   --git-protocol https` only when needed.
+2. Merge the README's provider for `msft.ghe.com`, `raw.msft.ghe.com`, and
+   `api.msft.ghe.com` into user `~/.specify/auth.json`. Preserve unrelated
+   providers. Obtain the credential from GitHub CLI and supply
+   `GH_ENTERPRISE_TOKEN` only to setup child processes; do not store the token in
+   progress, repository files, or a persistent user environment variable.
+3. Verify the live minimum (currently >= 1.1.0); install/update latest
+   `specify-cli` from PyPI with uv or pipx and the recommended Microsoft package
+   index if needed. No pinned Git tag or second Copilot SDK/agent is installed.
+   If a successful mirror install still verifies below the live minimum, the job
+   explains the stale mirror and retries official PyPI once, then verifies again.
+   A failed installer/network request remains an explicit error.
+4. Run `specify init --here --force --integration copilot
+   --integration-options=--skills --script ps --ignore-agent-tools` on Windows
+   (`sh` elsewhere), unless the core prerequisites already verify.
+5. Register extension, preset, bundle, and workflow catalogs. Retain
+   already-correct entries; incompatible existing installation policies are
+   reported instead of overwritten.
+6. Run `specify bundle install msd-bundle` through the normal bundle machinery.
+   Its current eight components are extension `bug` and seven constitution
+   presets, including conditional applicability layers. Show each installed
+   manifest/registry's state rather than guessing from a successful exit.
+7. Verify core prerequisites and bundle provenance, reload and verify the
+   session's project skills through the supported SDK, then open the original
+   dashboard without dispatching an agent prompt.
+
+Setup writes only CLI-managed scaffolding; it does not create a feature,
+ratify a constitution, commit, push, or deploy. `--force` may replace existing
+Spec Kit-managed paths, as disclosed before repository continuation. Existing application files,
+branches and dirty work are not reset or stashed.
+
+The documented
+`specify extension add squad --from https://msft.ghe.com/1eh-msd/msd-speckit-registry/releases/download/v1.0.0/squad-v1.0.0.zip`
+is a separate direct extension install. It is not an alias for `msd-bundle` and
+is not silently added by the recommended setup.
+
+Progress and per-checkout process locks are bounded and user-local under
+`~/SpecKitCanvas/scaffolding/`. Interrupted jobs never auto-resume. Required browser
+consent/MFA, App folder approval, and unsupported-host limits remain visible.
+See the [scaffolding implementation plan](../specs/003-repository-scaffolding/plan.md).
 
 ## Entry Settings
 
@@ -330,9 +404,11 @@ calls is not automatic handoff. No such fallback is enabled.
   are limited to 8 KiB and 256 inspected entries. Overflow or an interrupted locked
   update requires review; records are not deleted to make room. Legacy records are
   read-only and cannot authorize automatic recovery by themselves.
-- Existing canvas prerequisites and permission prompts still apply. No implicit
-  `specify init`, skill/plugin installation, workflow, commit, push or deployment
-  occurs during entry or acceptance checks.
+- Existing prerequisites and permission prompts still apply. The verified target
+  automatically receives the disclosed organization bootstrap if SDD is missing.
+  Search, selection, clone-only and ordinary direct read-only previews never run
+  setup. No feature workflow, Copilot plugin installation, commit, push or
+  deployment is implicit.
 
 ## Validation And Preview
 

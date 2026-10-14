@@ -40,7 +40,7 @@ export async function openRequestedAppCanvas({ host, homeDirectory, verifyPrepar
             latest.capabilityGeneration !== current.capabilityGeneration) throw new RepositoryError("context_changed");
         if (latest.activity !== "idle") throw new RepositoryError(latest.activity === "busy" ? "session_busy" : "activity_unknown");
         submitted = true;
-        const acknowledgment = await host.openCurrentCanvas(current, `entry-app-${requestId}`);
+        const acknowledgment = await host.openCurrentCanvas(current, `entry-app-${requestId}`, undefined, { repositorySetup: true });
         await store.finishAppCanvas(record.operationId, requestId, current.sessionId, acknowledgment);
         return { status: "opened" as const, acknowledgment };
     } catch (error) {

@@ -17,19 +17,31 @@
     document.head.append(css);
     let controller;
     let events;
+    let renderer;
     try {
+      const response = await fetch(endpoint("/api/entry/view"), { cache: "no-store", referrerPolicy: "no-referrer" });
+      const view = await response.json();
+      if (!response.ok || !view.ok || !["repositories", "scaffolding", "workflow"].includes(view.data?.renderer)) throw new Error("Entry routing unavailable");
+      renderer = view.data.renderer;
+      if (renderer === "workflow") { location.reload(); }
       const module = await import(endpoint("/ui/repository-entry.js"));
-      controller = await module.mountRepositoryEntry({ container: document.getElementById("repositoryEntry") });
+      controller = renderer === "scaffolding"
+        ? await module.mountRepositoryScaffolding({ container: document.getElementById("repositoryEntry") })
+        : await module.mountRepositoryEntry({ container: document.getElementById("repositoryEntry") });
         events = new EventSource(endpoint("/events"));
-        events.addEventListener("entry", event => {
+        events.addEventListener(renderer === "scaffolding" ? "scaffolding" : "entry", event => {
           try { controller.receive(JSON.parse(event.data)); } catch { return; }
+        });
+        events.addEventListener("scaffolding-error", event => {
+          try { controller.fail(JSON.parse(event.data)); } catch { return; }
         });
     } catch {
       const container = document.getElementById("repositoryEntry");
       container.replaceChildren();
-      const heading = document.createElement("h1"); heading.textContent = "Repository entry unavailable";
-      const direct = document.createElement("button"); direct.type = "button"; direct.textContent = "Open canvas directly";
+      const heading = document.createElement("h1"); heading.textContent = renderer === "scaffolding" ? "Setup view unavailable" : "Repository entry unavailable";
+      const direct = document.createElement("button"); direct.type = "button"; direct.textContent = renderer === "scaffolding" ? "Reload setup view" : "Open canvas directly";
       direct.addEventListener("click", async () => {
+        if (renderer === "scaffolding") { location.reload(); return; }
         direct.disabled = true;
         try {
           const response = await fetch(endpoint("/api/entry/direct"), { method: "POST", headers: { "Content-Type": "application/json" },

@@ -8,7 +8,7 @@ export interface HostHandoffOptions {
     sessionId: string;
     extensionId?: string;
     metadata: { snapshot(): Promise<unknown>; activity?(): Promise<unknown> };
-    canvas?: { open(input: { extensionId?: string; canvasId: string; instanceId: string; input: Record<string, never> }): Promise<unknown> };
+    canvas?: { open(input: { extensionId?: string; canvasId: string; instanceId: string; input: { repositorySetup?: boolean } }): Promise<unknown> };
     subscribeContextChanged?: (listener: () => void) => () => void;
     subscribeActivityChanged?: (listener: () => void) => () => void;
     timeoutMs?: number;
@@ -115,13 +115,13 @@ export function createHostHandoffAdapter(options: HostHandoffOptions): HostHando
 
     return {
         inspectCurrent,
-        async openCurrentCanvas(expected, instanceId, signal) {
+        async openCurrentCanvas(expected, instanceId, signal, requestOptions) {
             if (!capabilities.localCanvas) throw new RepositoryError("canvas_unavailable");
             if (!/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/.test(instanceId)) throw new RepositoryError("invalid_request");
             const current = await inspectCurrent(signal);
             sameContext(expected, current);
             const result = record(await bounded(() => options.canvas!.open({ ...(options.extensionId ? { extensionId: options.extensionId } : {}),
-                canvasId: "sdd-canvas-direct", instanceId, input: {} }), "canvas_unavailable", signal));
+                canvasId: "sdd-canvas-direct", instanceId, input: requestOptions?.repositorySetup === true ? { repositorySetup: true } : {} }), "canvas_unavailable", signal));
             const verified = await inspectCurrent(signal);
             sameContext(current, verified);
             if (result.canvasId !== "sdd-canvas-direct" || result.instanceId !== instanceId || !identifier(result.extensionId) ||
@@ -181,7 +181,7 @@ export async function executeHostHandoff({ host, request, outcome, persistActiva
         const existing = await readReadiness();
         if (existing) return verifyReady(existing, activation);
         if (current.activity !== "idle") throw new RepositoryError(current.activity === "busy" ? "session_busy" : "activity_unknown");
-        const opened = await host.openCurrentCanvas(activation, request.instanceId, deadline.signal);
+        const opened = await host.openCurrentCanvas(activation, request.instanceId, deadline.signal, { repositorySetup: true });
         if (deadline.signal.aborted) throw new RepositoryError("handoff_unknown");
         if (opened.sessionId !== activation.sessionId || opened.contextRevision !== activation.contextRevision || opened.workingDirectory !== activation.workingDirectory ||
             opened.instanceId !== request.instanceId) throw new RepositoryError("context_changed");

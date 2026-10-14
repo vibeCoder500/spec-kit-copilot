@@ -131,7 +131,7 @@ export async function startFixture({ canvas, pluginRoot, markdown, allowMutation
         const listeners = entry.server.listeners("request");
         entry.server.removeAllListeners("request");
         const readRoutes = new Set(["/api/state", "/api/events", "/api/artifact", "/api/artifact-list", "/api/clarifications",
-            "/api/review/context", "/api/review/artifacts", "/api/review/content", "/api/repositories/connection", "/api/entry/state"]);
+            "/api/review/context", "/api/review/artifacts", "/api/review/content", "/api/repositories/connection", "/api/entry/state", "/api/entry/view"]);
         const repositoryRoutes = new Set(["connection", "connect", "disconnect", "local", "relevant", "search", "detail", "context", "items", "content", "reference", "refresh", "clone/confirm", "clone", "clone/cancel"].map((name) => `/api/repositories/${name}`));
         entry.server.on("request", (request, response) => {
             const path = new URL(request.url, "http://127.0.0.1").pathname;

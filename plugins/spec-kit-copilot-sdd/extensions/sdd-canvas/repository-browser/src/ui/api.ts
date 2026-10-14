@@ -11,7 +11,7 @@ export interface BrowserSnapshot {
 }
 
 export function createRepositoryApi({ document, request = globalThis.fetch, namespace = "repositories" }: {
-    document: Document; request?: typeof fetch; namespace?: "repositories" | "entry";
+    document: Document; request?: typeof fetch; namespace?: "repositories" | "entry" | "scaffolding";
 }) {
     const base = new URL(document.location.href);
     const controllers = new Set<AbortController>();

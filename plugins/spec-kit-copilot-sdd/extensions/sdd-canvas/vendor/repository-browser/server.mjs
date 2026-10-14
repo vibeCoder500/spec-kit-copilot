@@ -331,13 +331,13 @@ var require_directives = __commonJS({
               onError(0, "%YAML directive should contain exactly one part");
               return false;
             }
-            const [version3] = parts;
-            if (version3 === "1.1" || version3 === "1.2") {
-              this.yaml.version = version3;
+            const [version4] = parts;
+            if (version4 === "1.1" || version4 === "1.2") {
+              this.yaml.version = version4;
               return true;
             } else {
-              const isValid = /^\d+\.\d+$/.test(version3);
-              onError(6, `Unsupported YAML version ${version3}`, isValid);
+              const isValid = /^\d+\.\d+$/.test(version4);
+              onError(6, `Unsupported YAML version ${version4}`, isValid);
               return false;
             }
           }
@@ -3437,14 +3437,14 @@ var require_Document = __commonJS({
           version: "1.2"
         }, options);
         this.options = opt;
-        let { version: version3 } = opt;
+        let { version: version4 } = opt;
         if (options?._directives) {
           this.directives = options._directives.atDocument();
           if (this.directives.yaml.explicit)
-            version3 = this.directives.yaml.version;
+            version4 = this.directives.yaml.version;
         } else
-          this.directives = new directives.Directives({ version: version3 });
-        this.setSchema(version3, options);
+          this.directives = new directives.Directives({ version: version4 });
+        this.setSchema(version4, options);
         this.contents = value === void 0 ? null : this.createNode(value, _replacer, options);
       }
       /**
@@ -3624,11 +3624,11 @@ var require_Document = __commonJS({
        *
        * Overrides all previously set schema options.
        */
-      setSchema(version3, options = {}) {
-        if (typeof version3 === "number")
-          version3 = String(version3);
+      setSchema(version4, options = {}) {
+        if (typeof version4 === "number")
+          version4 = String(version4);
         let opt;
-        switch (version3) {
+        switch (version4) {
           case "1.1":
             if (this.directives)
               this.directives.yaml.version = "1.1";
@@ -3639,9 +3639,9 @@ var require_Document = __commonJS({
           case "1.2":
           case "next":
             if (this.directives)
-              this.directives.yaml.version = version3;
+              this.directives.yaml.version = version4;
             else
-              this.directives = new directives.Directives({ version: version3 });
+              this.directives = new directives.Directives({ version: version4 });
             opt = { resolveKnownTags: true, schema: "core" };
             break;
           case null:
@@ -3650,7 +3650,7 @@ var require_Document = __commonJS({
             opt = null;
             break;
           default: {
-            const sv = JSON.stringify(version3);
+            const sv = JSON.stringify(version4);
             throw new Error(`Expected '1.1', '1.2' or null as first argument, but found: ${sv}`);
           }
         }
@@ -4000,10 +4000,10 @@ var require_resolve_block_map = __commonJS({
       let offset = bm.offset;
       let commentEnd = null;
       for (const collItem of bm.items) {
-        const { start, key, sep: sep5, value } = collItem;
+        const { start, key, sep: sep7, value } = collItem;
         const keyProps = resolveProps.resolveProps(start, {
           indicator: "explicit-key-ind",
-          next: key ?? sep5?.[0],
+          next: key ?? sep7?.[0],
           offset,
           onError,
           parentIndent: bm.indent,
@@ -4017,7 +4017,7 @@ var require_resolve_block_map = __commonJS({
             else if ("indent" in key && key.indent !== bm.indent)
               onError(offset, "BAD_INDENT", startColMsg);
           }
-          if (!keyProps.anchor && !keyProps.tag && !sep5) {
+          if (!keyProps.anchor && !keyProps.tag && !sep7) {
             commentEnd = keyProps.end;
             if (keyProps.comment) {
               if (map.comment)
@@ -4041,7 +4041,7 @@ var require_resolve_block_map = __commonJS({
         ctx.atKey = false;
         if (utilMapIncludes.mapIncludes(ctx, map.items, keyNode))
           onError(keyStart, "DUPLICATE_KEY", "Map keys must be unique");
-        const valueProps = resolveProps.resolveProps(sep5 ?? [], {
+        const valueProps = resolveProps.resolveProps(sep7 ?? [], {
           indicator: "map-value-ind",
           next: value,
           offset: keyNode.range[2],
@@ -4057,7 +4057,7 @@ var require_resolve_block_map = __commonJS({
             if (ctx.options.strict && keyProps.start < valueProps.found.offset - 1024)
               onError(keyNode.range, "KEY_OVER_1024_CHARS", "The : indicator must be at most 1024 chars after the start of an implicit block mapping key");
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep5, null, valueProps, onError);
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : composeEmptyNode(ctx, offset, sep7, null, valueProps, onError);
           if (ctx.schema.compat)
             utilFlowIndentCheck.flowIndentCheck(bm.indent, value, onError);
           offset = valueNode.range[2];
@@ -4148,7 +4148,7 @@ var require_resolve_end = __commonJS({
       let comment = "";
       if (end) {
         let hasSpace = false;
-        let sep5 = "";
+        let sep7 = "";
         for (const token of end) {
           const { source, type } = token;
           switch (type) {
@@ -4162,13 +4162,13 @@ var require_resolve_end = __commonJS({
               if (!comment)
                 comment = cb;
               else
-                comment += sep5 + cb;
-              sep5 = "";
+                comment += sep7 + cb;
+              sep7 = "";
               break;
             }
             case "newline":
               if (comment)
-                sep5 += source;
+                sep7 += source;
               hasSpace = true;
               break;
             default:
@@ -4211,18 +4211,18 @@ var require_resolve_flow_collection = __commonJS({
       let offset = fc.offset + fc.start.source.length;
       for (let i = 0; i < fc.items.length; ++i) {
         const collItem = fc.items[i];
-        const { start, key, sep: sep5, value } = collItem;
+        const { start, key, sep: sep7, value } = collItem;
         const props = resolveProps.resolveProps(start, {
           flow: fcName,
           indicator: "explicit-key-ind",
-          next: key ?? sep5?.[0],
+          next: key ?? sep7?.[0],
           offset,
           onError,
           parentIndent: fc.indent,
           startOnNewline: false
         });
         if (!props.found) {
-          if (!props.anchor && !props.tag && !sep5 && !value) {
+          if (!props.anchor && !props.tag && !sep7 && !value) {
             if (i === 0 && props.comma)
               onError(props.comma, "UNEXPECTED_TOKEN", `Unexpected , in ${fcName}`);
             else if (i < fc.items.length - 1)
@@ -4276,8 +4276,8 @@ var require_resolve_flow_collection = __commonJS({
             }
           }
         }
-        if (!isMap2 && !sep5 && !props.found) {
-          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep5, null, props, onError);
+        if (!isMap2 && !sep7 && !props.found) {
+          const valueNode = value ? composeNode(ctx, value, props, onError) : composeEmptyNode(ctx, props.end, sep7, null, props, onError);
           coll.items.push(valueNode);
           offset = valueNode.range[2];
           if (isBlock(value))
@@ -4289,7 +4289,7 @@ var require_resolve_flow_collection = __commonJS({
           if (isBlock(key))
             onError(keyNode.range, "BLOCK_IN_FLOW", blockMsg);
           ctx.atKey = false;
-          const valueProps = resolveProps.resolveProps(sep5 ?? [], {
+          const valueProps = resolveProps.resolveProps(sep7 ?? [], {
             flow: fcName,
             indicator: "map-value-ind",
             next: value,
@@ -4300,8 +4300,8 @@ var require_resolve_flow_collection = __commonJS({
           });
           if (valueProps.found) {
             if (!isMap2 && !props.found && ctx.options.strict) {
-              if (sep5)
-                for (const st of sep5) {
+              if (sep7)
+                for (const st of sep7) {
                   if (st === valueProps.found)
                     break;
                   if (st.type === "newline") {
@@ -4318,7 +4318,7 @@ var require_resolve_flow_collection = __commonJS({
             else
               onError(valueProps.start, "MISSING_CHAR", `Missing , or : between ${fcName} items`);
           }
-          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep5, null, valueProps, onError) : null;
+          const valueNode = value ? composeNode(ctx, value, valueProps, onError) : valueProps.found ? composeEmptyNode(ctx, valueProps.end, sep7, null, valueProps, onError) : null;
           if (valueNode) {
             if (isBlock(value))
               onError(valueNode.range, "BLOCK_IN_FLOW", blockMsg);
@@ -4498,7 +4498,7 @@ var require_resolve_block_scalar = __commonJS({
           chompStart = i + 1;
       }
       let value = "";
-      let sep5 = "";
+      let sep7 = "";
       let prevMoreIndented = false;
       for (let i = 0; i < contentStart; ++i)
         value += lines[i][0].slice(trimIndent) + "\n";
@@ -4515,24 +4515,24 @@ var require_resolve_block_scalar = __commonJS({
           indent = "";
         }
         if (type === Scalar.Scalar.BLOCK_LITERAL) {
-          value += sep5 + indent.slice(trimIndent) + content;
-          sep5 = "\n";
+          value += sep7 + indent.slice(trimIndent) + content;
+          sep7 = "\n";
         } else if (indent.length > trimIndent || content[0] === "	") {
-          if (sep5 === " ")
-            sep5 = "\n";
-          else if (!prevMoreIndented && sep5 === "\n")
-            sep5 = "\n\n";
-          value += sep5 + indent.slice(trimIndent) + content;
-          sep5 = "\n";
+          if (sep7 === " ")
+            sep7 = "\n";
+          else if (!prevMoreIndented && sep7 === "\n")
+            sep7 = "\n\n";
+          value += sep7 + indent.slice(trimIndent) + content;
+          sep7 = "\n";
           prevMoreIndented = true;
         } else if (content === "") {
-          if (sep5 === "\n")
+          if (sep7 === "\n")
             value += "\n";
           else
-            sep5 = "\n";
+            sep7 = "\n";
         } else {
-          value += sep5 + content;
-          sep5 = " ";
+          value += sep7 + content;
+          sep7 = " ";
           prevMoreIndented = false;
         }
       }
@@ -4714,25 +4714,25 @@ var require_resolve_flow_scalar = __commonJS({
       if (!match)
         return source;
       let res = match[1];
-      let sep5 = " ";
+      let sep7 = " ";
       let pos = first.lastIndex;
       line.lastIndex = pos;
       while (match = line.exec(source)) {
         if (match[1] === "") {
-          if (sep5 === "\n")
-            res += sep5;
+          if (sep7 === "\n")
+            res += sep7;
           else
-            sep5 = "\n";
+            sep7 = "\n";
         } else {
-          res += sep5 + match[1];
-          sep5 = " ";
+          res += sep7 + match[1];
+          sep7 = " ";
         }
         pos = line.lastIndex;
       }
       const last = /[ \t]*(.*)/sy;
       last.lastIndex = pos;
       match = last.exec(source);
-      return res + sep5 + (match?.[1] ?? "");
+      return res + sep7 + (match?.[1] ?? "");
     }
     function doubleQuotedValue(source, onError) {
       let res = "";
@@ -5542,14 +5542,14 @@ var require_cst_stringify = __commonJS({
         }
       }
     }
-    function stringifyItem({ start, key, sep: sep5, value }) {
+    function stringifyItem({ start, key, sep: sep7, value }) {
       let res = "";
       for (const st of start)
         res += st.source;
       if (key)
         res += stringifyToken(key);
-      if (sep5)
-        for (const st of sep5)
+      if (sep7)
+        for (const st of sep7)
           res += st.source;
       if (value)
         res += stringifyToken(value);
@@ -6716,18 +6716,18 @@ var require_parser = __commonJS({
         if (this.type === "map-value-ind") {
           const prev = getPrevProps(this.peek(2));
           const start = getFirstKeyStartProps(prev);
-          let sep5;
+          let sep7;
           if (scalar.end) {
-            sep5 = scalar.end;
-            sep5.push(this.sourceToken);
+            sep7 = scalar.end;
+            sep7.push(this.sourceToken);
             delete scalar.end;
           } else
-            sep5 = [this.sourceToken];
+            sep7 = [this.sourceToken];
           const map = {
             type: "block-map",
             offset: scalar.offset,
             indent: scalar.indent,
-            items: [{ start, key: scalar, sep: sep5 }]
+            items: [{ start, key: scalar, sep: sep7 }]
           };
           this.onKeyLine = true;
           this.stack[this.stack.length - 1] = map;
@@ -6880,15 +6880,15 @@ var require_parser = __commonJS({
                 } else if (isFlowToken(it.key) && !includesToken(it.sep, "newline")) {
                   const start2 = getFirstKeyStartProps(it.start);
                   const key = it.key;
-                  const sep5 = it.sep;
-                  sep5.push(this.sourceToken);
+                  const sep7 = it.sep;
+                  sep7.push(this.sourceToken);
                   delete it.key;
                   delete it.sep;
                   this.stack.push({
                     type: "block-map",
                     offset: this.offset,
                     indent: this.indent,
-                    items: [{ start: start2, key, sep: sep5 }]
+                    items: [{ start: start2, key, sep: sep7 }]
                   });
                 } else if (start.length > 0) {
                   it.sep = it.sep.concat(start, this.sourceToken);
@@ -7082,13 +7082,13 @@ var require_parser = __commonJS({
             const prev = getPrevProps(parent);
             const start = getFirstKeyStartProps(prev);
             fixFlowSeqItems(fc);
-            const sep5 = fc.end.splice(1, fc.end.length);
-            sep5.push(this.sourceToken);
+            const sep7 = fc.end.splice(1, fc.end.length);
+            sep7.push(this.sourceToken);
             const map = {
               type: "block-map",
               offset: fc.offset,
               indent: fc.indent,
-              items: [{ start, key: fc, sep: sep5 }]
+              items: [{ start, key: fc, sep: sep7 }]
             };
             this.onKeyLine = true;
             this.stack[this.stack.length - 1] = map;
@@ -7247,7 +7247,7 @@ var require_public_api = __commonJS({
         return docs;
       return Object.assign([], { empty: true }, composer$1.streamInfo());
     }
-    function parseDocument4(source, options = {}) {
+    function parseDocument5(source, options = {}) {
       const { lineCounter: lineCounter2, prettyErrors } = parseOptions(options);
       const parser$1 = new parser.Parser(lineCounter2?.addNewLine);
       const composer$1 = new composer.Composer(options);
@@ -7273,7 +7273,7 @@ var require_public_api = __commonJS({
       } else if (options === void 0 && reviver && typeof reviver === "object") {
         options = reviver;
       }
-      const doc = parseDocument4(src, options);
+      const doc = parseDocument5(src, options);
       if (!doc)
         return null;
       doc.warnings.forEach((warning) => log.warn(doc.options.logLevel, warning));
@@ -7309,7 +7309,7 @@ var require_public_api = __commonJS({
     }
     exports.parse = parse;
     exports.parseAllDocuments = parseAllDocuments2;
-    exports.parseDocument = parseDocument4;
+    exports.parseDocument = parseDocument5;
     exports.stringify = stringify;
   }
 });
@@ -8531,8 +8531,8 @@ var require_semver = __commonJS({
     var { safeRe: re, t } = require_re();
     var parseOptions = require_parse_options();
     var { compareIdentifiers } = require_identifiers();
-    var isPrereleaseIdentifier = (prerelease, identifier3) => {
-      const identifiers = identifier3.split(".");
+    var isPrereleaseIdentifier = (prerelease, identifier4) => {
+      const identifiers = identifier4.split(".");
       if (identifiers.length > prerelease.length) {
         return false;
       }
@@ -8544,31 +8544,31 @@ var require_semver = __commonJS({
       return true;
     };
     var SemVer = class _SemVer {
-      constructor(version3, options) {
+      constructor(version4, options) {
         options = parseOptions(options);
-        if (version3 instanceof _SemVer) {
-          if (version3.loose === !!options.loose && version3.includePrerelease === !!options.includePrerelease) {
-            return version3;
+        if (version4 instanceof _SemVer) {
+          if (version4.loose === !!options.loose && version4.includePrerelease === !!options.includePrerelease) {
+            return version4;
           } else {
-            version3 = version3.version;
+            version4 = version4.version;
           }
-        } else if (typeof version3 !== "string") {
-          throw new TypeError(`Invalid version. Must be a string. Got type "${typeof version3}".`);
+        } else if (typeof version4 !== "string") {
+          throw new TypeError(`Invalid version. Must be a string. Got type "${typeof version4}".`);
         }
-        if (version3.length > MAX_LENGTH) {
+        if (version4.length > MAX_LENGTH) {
           throw new TypeError(
             `version is longer than ${MAX_LENGTH} characters`
           );
         }
-        debug("SemVer", version3, options);
+        debug("SemVer", version4, options);
         this.options = options;
         this.loose = !!options.loose;
         this.includePrerelease = !!options.includePrerelease;
-        const m = version3.trim().match(options.loose ? re[t.LOOSE] : re[t.FULL]);
+        const m = version4.trim().match(options.loose ? re[t.LOOSE] : re[t.FULL]);
         if (!m) {
-          throw new TypeError(`Invalid Version: ${version3}`);
+          throw new TypeError(`Invalid Version: ${version4}`);
         }
-        this.raw = version3;
+        this.raw = version4;
         this.major = +m[1];
         this.minor = +m[2];
         this.patch = +m[3];
@@ -8697,15 +8697,15 @@ var require_semver = __commonJS({
       }
       // preminor will bump the version up to the next minor release, and immediately
       // down to pre-release. premajor and prepatch work the same way.
-      inc(release, identifier3, identifierBase) {
+      inc(release, identifier4, identifierBase) {
         if (release.startsWith("pre")) {
-          if (!identifier3 && identifierBase === false) {
+          if (!identifier4 && identifierBase === false) {
             throw new Error("invalid increment argument: identifier is empty");
           }
-          if (identifier3) {
-            const match = `-${identifier3}`.match(this.options.loose ? re[t.PRERELEASELOOSE] : re[t.PRERELEASE]);
-            if (!match || match[1] !== identifier3) {
-              throw new Error(`invalid identifier: ${identifier3}`);
+          if (identifier4) {
+            const match = `-${identifier4}`.match(this.options.loose ? re[t.PRERELEASELOOSE] : re[t.PRERELEASE]);
+            if (!match || match[1] !== identifier4) {
+              throw new Error(`invalid identifier: ${identifier4}`);
             }
           }
         }
@@ -8715,26 +8715,26 @@ var require_semver = __commonJS({
             this.patch = 0;
             this.minor = 0;
             this.major++;
-            this.inc("pre", identifier3, identifierBase);
+            this.inc("pre", identifier4, identifierBase);
             break;
           case "preminor":
             this.prerelease.length = 0;
             this.patch = 0;
             this.minor++;
-            this.inc("pre", identifier3, identifierBase);
+            this.inc("pre", identifier4, identifierBase);
             break;
           case "prepatch":
             this.prerelease.length = 0;
-            this.inc("patch", identifier3, identifierBase);
-            this.inc("pre", identifier3, identifierBase);
+            this.inc("patch", identifier4, identifierBase);
+            this.inc("pre", identifier4, identifierBase);
             break;
           // If the input is a non-prerelease version, this acts the same as
           // prepatch.
           case "prerelease":
             if (this.prerelease.length === 0) {
-              this.inc("patch", identifier3, identifierBase);
+              this.inc("patch", identifier4, identifierBase);
             }
-            this.inc("pre", identifier3, identifierBase);
+            this.inc("pre", identifier4, identifierBase);
             break;
           case "release":
             if (this.prerelease.length === 0) {
@@ -8778,19 +8778,19 @@ var require_semver = __commonJS({
                 }
               }
               if (i === -1) {
-                if (identifier3 === this.prerelease.join(".") && identifierBase === false) {
+                if (identifier4 === this.prerelease.join(".") && identifierBase === false) {
                   throw new Error("invalid increment argument: identifier already exists");
                 }
                 this.prerelease.push(base);
               }
             }
-            if (identifier3) {
-              let prerelease = [identifier3, base];
+            if (identifier4) {
+              let prerelease = [identifier4, base];
               if (identifierBase === false) {
-                prerelease = [identifier3];
+                prerelease = [identifier4];
               }
-              if (isPrereleaseIdentifier(this.prerelease, identifier3)) {
-                const prereleaseBase = this.prerelease[identifier3.split(".").length];
+              if (isPrereleaseIdentifier(this.prerelease, identifier4)) {
+                const prereleaseBase = this.prerelease[identifier4.split(".").length];
                 if (isNaN(prereleaseBase)) {
                   this.prerelease = prerelease;
                 }
@@ -8819,12 +8819,12 @@ var require_parse = __commonJS({
   "node_modules/semver/functions/parse.js"(exports, module) {
     "use strict";
     var SemVer = require_semver();
-    var parse = (version3, options, throwErrors = false) => {
-      if (version3 instanceof SemVer) {
-        return version3;
+    var parse = (version4, options, throwErrors = false) => {
+      if (version4 instanceof SemVer) {
+        return version4;
       }
       try {
-        return new SemVer(version3, options);
+        return new SemVer(version4, options);
       } catch (er) {
         if (!throwErrors) {
           return null;
@@ -8841,8 +8841,8 @@ var require_valid = __commonJS({
   "node_modules/semver/functions/valid.js"(exports, module) {
     "use strict";
     var parse = require_parse();
-    var valid = (version3, options) => {
-      const v = parse(version3, options);
+    var valid = (version4, options) => {
+      const v = parse(version4, options);
       return v ? v.version : null;
     };
     module.exports = valid;
@@ -8854,8 +8854,8 @@ var require_clean = __commonJS({
   "node_modules/semver/functions/clean.js"(exports, module) {
     "use strict";
     var parse = require_parse();
-    var clean = (version3, options) => {
-      const s = parse(version3.trim().replace(/^[=v]+/, ""), options);
+    var clean = (version4, options) => {
+      const s = parse(version4.trim().replace(/^[=v]+/, ""), options);
       return s ? s.version : null;
     };
     module.exports = clean;
@@ -8867,17 +8867,17 @@ var require_inc = __commonJS({
   "node_modules/semver/functions/inc.js"(exports, module) {
     "use strict";
     var SemVer = require_semver();
-    var inc = (version3, release, options, identifier3, identifierBase) => {
+    var inc = (version4, release, options, identifier4, identifierBase) => {
       if (typeof options === "string") {
-        identifierBase = identifier3;
-        identifier3 = options;
+        identifierBase = identifier4;
+        identifier4 = options;
         options = void 0;
       }
       try {
         return new SemVer(
-          version3 instanceof SemVer ? version3.version : version3,
+          version4 instanceof SemVer ? version4.version : version4,
           options
-        ).inc(release, identifier3, identifierBase).version;
+        ).inc(release, identifier4, identifierBase).version;
       } catch (er) {
         return null;
       }
@@ -8965,8 +8965,8 @@ var require_prerelease = __commonJS({
   "node_modules/semver/functions/prerelease.js"(exports, module) {
     "use strict";
     var parse = require_parse();
-    var prerelease = (version3, options) => {
-      const parsed = parse(version3, options);
+    var prerelease = (version4, options) => {
+      const parsed = parse(version4, options);
       return parsed && parsed.prerelease.length ? parsed.prerelease : null;
     };
     module.exports = prerelease;
@@ -9154,24 +9154,24 @@ var require_coerce = __commonJS({
     var SemVer = require_semver();
     var parse = require_parse();
     var { safeRe: re, t } = require_re();
-    var coerce = (version3, options) => {
-      if (version3 instanceof SemVer) {
-        return version3;
+    var coerce = (version4, options) => {
+      if (version4 instanceof SemVer) {
+        return version4;
       }
-      if (typeof version3 === "number") {
-        version3 = String(version3);
+      if (typeof version4 === "number") {
+        version4 = String(version4);
       }
-      if (typeof version3 !== "string") {
+      if (typeof version4 !== "string") {
         return null;
       }
       options = options || {};
       let match = null;
       if (!options.rtl) {
-        match = version3.match(options.includePrerelease ? re[t.COERCEFULL] : re[t.COERCE]);
+        match = version4.match(options.includePrerelease ? re[t.COERCEFULL] : re[t.COERCE]);
       } else {
         const coerceRtlRegex = options.includePrerelease ? re[t.COERCERTLFULL] : re[t.COERCERTL];
         let next;
-        while ((next = coerceRtlRegex.exec(version3)) && (!match || match.index + match[0].length !== version3.length)) {
+        while ((next = coerceRtlRegex.exec(version4)) && (!match || match.index + match[0].length !== version4.length)) {
           if (!match || next.index + next[0].length !== match.index + match[0].length) {
             match = next;
           }
@@ -9200,32 +9200,32 @@ var require_truncate = __commonJS({
     var parse = require_parse();
     var constants2 = require_constants();
     var SemVer = require_semver();
-    var truncate = (version3, truncation, options) => {
+    var truncate = (version4, truncation, options) => {
       if (!constants2.RELEASE_TYPES.includes(truncation)) {
         return null;
       }
-      const clonedVersion = cloneInputVersion(version3, options);
+      const clonedVersion = cloneInputVersion(version4, options);
       return clonedVersion && doTruncation(clonedVersion, truncation);
     };
-    var cloneInputVersion = (version3, options) => {
-      const versionStringToParse = version3 instanceof SemVer ? version3.version : version3;
+    var cloneInputVersion = (version4, options) => {
+      const versionStringToParse = version4 instanceof SemVer ? version4.version : version4;
       return parse(versionStringToParse, options);
     };
-    var doTruncation = (version3, truncation) => {
+    var doTruncation = (version4, truncation) => {
       if (isPrerelease(truncation)) {
-        return version3.version;
+        return version4.version;
       }
-      version3.prerelease = [];
+      version4.prerelease = [];
       switch (truncation) {
         case "major":
-          version3.minor = 0;
-          version3.patch = 0;
+          version4.minor = 0;
+          version4.patch = 0;
           break;
         case "minor":
-          version3.patch = 0;
+          version4.patch = 0;
           break;
       }
-      return version3.format();
+      return version4.format();
     };
     var isPrerelease = (type) => {
       return type.startsWith("pre");
@@ -9397,19 +9397,19 @@ var require_range = __commonJS({
         });
       }
       // if ANY of the sets match ALL of its comparators, then pass
-      test(version3) {
-        if (!version3) {
+      test(version4) {
+        if (!version4) {
           return false;
         }
-        if (typeof version3 === "string") {
+        if (typeof version4 === "string") {
           try {
-            version3 = new SemVer(version3, this.options);
+            version4 = new SemVer(version4, this.options);
           } catch (er) {
             return false;
           }
         }
         for (let i = 0; i < this.set.length; i++) {
-          if (testSet(this.set[i], version3, this.options)) {
+          if (testSet(this.set[i], version4, this.options)) {
             return true;
           }
         }
@@ -9631,13 +9631,13 @@ var require_range = __commonJS({
       }
       return `${from} ${to}`.trim();
     };
-    var testSet = (set, version3, options) => {
+    var testSet = (set, version4, options) => {
       for (let i = 0; i < set.length; i++) {
-        if (!set[i].test(version3)) {
+        if (!set[i].test(version4)) {
           return false;
         }
       }
-      if (version3.prerelease.length && !options.includePrerelease) {
+      if (version4.prerelease.length && !options.includePrerelease) {
         for (let i = 0; i < set.length; i++) {
           debug(set[i].semver);
           if (set[i].semver === Comparator.ANY) {
@@ -9645,7 +9645,7 @@ var require_range = __commonJS({
           }
           if (set[i].semver.prerelease.length > 0) {
             const allowed = set[i].semver;
-            if (allowed.major === version3.major && allowed.minor === version3.minor && allowed.patch === version3.patch) {
+            if (allowed.major === version4.major && allowed.minor === version4.minor && allowed.patch === version4.patch) {
               return true;
             }
           }
@@ -9706,19 +9706,19 @@ var require_comparator = __commonJS({
       toString() {
         return this.value;
       }
-      test(version3) {
-        debug("Comparator.test", version3, this.options.loose);
-        if (this.semver === ANY || version3 === ANY) {
+      test(version4) {
+        debug("Comparator.test", version4, this.options.loose);
+        if (this.semver === ANY || version4 === ANY) {
           return true;
         }
-        if (typeof version3 === "string") {
+        if (typeof version4 === "string") {
           try {
-            version3 = new SemVer(version3, this.options);
+            version4 = new SemVer(version4, this.options);
           } catch (er) {
             return false;
           }
         }
-        return cmp(version3, this.operator, this.semver, this.options);
+        return cmp(version4, this.operator, this.semver, this.options);
       }
       intersects(comp, options) {
         if (!(comp instanceof _Comparator)) {
@@ -9775,13 +9775,13 @@ var require_satisfies = __commonJS({
   "node_modules/semver/functions/satisfies.js"(exports, module) {
     "use strict";
     var Range = require_range();
-    var satisfies = (version3, range, options) => {
+    var satisfies = (version4, range, options) => {
       try {
         range = new Range(range, options);
       } catch (er) {
         return false;
       }
-      return range.test(version3);
+      return range.test(version4);
     };
     module.exports = satisfies;
   }
@@ -9943,8 +9943,8 @@ var require_outside = __commonJS({
     var lt = require_lt();
     var lte = require_lte();
     var gte = require_gte();
-    var outside = (version3, range, hilo, options) => {
-      version3 = new SemVer(version3, options);
+    var outside = (version4, range, hilo, options) => {
+      version4 = new SemVer(version4, options);
       range = new Range(range, options);
       let gtfn, ltefn, ltfn, comp, ecomp;
       switch (hilo) {
@@ -9965,7 +9965,7 @@ var require_outside = __commonJS({
         default:
           throw new TypeError('Must provide a hilo val of "<" or ">"');
       }
-      if (satisfies(version3, range, options)) {
+      if (satisfies(version4, range, options)) {
         return false;
       }
       for (let i = 0; i < range.set.length; ++i) {
@@ -9987,9 +9987,9 @@ var require_outside = __commonJS({
         if (high.operator === comp || high.operator === ecomp) {
           return false;
         }
-        if ((!low.operator || low.operator === comp) && ltefn(version3, low.semver)) {
+        if ((!low.operator || low.operator === comp) && ltefn(version4, low.semver)) {
           return false;
-        } else if (low.operator === ecomp && ltfn(version3, low.semver)) {
+        } else if (low.operator === ecomp && ltfn(version4, low.semver)) {
           return false;
         }
       }
@@ -10004,7 +10004,7 @@ var require_gtr = __commonJS({
   "node_modules/semver/ranges/gtr.js"(exports, module) {
     "use strict";
     var outside = require_outside();
-    var gtr = (version3, range, options) => outside(version3, range, ">", options);
+    var gtr = (version4, range, options) => outside(version4, range, ">", options);
     module.exports = gtr;
   }
 });
@@ -10014,7 +10014,7 @@ var require_ltr = __commonJS({
   "node_modules/semver/ranges/ltr.js"(exports, module) {
     "use strict";
     var outside = require_outside();
-    var ltr = (version3, range, options) => outside(version3, range, "<", options);
+    var ltr = (version4, range, options) => outside(version4, range, "<", options);
     module.exports = ltr;
   }
 });
@@ -10044,12 +10044,12 @@ var require_simplify = __commonJS({
       let first = null;
       let prev = null;
       const v = versions.sort((a, b) => compare2(a, b, options));
-      for (const version3 of v) {
-        const included = satisfies(version3, range, options);
+      for (const version4 of v) {
+        const included = satisfies(version4, range, options);
         if (included) {
-          prev = version3;
+          prev = version4;
           if (!first) {
-            first = version3;
+            first = version4;
           }
         } else {
           if (prev) {
@@ -10690,9 +10690,9 @@ var require_lodash = __commonJS({
       }
       return result;
     }
-    function baseValues(object3, props) {
+    function baseValues(object4, props) {
       return arrayMap(props, function(key) {
-        return object3[key];
+        return object4[key];
       });
     }
     function overArg(func, transform) {
@@ -10716,13 +10716,13 @@ var require_lodash = __commonJS({
       }
       return result;
     }
-    function baseKeys(object3) {
-      if (!isPrototype(object3)) {
-        return nativeKeys(object3);
+    function baseKeys(object4) {
+      if (!isPrototype(object4)) {
+        return nativeKeys(object4);
       }
       var result = [];
-      for (var key in Object(object3)) {
-        if (hasOwnProperty.call(object3, key) && key != "constructor") {
+      for (var key in Object(object4)) {
+        if (hasOwnProperty.call(object4, key) && key != "constructor") {
           result.push(key);
         }
       }
@@ -10808,11 +10808,11 @@ var require_lodash = __commonJS({
       var isBinary = reIsBinary.test(value);
       return isBinary || reIsOctal.test(value) ? freeParseInt(value.slice(2), isBinary ? 2 : 8) : reIsBadHex.test(value) ? NAN : +value;
     }
-    function keys(object3) {
-      return isArrayLike(object3) ? arrayLikeKeys(object3) : baseKeys(object3);
+    function keys(object4) {
+      return isArrayLike(object4) ? arrayLikeKeys(object4) : baseKeys(object4);
     }
-    function values(object3) {
-      return object3 ? baseValues(object3, keys(object3)) : [];
+    function values(object4) {
+      return object4 ? baseValues(object4, keys(object4)) : [];
     }
     module.exports = includes;
   }
@@ -11102,11 +11102,11 @@ var require_sign = __commonJS({
       exp: { isValid: isNumber, message: '"exp" should be a number of seconds' },
       nbf: { isValid: isNumber, message: '"nbf" should be a number of seconds' }
     };
-    function validate(schema, allowUnknown, object3, parameterName) {
-      if (!isPlainObject3(object3)) {
+    function validate(schema, allowUnknown, object4, parameterName) {
+      if (!isPlainObject3(object4)) {
         throw new Error('Expected "' + parameterName + '" to be a plain object.');
       }
-      Object.keys(object3).forEach(function(key) {
+      Object.keys(object4).forEach(function(key) {
         const validator = schema[key];
         if (!validator) {
           if (!allowUnknown) {
@@ -11114,7 +11114,7 @@ var require_sign = __commonJS({
           }
           return;
         }
-        if (!validator.isValid(object3[key])) {
+        if (!validator.isValid(object4[key])) {
           throw new Error(validator.message);
         }
       });
@@ -11296,11 +11296,11 @@ var require_jsonwebtoken = __commonJS({
 });
 
 // src/repository-service.ts
-var import_yaml4 = __toESM(require_dist(), 1);
-import { createHash as createHash8, randomBytes as randomBytes8 } from "node:crypto";
-import { lstat as lstat6, realpath as realpath6 } from "node:fs/promises";
-import { homedir as homedir6 } from "node:os";
-import { basename as basename3, join as join7 } from "node:path";
+var import_yaml5 = __toESM(require_dist(), 1);
+import { createHash as createHash9, randomBytes as randomBytes9 } from "node:crypto";
+import { lstat as lstat8, realpath as realpath8 } from "node:fs/promises";
+import { homedir as homedir8 } from "node:os";
+import { basename as basename4, join as join9 } from "node:path";
 
 // src/ado-client.ts
 import { setTimeout as delay } from "node:timers/promises";
@@ -11341,6 +11341,19 @@ var messages = {
   app_launcher_unavailable: "A supported installed Copilot CLI is required to open this checkout in the App.",
   app_launch_failed: "The Copilot App open request failed. The checkout has been preserved.",
   app_launch_unknown: "The App open request could not be confirmed. Check the App before opening again.",
+  scaffolding_conflict: "Setup is already running for this checkout. Reopen its canvas to follow progress.",
+  scaffolding_not_required: "Spec Kit is already enabled. Open the original canvas.",
+  scaffolding_required: "Complete organization setup using the canvas button first.",
+  scaffolding_failed: "Organization setup failed. Review the failed step, then explicitly retry.",
+  scaffolding_cancelled: "Organization setup was cancelled. Completed artifacts were retained.",
+  scaffolding_auth_failed: "Organization registry authentication failed. Complete GitHub Enterprise sign-in and retry.",
+  scaffolding_prerequisite_missing: "Install GitHub CLI and uv or pipx, then retry setup. Automatic prerequisite installation requires Windows Package Manager.",
+  scaffolding_version_unsupported: "The installed Specify CLI does not meet the organization bootstrap's minimum version.",
+  scaffolding_registry_invalid: "The organization bootstrap or bundle metadata is incompatible. No unreviewed registry commands were executed.",
+  scaffolding_storage_invalid: "Setup encountered an invalid, redirected, or unwritable configuration path. Existing files were preserved.",
+  scaffolding_catalog_conflict: "An existing catalog conflicts with the organization setup. Review its URL and installation policy before retrying.",
+  scaffolding_verification_failed: "The required Spec Kit bundle artifacts could not be verified. The workflow canvas remains blocked.",
+  skills_reload_unavailable: "This host cannot reload the generated project skills. Reload skills in the App, then retry the final setup step.",
   upstream_unavailable: "The repository service is temporarily unavailable."
 };
 function repositoryErrorStatus(code) {
@@ -11890,7 +11903,7 @@ function createHostHandoffAdapter(options) {
   }
   return {
     inspectCurrent,
-    async openCurrentCanvas(expected, instanceId, signal) {
+    async openCurrentCanvas(expected, instanceId, signal, requestOptions) {
       if (!capabilities.localCanvas) throw new RepositoryError("canvas_unavailable");
       if (!/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/.test(instanceId)) throw new RepositoryError("invalid_request");
       const current = await inspectCurrent(signal);
@@ -11899,7 +11912,7 @@ function createHostHandoffAdapter(options) {
         ...options.extensionId ? { extensionId: options.extensionId } : {},
         canvasId: "sdd-canvas-direct",
         instanceId,
-        input: {}
+        input: requestOptions?.repositorySetup === true ? { repositorySetup: true } : {}
       }), "canvas_unavailable", signal));
       const verified = await inspectCurrent(signal);
       sameContext(current, verified);
@@ -11959,7 +11972,7 @@ async function executeHostHandoff({ host, request, outcome, persistActivation, r
     const existing = await readReadiness();
     if (existing) return verifyReady(existing, activation);
     if (current.activity !== "idle") throw new RepositoryError(current.activity === "busy" ? "session_busy" : "activity_unknown");
-    const opened = await host.openCurrentCanvas(activation, request.instanceId, deadline.signal);
+    const opened = await host.openCurrentCanvas(activation, request.instanceId, deadline.signal, { repositorySetup: true });
     if (deadline.signal.aborted) throw new RepositoryError("handoff_unknown");
     if (opened.sessionId !== activation.sessionId || opened.contextRevision !== activation.contextRevision || opened.workingDirectory !== activation.workingDirectory || opened.instanceId !== request.instanceId) throw new RepositoryError("context_changed");
     const ready = await readReadiness();
@@ -13186,8 +13199,8 @@ async function startOAuthCallback({ state, signal, timeoutMs = 12e4 }) {
   if (signal?.aborted) throw new RepositoryError("connection_required");
   let accept;
   let reject;
-  const result = new Promise((resolve8, fail) => {
-    accept = resolve8;
+  const result = new Promise((resolve10, fail) => {
+    accept = resolve10;
     reject = fail;
   });
   void result.catch(() => void 0);
@@ -13267,11 +13280,11 @@ async function startOAuthCallback({ state, signal, timeoutMs = 12e4 }) {
   server.setTimeout(5e3, (socket) => socket.destroy());
   server.maxConnections = 8;
   server.on("clientError", (_error, socket) => socket.destroy());
-  await new Promise((resolve8, fail) => {
+  await new Promise((resolve10, fail) => {
     server.once("error", fail);
     server.listen(0, "127.0.0.1", () => {
       server.removeListener("error", fail);
-      resolve8();
+      resolve10();
     });
   }).catch(() => {
     close();
@@ -15302,8 +15315,8 @@ var RegionDiscovery = class _RegionDiscovery {
    * @param options
    * @returns Promise<NetworkResponse<ImdsComputeResponse>>
    */
-  async getRegionFromIMDS(version3, options) {
-    return this.networkInterface.sendGetRequestAsync(`${IMDS_ENDPOINT}?api-version=${version3}`, options, IMDS_TIMEOUT);
+  async getRegionFromIMDS(version4, options) {
+    return this.networkInterface.sendGetRequestAsync(`${IMDS_ENDPOINT}?api-version=${version4}`, options, IMDS_TIMEOUT);
   }
   /**
    * Get the most recent version of the IMDS endpoint available
@@ -15387,7 +15400,7 @@ function wasClockTurnedBack(cachedAt) {
   return cachedAtSec > nowSeconds();
 }
 function delay2(t, value) {
-  return new Promise((resolve8) => setTimeout(() => resolve8(value), t));
+  return new Promise((resolve10) => setTimeout(() => resolve10(value), t));
 }
 
 // node_modules/@azure/msal-common/dist/cache/utils/CacheHelpers.mjs
@@ -22394,7 +22407,7 @@ var LoopbackClient = class {
     if (this.server) {
       throw NodeAuthError.createLoopbackServerAlreadyExistsError();
     }
-    return new Promise((resolve8, reject) => {
+    return new Promise((resolve10, reject) => {
       this.server = http.createServer((req, res) => {
         const method = req.method?.toUpperCase();
         if (method !== "GET" && method !== "POST") {
@@ -22411,7 +22424,7 @@ var LoopbackClient = class {
           return;
         } else if (url === Constants_exports.FORWARD_SLASH) {
           if (method === "POST") {
-            this.handlePostRequest(req, res, resolve8, successTemplate, errorTemplate);
+            this.handlePostRequest(req, res, resolve10, successTemplate, errorTemplate);
             return;
           }
           res.end(successTemplate || "Auth code was successfully acquired. You can close this window now.");
@@ -22435,7 +22448,7 @@ var LoopbackClient = class {
           if (authCodeResponse.error) {
             res.end(errorTemplate || `Error occurred: ${authCodeResponse.error}`);
           }
-          resolve8(authCodeResponse);
+          resolve10(authCodeResponse);
         } else {
           res.writeHead(200);
           res.end();
@@ -22455,7 +22468,7 @@ var LoopbackClient = class {
   /**
    * Handles POST requests for form_post response mode
    */
-  handlePostRequest(req, res, resolve8, successTemplate, errorTemplate) {
+  handlePostRequest(req, res, resolve10, successTemplate, errorTemplate) {
     const contentType = req.headers["content-type"]?.split(";")[0]?.trim();
     if (contentType !== "application/x-www-form-urlencoded") {
       res.writeHead(415);
@@ -22486,7 +22499,7 @@ var LoopbackClient = class {
         res.writeHead(200);
         res.end(successTemplate || "Auth code was successfully acquired. You can close this window now.");
       }
-      resolve8(authCodeResponse);
+      resolve10(authCodeResponse);
     });
   }
   /**
@@ -22927,7 +22940,7 @@ var PublicClientApplication = class extends ClientApplication {
    * @returns
    */
   async waitForRedirectUri(loopbackClient, correlationId) {
-    return new Promise((resolve8, reject) => {
+    return new Promise((resolve10, reject) => {
       let ticks = 0;
       const id = setInterval(() => {
         if (LOOPBACK_SERVER_CONSTANTS.TIMEOUT_MS / LOOPBACK_SERVER_CONSTANTS.INTERVAL_MS < ticks) {
@@ -22938,7 +22951,7 @@ var PublicClientApplication = class extends ClientApplication {
         try {
           const r = loopbackClient.getRedirectUri();
           clearInterval(id);
-          resolve8(r);
+          resolve10(r);
           return;
         } catch (e) {
           if (e instanceof AuthError && e.errorCode === NodeAuthErrorMessage.noLoopbackServerExists.code) {
@@ -23474,9 +23487,9 @@ executePowerShell2.escapeArgument = escapeArgument;
 executePowerShell2.createArguments = createArguments;
 
 // node_modules/define-lazy-prop/index.js
-function defineLazyProperty(object3, propertyName, valueGetter) {
-  const define = (value) => Object.defineProperty(object3, propertyName, { value, enumerable: true, writable: true });
-  Object.defineProperty(object3, propertyName, {
+function defineLazyProperty(object4, propertyName, valueGetter) {
+  const define = (value) => Object.defineProperty(object4, propertyName, { value, enumerable: true, writable: true });
+  Object.defineProperty(object4, propertyName, {
     configurable: true,
     enumerable: true,
     get() {
@@ -23488,7 +23501,7 @@ function defineLazyProperty(object3, propertyName, valueGetter) {
       define(value);
     }
   });
-  return object3;
+  return object4;
 }
 
 // node_modules/default-browser/index.js
@@ -23791,19 +23804,19 @@ var baseOpen = async (options) => {
   }
   const subprocess = childProcess4.spawn(command, cliArguments, childProcessOptions);
   if (options.wait) {
-    return new Promise((resolve8, reject) => {
+    return new Promise((resolve10, reject) => {
       subprocess.once("error", reject);
       subprocess.once("close", (exitCode) => {
         if (!options.allowNonzeroExitCode && exitCode !== 0) {
           reject(new Error(`Exited with code ${exitCode}`));
           return;
         }
-        resolve8(subprocess);
+        resolve10(subprocess);
       });
     });
   }
   if (isFallbackAttempt) {
-    return new Promise((resolve8, reject) => {
+    return new Promise((resolve10, reject) => {
       subprocess.once("error", reject);
       subprocess.once("spawn", () => {
         subprocess.once("close", (exitCode) => {
@@ -23813,17 +23826,17 @@ var baseOpen = async (options) => {
             return;
           }
           subprocess.unref();
-          resolve8(subprocess);
+          resolve10(subprocess);
         });
       });
     });
   }
   subprocess.unref();
-  return new Promise((resolve8, reject) => {
+  return new Promise((resolve10, reject) => {
     subprocess.once("error", reject);
     subprocess.once("spawn", () => {
       subprocess.off("error", reject);
-      resolve8(subprocess);
+      resolve10(subprocess);
     });
   });
 };
@@ -24540,13 +24553,1100 @@ async function openRequestedAppCanvas({
     if (latest.sessionId !== current.sessionId || latest.contextRevision !== current.contextRevision || latest.workingDirectory !== current.workingDirectory || latest.activityRevision !== current.activityRevision || latest.capabilityGeneration !== current.capabilityGeneration) throw new RepositoryError("context_changed");
     if (latest.activity !== "idle") throw new RepositoryError(latest.activity === "busy" ? "session_busy" : "activity_unknown");
     submitted = true;
-    const acknowledgment = await host.openCurrentCanvas(current, `entry-app-${requestId}`);
+    const acknowledgment = await host.openCurrentCanvas(current, `entry-app-${requestId}`, void 0, { repositorySetup: true });
     await store.finishAppCanvas(record3.operationId, requestId, current.sessionId, acknowledgment);
     return { status: "opened", acknowledgment };
   } catch (error) {
     const failure = knownRepositoryError(error?.code);
     await store.finishAppCanvas(record3.operationId, requestId, current.sessionId, { errorCode: failure.code, unknown: submitted });
     throw failure;
+  }
+}
+
+// src/scaffolding.ts
+var import_yaml4 = __toESM(require_dist(), 1);
+import { createHash as createHash8, randomBytes as randomBytes8 } from "node:crypto";
+import { lstat as lstat7, mkdir as mkdir3, open as open6, readFile as readFile4, readdir as readdir3, realpath as realpath7, rename as rename3, unlink as unlink3, writeFile as writeFile2 } from "node:fs/promises";
+import { homedir as homedir7 } from "node:os";
+import { basename as basename3, isAbsolute as isAbsolute9, join as join8, relative as relative6, resolve as resolve9, sep as sep6 } from "node:path";
+
+// src/setup-process.ts
+import { spawn as spawn3 } from "node:child_process";
+import { lstat as lstat6, open as open5, realpath as realpath6 } from "node:fs/promises";
+import { homedir as homedir6 } from "node:os";
+import { delimiter as delimiter3, isAbsolute as isAbsolute8, join as join7, relative as relative5, resolve as resolve8, sep as sep5 } from "node:path";
+var SetupCommandError = class extends Error {
+  reason;
+  constructor(reason, message) {
+    super(message);
+    this.name = "SetupCommandError";
+    this.reason = reason;
+  }
+};
+function inside4(root, target) {
+  const path3 = relative5(root, target);
+  return path3 === "" || path3 !== ".." && !path3.startsWith(`..${sep5}`) && !isAbsolute8(path3);
+}
+function redactSetupOutput(text2, secrets = []) {
+  let result = text2.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "").replace(/[\x00-\x08\x0b-\x1f\x7f]/g, "");
+  for (const secret of secrets) if (secret) result = result.replaceAll(secret, "[redacted]");
+  return result.replace(/\b(?:gh[pousr]_[A-Za-z0-9_]{10,}|github_pat_[A-Za-z0-9_]{10,})\b/g, "[redacted]").replace(/\b((?:authorization|proxy-authorization)\s*[:=]\s*)(?:bearer|token|basic)\s+\S+/gi, "$1[redacted]").replace(/\b((?:GH_ENTERPRISE_TOKEN|GH_TOKEN|GITHUB_TOKEN)\s*[:=]\s*)\S+/gi, "$1[redacted]").replace(/https?:\/\/[^/\s@]+@/gi, "https://[redacted]@");
+}
+async function setupEnvironment(workspacePath, environment = process.env, homeDirectory = homedir6()) {
+  const allowed = /* @__PURE__ */ new Set([
+    "systemroot",
+    "windir",
+    "comspec",
+    "temp",
+    "tmp",
+    "userprofile",
+    "home",
+    "localappdata",
+    "appdata",
+    "programfiles",
+    "programfiles(x86)",
+    "https_proxy",
+    "http_proxy",
+    "no_proxy",
+    "ssl_cert_file",
+    "ssl_cert_dir",
+    "requests_ca_bundle",
+    "curl_ca_bundle",
+    "node_extra_ca_certs"
+  ]);
+  const env = Object.fromEntries(Object.entries(environment).filter(([name3]) => allowed.has(name3.toLowerCase())));
+  const directories = [];
+  for (const directory of (environment.PATH ?? environment.Path ?? "").split(delimiter3)) {
+    if (!directory || !isAbsolute8(directory)) continue;
+    try {
+      const canonical = await realpath6(directory);
+      if (!inside4(resolve8(workspacePath), canonical)) directories.push(canonical);
+    } catch (error) {
+      if (!["ENOENT", "EACCES", "EPERM"].includes(error.code ?? "")) throw error;
+    }
+  }
+  const userBin = join7(homeDirectory, ".local", "bin");
+  try {
+    const canonical = await realpath6(userBin);
+    if (!inside4(resolve8(workspacePath), canonical)) directories.unshift(canonical);
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+    if (!inside4(resolve8(workspacePath), userBin)) directories.unshift(userBin);
+  }
+  return {
+    ...env,
+    PATH: [...new Set(directories)].join(delimiter3),
+    HOME: homeDirectory,
+    USERPROFILE: homeDirectory,
+    NO_COLOR: "1",
+    TERM: "dumb",
+    CLICOLOR: "0",
+    PYTHONUTF8: "1",
+    PYTHONIOENCODING: "utf-8",
+    PYTHONNOUSERSITE: "1",
+    UV_NO_CONFIG: "1",
+    UV_DEFAULT_INDEX: "https://packagefeedproxy.microsoft.io/pypi/simple/"
+  };
+}
+async function pythonConsoleExecutable(candidate, workspacePath) {
+  try {
+    const path3 = await realpath6(candidate);
+    const info = await lstat6(path3);
+    if (!info.isFile() || inside4(resolve8(workspacePath), path3)) return;
+    const handle = await open5(path3, "r");
+    let header;
+    try {
+      const bytes = Buffer.alloc(1024);
+      const read = await handle.read(bytes, 0, bytes.length, 0);
+      header = bytes.subarray(0, read.bytesRead).toString("utf8").split(/\r?\n/)[0];
+    } finally {
+      await handle.close();
+    }
+    const direct = /^#!(\/[^\s]+\/python(?:\d+(?:\.\d+)*)?)\s*$/.exec(header ?? "");
+    if (direct && await nativeExecutable(direct[1], workspacePath)) return path3;
+    if (/^#!\/usr\/bin\/env python(?:\d+(?:\.\d+)*)?\s*$/.test(header ?? "") && await nativeExecutable("/usr/bin/env", workspacePath)) return path3;
+  } catch (error) {
+    if (!["ENOENT", "EACCES", "EPERM"].includes(error.code ?? "")) throw error;
+  }
+  return;
+}
+async function findSetupExecutable(tool, workspacePath, {
+  environment = process.env,
+  homeDirectory = homedir6(),
+  platform: platform2 = process.platform
+} = {}) {
+  const directories = [join7(homeDirectory, ".local", "bin"), ...(environment.PATH ?? environment.Path ?? "").split(delimiter3)];
+  if (platform2 === "win32") {
+    if (environment.ProgramFiles) directories.push(join7(environment.ProgramFiles, "GitHub CLI"));
+    if (environment.LOCALAPPDATA) directories.push(
+      join7(environment.LOCALAPPDATA, "Microsoft", "WinGet", "Links"),
+      join7(environment.LOCALAPPDATA, "Microsoft", "WindowsApps")
+    );
+  }
+  for (const directory of [...new Set(directories)]) {
+    if (!isAbsolute8(directory) || inside4(resolve8(workspacePath), resolve8(directory))) continue;
+    const executable = await nativeExecutable(join7(directory, platform2 === "win32" ? `${tool}.exe` : tool), workspacePath);
+    if (executable) return executable;
+    if (platform2 !== "win32" && ["specify", "pipx"].includes(tool)) {
+      const console2 = await pythonConsoleExecutable(join7(directory, tool), workspacePath);
+      if (console2) return console2;
+    }
+    if (platform2 === "win32" && tool === "winget" && environment.LOCALAPPDATA && resolve8(directory) === resolve8(environment.LOCALAPPDATA, "Microsoft", "WindowsApps")) {
+      const alias = join7(directory, "winget.exe");
+      try {
+        const parent = await realpath6(directory);
+        const info = await lstat6(alias);
+        if (!inside4(resolve8(workspacePath), parent) && info.size === 0 && (info.isFile() || info.isSymbolicLink())) return alias;
+      } catch (error) {
+        if (!["ENOENT", "EACCES", "EPERM"].includes(error.code ?? "")) throw error;
+      }
+    }
+  }
+  return;
+}
+async function stopOwnedCommand(child) {
+  if (!child.pid || child.exitCode !== null) return;
+  if (process.platform !== "win32") {
+    child.kill("SIGTERM");
+    return;
+  }
+  const executable = join7(process.env.SystemRoot ?? "C:\\Windows", "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
+  const pid = child.pid;
+  const script = `$ids = [System.Collections.Generic.List[int]]::new(); $ids.Add(${pid}); for ($i=0; $i -lt $ids.Count -and $ids.Count -lt 128; $i++) { Get-CimInstance Win32_Process -Filter ("ParentProcessId=" + $ids[$i]) | ForEach-Object { $ids.Add([int]$_.ProcessId) } }; for ($i=$ids.Count-1; $i -ge 0; $i--) { Stop-Process -Id $ids[$i] -Force -ErrorAction SilentlyContinue }`;
+  await new Promise((done) => {
+    const stopper = spawn3(executable, ["-NoProfile", "-NonInteractive", "-Command", script], { windowsHide: true, stdio: "ignore" });
+    const timer = setTimeout(() => {
+      stopper.kill();
+      child.kill();
+    }, 1e4);
+    stopper.once("error", () => {
+      clearTimeout(timer);
+      child.kill();
+      done();
+    });
+    stopper.once("close", () => {
+      clearTimeout(timer);
+      done();
+    });
+  });
+}
+var runSetupCommand = (command) => new Promise((resolveResult, reject) => {
+  if (command.signal.aborted) {
+    reject(new SetupCommandError("cancelled", "Setup was cancelled."));
+    return;
+  }
+  const child = spawn3(command.executable, command.args, {
+    cwd: command.cwd,
+    env: command.env,
+    shell: false,
+    windowsHide: true,
+    stdio: [command.input === void 0 ? "ignore" : "pipe", "pipe", "pipe"]
+  });
+  let stopped;
+  let stop;
+  let bytes = 0;
+  let stdout = "";
+  let stderr = "";
+  const terminate = (reason) => {
+    if (stopped) return;
+    stopped = reason;
+    stop = stopOwnedCommand(child);
+  };
+  const timer = setTimeout(() => terminate("timeout"), command.timeoutMs);
+  const abort = () => terminate("cancelled");
+  command.signal.addEventListener("abort", abort, { once: true });
+  const output = (chunk, stream) => {
+    bytes += chunk.length;
+    if (bytes > 1048576) {
+      terminate("output_limit");
+      return;
+    }
+    const value = chunk.toString("utf8");
+    if (stream === "stdout") stdout += value;
+    else stderr = (stderr + value).slice(-16384);
+    if (!command.sensitive) command.onOutput?.(redactSetupOutput(value, command.secrets));
+  };
+  child.stdout.on("data", (chunk) => output(chunk, "stdout"));
+  child.stderr.on("data", (chunk) => output(chunk, "stderr"));
+  if (command.input !== void 0) {
+    child.stdin.on("error", (error) => {
+      if (error.code !== "EPIPE" && error.code !== "ERR_STREAM_DESTROYED") terminate("spawn");
+    });
+    child.stdin.end(command.input);
+  }
+  const cleanup = () => {
+    clearTimeout(timer);
+    command.signal.removeEventListener("abort", abort);
+  };
+  child.once("error", () => {
+    cleanup();
+    reject(new SetupCommandError("spawn", "The setup command could not be started."));
+  });
+  child.once("close", (code) => {
+    cleanup();
+    void (stop ?? Promise.resolve()).then(() => {
+      if (stopped) {
+        reject(new SetupCommandError(stopped, stopped === "cancelled" ? "Setup was cancelled." : `The setup command stopped (${stopped}).`));
+        return;
+      }
+      resolveResult({ exitCode: code ?? 1, stdout, stderr: command.sensitive ? "" : redactSetupOutput(stderr, command.secrets) });
+    });
+  });
+});
+
+// src/scaffolding.ts
+var ORGANIZATION_SETUP = Object.freeze({
+  hostname: "msft.ghe.com",
+  repository: "1eh-msd/msd-speckit-registry",
+  bundleId: "msd-bundle",
+  bundleName: "MSD Bundle",
+  sourceUrl: "https://msft.ghe.com/1eh-msd/msd-speckit-registry",
+  tokenEnvironment: "GH_ENTERPRISE_TOKEN",
+  squadUrl: "https://msft.ghe.com/1eh-msd/msd-speckit-registry/releases/download/v1.0.0/squad-v1.0.0.zip"
+});
+var REGISTRY_HOSTS = ["msft.ghe.com", "raw.msft.ghe.com", "api.msft.ghe.com"];
+var CATALOGS = [
+  { id: "extension-catalog", group: "extension", name: "MSD Built Extensions", file: "extension-catalogs.yml", source: "extensions.catalog.json" },
+  { id: "preset-catalog", group: "preset", name: "MSD Built Presets", file: "preset-catalogs.yml", source: "presets.catalog.json" },
+  { id: "bundle-catalog", group: "bundle", name: "MSD Built Bundles", file: "bundle-catalogs.yml", source: "bundles.catalog.json" },
+  { id: "workflow-catalog", group: "workflow", name: "MSD Built Workflows", file: "workflow-catalogs.yml", source: "workflows.catalog.json" }
+];
+var activeJobs = /* @__PURE__ */ new Map();
+var STEP_DEFINITIONS = [
+  ["github-cli", "GitHub CLI"],
+  ["authentication", "Organization sign-in"],
+  ["registry-auth", "Spec Kit registry authentication"],
+  ["registry", "Recommended organization bundle"],
+  ["specify-cli", "Install or update Spec Kit"],
+  ["initialize", "Initialize Copilot skills mode"],
+  ["extension-catalog", "Extension catalog"],
+  ["preset-catalog", "Preset catalog"],
+  ["bundle-catalog", "Bundle catalog"],
+  ["workflow-catalog", "Workflow catalog"],
+  ["bundle", "Install the recommended bundle"],
+  ["verify", "Verify installed artifacts"],
+  ["skills", "Reload session skills"]
+];
+var progresses = /* @__PURE__ */ new Set(["pending", "loading", "waiting", "completed", "skipped", "error", "cancelled"]);
+var object3 = (value) => value !== null && typeof value === "object" && !Array.isArray(value) ? value : null;
+var identifier3 = (value) => typeof value === "string" && /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/.test(value);
+var version3 = (value) => typeof value === "string" && /^\d+\.\d+\.\d+$/.test(value);
+var initialSteps = () => STEP_DEFINITIONS.map(([id, label]) => ({ id, label, status: "pending" }));
+var catalogUrl = (source) => `https://raw.msft.ghe.com/${ORGANIZATION_SETUP.repository}/main/${source}`;
+function versionAtLeast(installed, minimum) {
+  if (!version3(installed) || !version3(minimum)) return false;
+  const left = installed.split(".").map(Number);
+  const right = minimum.split(".").map(Number);
+  for (let index = 0; index < 3; index++) {
+    if (left[index] !== right[index]) return left[index] > right[index];
+  }
+  return true;
+}
+function yamlObject(text2, code = "scaffolding_storage_invalid") {
+  const document = (0, import_yaml4.parseDocument)(text2, { uniqueKeys: true });
+  const parsed = document.toJS();
+  const data = object3(parsed);
+  if (document.errors.length || !data) throw new RepositoryError(code);
+  return data;
+}
+function parseOrganizationSetup(workflowText, bundleText, catalogText) {
+  const workflow = yamlObject(workflowText, "scaffolding_registry_invalid");
+  const manifest = yamlObject(bundleText, "scaffolding_registry_invalid");
+  let catalog;
+  try {
+    catalog = object3(JSON.parse(catalogText));
+  } catch {
+    throw new RepositoryError("scaffolding_registry_invalid");
+  }
+  const bundle = object3(manifest.bundle);
+  const catalogBundle = object3(object3(catalog?.bundles)?.[ORGANIZATION_SETUP.bundleId]);
+  const minimum = object3(workflow.requires)?.speckit_version;
+  const bundleMinimum = object3(manifest.requires)?.speckit_version;
+  const steps = Array.isArray(workflow.steps) ? workflow.steps.map(object3) : [];
+  const init = steps.find((step) => step?.id === "init-project");
+  const required = ["check-speckit-version", "init-project", "add-extension-catalog", "add-preset-catalog", "add-bundle-catalog", "install-bundle"];
+  if (manifest.schema_version !== "1.0" || workflow.schema_version !== "1.0" || !bundle || bundle.id !== ORGANIZATION_SETUP.bundleId || !version3(bundle.version) || catalogBundle?.version !== bundle.version || typeof minimum !== "string" || !/^>=\d+\.\d+\.\d+$/.test(minimum) || typeof bundleMinimum !== "string" || !/^>=\d+\.\d+\.\d+$/.test(bundleMinimum) || required.some((id) => !steps.some((step) => step?.id === id)) || init?.type !== "init" || init.here !== true || init.integration !== "copilot" || init.integration_options !== "--skills" || init.force !== true) {
+    throw new RepositoryError("scaffolding_registry_invalid");
+  }
+  const provides = object3(manifest.provides);
+  if (!provides || Object.entries(provides).some(([kind, values]) => !["extensions", "presets"].includes(kind) && (!Array.isArray(values) || values.length))) throw new RepositoryError("scaffolding_registry_invalid");
+  const artifacts = [];
+  for (const [plural, kind] of [["extensions", "extension"], ["presets", "preset"]]) {
+    const entries = provides[plural] ?? [];
+    if (!Array.isArray(entries)) throw new RepositoryError("scaffolding_registry_invalid");
+    for (const raw of entries) {
+      const entry = object3(raw);
+      if (!entry || typeof entry.id !== "string" || !/^[a-z][a-z0-9-]{0,100}$/.test(entry.id) || !version3(entry.version) || artifacts.some((artifact) => artifact.kind === kind && artifact.id === entry.id) || entry.priority !== void 0 && (!Number.isSafeInteger(entry.priority) || Number(entry.priority) < 1) || entry.strategy !== void 0 && !["replace", "append", "prepend", "wrap"].includes(String(entry.strategy))) {
+        throw new RepositoryError("scaffolding_registry_invalid");
+      }
+      artifacts.push({
+        id: entry.id,
+        label: entry.id,
+        kind,
+        version: entry.version,
+        status: "pending",
+        ...typeof entry.priority === "number" ? { priority: entry.priority } : {},
+        ...typeof entry.strategy === "string" ? { strategy: entry.strategy } : {}
+      });
+    }
+  }
+  if (!artifacts.length || artifacts.length > 128) throw new RepositoryError("scaffolding_registry_invalid");
+  return { version: bundle.version, minimumVersion: versionAtLeast(minimum.slice(2), bundleMinimum.slice(2)) ? minimum.slice(2) : bundleMinimum.slice(2), artifacts };
+}
+async function safeRead(root, segments, maximum = 1048576) {
+  let path3 = root;
+  try {
+    const rootInfo = await lstat7(root);
+    if (!rootInfo.isDirectory() || rootInfo.isSymbolicLink() || await realpath7(root) !== resolve9(root)) throw new RepositoryError("scaffolding_storage_invalid");
+    for (let index = 0; index < segments.length; index++) {
+      path3 = join8(path3, segments[index]);
+      const info = await lstat7(path3);
+      if (info.isSymbolicLink() || (index === segments.length - 1 ? !info.isFile() || info.size > maximum : !info.isDirectory()) || await realpath7(path3) !== resolve9(path3)) throw new RepositoryError("scaffolding_storage_invalid");
+    }
+    const content = await readFile4(path3, "utf8");
+    if (Buffer.byteLength(content) > maximum) throw new RepositoryError("scaffolding_storage_invalid");
+    return content;
+  } catch (error) {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  }
+}
+async function safeDirectory(parent, name3) {
+  const path3 = join8(parent, name3);
+  await mkdir3(path3).catch((error) => {
+    if (error.code !== "EEXIST") throw error;
+  });
+  const info = await lstat7(path3);
+  if (!info.isDirectory() || info.isSymbolicLink() || await realpath7(path3) !== resolve9(path3)) throw new RepositoryError("scaffolding_storage_invalid");
+  return path3;
+}
+async function atomicWrite(path3, content) {
+  const temporary = `${path3}.${randomBytes8(8).toString("hex")}.tmp`;
+  try {
+    await writeFile2(temporary, content, { flag: "wx", mode: 384 });
+    await rename3(temporary, path3);
+  } finally {
+    await unlink3(temporary).catch((error) => {
+      if (error.code !== "ENOENT") throw error;
+    });
+  }
+}
+async function acquireSetupLock(root, segments, jobId) {
+  const path3 = join8(root, ...segments);
+  const previous = await safeRead(root, segments, 1024);
+  if (previous !== null) {
+    const recoveryPath = `${path3}.recovery`;
+    const recovery = await open6(recoveryPath, "wx", 384).catch((error) => {
+      if (error.code === "EEXIST") throw new RepositoryError("scaffolding_conflict");
+      throw error;
+    });
+    try {
+      const latest = await safeRead(root, segments, 1024);
+      if (latest !== previous) throw new RepositoryError("scaffolding_conflict");
+      let owner;
+      try {
+        owner = object3(JSON.parse(latest));
+      } catch {
+        throw new RepositoryError("scaffolding_storage_invalid");
+      }
+      if (!owner || !Number.isSafeInteger(owner.pid) || Number(owner.pid) < 1 || !identifier3(owner.jobId) || processAlive(Number(owner.pid))) throw new RepositoryError("scaffolding_conflict");
+      await unlink3(path3);
+    } finally {
+      await recovery.close();
+      await unlink3(recoveryPath);
+    }
+  }
+  const lock = await open6(path3, "wx", 384).catch((error) => {
+    if (error.code === "EEXIST") throw new RepositoryError("scaffolding_conflict");
+    throw error;
+  });
+  try {
+    await lock.writeFile(JSON.stringify({ pid: process.pid, jobId }));
+  } catch (error) {
+    await lock.close();
+    await unlink3(path3);
+    throw error;
+  }
+  return lock;
+}
+function mergeRegistryAuthentication(existing) {
+  const data = existing === null ? {} : object3(existing);
+  if (!data || data.providers !== void 0 && !Array.isArray(data.providers)) throw new RepositoryError("scaffolding_storage_invalid");
+  const providers = [];
+  for (const raw of data.providers ?? []) {
+    const provider = object3(raw);
+    if (!provider || !Array.isArray(provider.hosts) || provider.hosts.some((host) => typeof host !== "string")) throw new RepositoryError("scaffolding_storage_invalid");
+    const hosts = provider.hosts.filter((host) => !REGISTRY_HOSTS.includes(String(host).toLowerCase()));
+    if (hosts.length) providers.push({ ...provider, hosts });
+  }
+  providers.push({ hosts: REGISTRY_HOSTS, provider: "github", auth: "bearer", token_env: ORGANIZATION_SETUP.tokenEnvironment });
+  return { ...data, providers };
+}
+async function configureRegistryAuthentication(home) {
+  await safeDirectory(home, ".specify");
+  const path3 = join8(home, ".specify", "auth.json");
+  const lockPath = `${path3}.sdd-lock`;
+  const lock = await acquireSetupLock(home, [".specify", "auth.json.sdd-lock"], randomBytes8(16).toString("hex"));
+  try {
+    const content = await safeRead(home, [".specify", "auth.json"], 65536);
+    let existing = null;
+    try {
+      if (content !== null) existing = JSON.parse(content);
+    } catch {
+      throw new RepositoryError("scaffolding_storage_invalid");
+    }
+    const merged = mergeRegistryAuthentication(existing);
+    if (JSON.stringify(existing) !== JSON.stringify(merged)) await atomicWrite(path3, `${JSON.stringify(merged, null, 2)}
+`);
+  } finally {
+    await lock.close();
+    await unlink3(lockPath);
+  }
+}
+async function verifyManagedPaths(workspacePath) {
+  let count = 0;
+  for (const root of [".specify", ".github"]) {
+    const queue = [join8(workspacePath, root)];
+    while (queue.length) {
+      const path3 = queue.pop();
+      let info;
+      try {
+        info = await lstat7(path3);
+      } catch (error) {
+        if (error.code === "ENOENT") continue;
+        throw error;
+      }
+      if (++count > 5e4 || info.isSymbolicLink() || await realpath7(path3) !== resolve9(path3)) throw new RepositoryError("scaffolding_storage_invalid");
+      if (info.isDirectory()) for (const entry of await readdir3(path3)) queue.push(join8(path3, entry));
+      else if (!info.isFile()) throw new RepositoryError("scaffolding_storage_invalid");
+    }
+  }
+}
+async function installedArtifact(workspacePath, artifact, live = false) {
+  const plural = artifact.kind === "extension" ? "extensions" : "presets";
+  const registryText = await safeRead(workspacePath, [".specify", plural, ".registry"]);
+  if (registryText === null) return false;
+  let registry;
+  try {
+    registry = object3(JSON.parse(registryText));
+  } catch (error) {
+    if (live && error instanceof SyntaxError) return false;
+    throw new RepositoryError("scaffolding_storage_invalid");
+  }
+  if (!registry || registry.schema_version !== "1.0" || !object3(registry[plural])) throw new RepositoryError("scaffolding_storage_invalid");
+  const entry = object3(object3(registry[plural])?.[artifact.id]);
+  if (!entry || entry.version !== artifact.version || entry.enabled === false || artifact.priority !== void 0 && entry.priority !== artifact.priority) return false;
+  const manifestText = await safeRead(workspacePath, [".specify", plural, artifact.id, `${artifact.kind}.yml`]);
+  if (manifestText === null) return false;
+  const manifest = yamlObject(manifestText);
+  const metadata = object3(manifest[artifact.kind]) ?? manifest;
+  return metadata.id === artifact.id && metadata.version === artifact.version;
+}
+async function verifyOrganizationArtifacts(workspacePath, plan) {
+  for (const artifact of plan.artifacts) if (!await installedArtifact(workspacePath, artifact)) throw new RepositoryError("scaffolding_verification_failed");
+  const text2 = await safeRead(workspacePath, [".specify", "bundle-records.json"]);
+  let records = null;
+  try {
+    if (text2 !== null) records = object3(JSON.parse(text2));
+  } catch {
+    throw new RepositoryError("scaffolding_storage_invalid");
+  }
+  if (records?.schema_version !== "1.0" || !Array.isArray(records.bundles) || !records.bundles.some((raw) => object3(raw)?.bundle_id === ORGANIZATION_SETUP.bundleId && object3(raw)?.version === plan.version)) {
+    throw new RepositoryError("scaffolding_verification_failed");
+  }
+}
+function isStoredJob(raw, workspacePath) {
+  const data = object3(raw);
+  const job = object3(data?.job);
+  const validStep = (rawStep) => {
+    const step = object3(rawStep);
+    return step && identifier3(step.id) && typeof step.label === "string" && step.label.length <= 256 && progresses.has(step.status) && [step.detail, step.command].every((value) => value === void 0 || typeof value === "string" && value.length <= 4096);
+  };
+  if (!data || data.schemaVersion !== 1 || data.kind !== "sdd-organization-scaffolding" || data.workspacePath !== workspacePath || !Number.isSafeInteger(data.pid) || Number(data.pid) < 1 || !Array.isArray(data.requests) || data.requests.length > 64 || !data.requests.every(identifier3) || !job || !identifier3(job.id) || !identifier3(job.requestId) || !Number.isSafeInteger(job.startedAt) || !["running", "waiting", "completed", "error", "cancelled", "interrupted"].includes(String(job.status)) || !Array.isArray(job.steps) || job.steps.length !== STEP_DEFINITIONS.length || !job.steps.every(validStep) || !Array.isArray(job.artifacts) || job.artifacts.length > 128 || !job.artifacts.every((artifact) => validStep(artifact) && ["extension", "preset"].includes(String(object3(artifact)?.kind)) && version3(object3(artifact)?.version))) {
+    return false;
+  }
+  return true;
+}
+function storedJob(raw, workspacePath) {
+  if (!isStoredJob(raw, workspacePath)) throw new RepositoryError("scaffolding_storage_invalid");
+  return raw;
+}
+function processAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    if (error.code === "ESRCH") return false;
+    throw new RepositoryError("scaffolding_conflict");
+  }
+}
+async function hasPendingScaffolding(workspacePath, homeDirectory = homedir7()) {
+  const workspace = await realpath7(workspacePath);
+  const active = activeJobs.get(workspace);
+  if (active) return active.record.job.status !== "completed";
+  const home = await realpath7(homeDirectory);
+  const key = createHash8("sha256").update(workspace).digest("hex");
+  const text2 = await safeRead(home, ["SpecKitCanvas", "scaffolding", `${key}.json`], 131072);
+  if (text2 === null) return false;
+  let raw;
+  try {
+    raw = JSON.parse(text2);
+  } catch {
+    throw new RepositoryError("scaffolding_storage_invalid");
+  }
+  return storedJob(raw, workspace).job.status !== "completed";
+}
+async function reloadSetupSkills(reload, signal) {
+  if (signal.aborted) throw new RepositoryError("scaffolding_cancelled");
+  let timer;
+  let aborted = () => void 0;
+  try {
+    return await Promise.race([Promise.resolve().then(reload), new Promise((_resolve, reject) => {
+      timer = setTimeout(() => reject(new RepositoryError("skills_reload_unavailable")), 3e4);
+      aborted = () => reject(new RepositoryError("scaffolding_cancelled"));
+      signal.addEventListener("abort", aborted, { once: true });
+    })]);
+  } finally {
+    if (timer) clearTimeout(timer);
+    signal.removeEventListener("abort", aborted);
+  }
+}
+async function createScaffoldingService(options) {
+  const home = await realpath7(options.homeDirectory ?? homedir7());
+  const workspacePath = await realpath7(options.workspacePath);
+  const key = createHash8("sha256").update(workspacePath).digest("hex");
+  const directory = join8(home, "SpecKitCanvas", "scaffolding");
+  const recordPath = join8(directory, `${key}.json`);
+  const lockPath = join8(directory, `${key}.lock`);
+  const now = options.now ?? Date.now;
+  const inspect = options.inspectWorkspace ?? ((path3) => inspectCurrentRepository({ workspacePath: path3, homeDirectory: home }));
+  const initial = await options.host.inspectCurrent();
+  let consent;
+  let contextTail = Promise.resolve();
+  let automaticAdmission;
+  let automaticStartError = null;
+  const listener = options.onChange ?? (() => void 0);
+  activeJobs.get(workspacePath)?.listeners.add(listener);
+  async function readRecord() {
+    const active = activeJobs.get(workspacePath);
+    if (active) return active.record;
+    const text2 = await safeRead(home, ["SpecKitCanvas", "scaffolding", `${key}.json`], 131072);
+    if (text2 === null) return null;
+    let parsed;
+    try {
+      parsed = JSON.parse(text2);
+    } catch {
+      throw new RepositoryError("scaffolding_storage_invalid");
+    }
+    const record3 = storedJob(parsed, workspacePath);
+    if (["running", "waiting"].includes(record3.job.status) && !processAlive(record3.pid)) {
+      record3.job.status = "interrupted";
+      record3.job.message = "The setup process ended before completion. Review the completed steps, then explicitly retry setup.";
+      for (const step of [...record3.job.steps, ...record3.job.artifacts]) if (["loading", "waiting"].includes(step.status)) {
+        step.status = "error";
+        step.detail = "Interrupted; completion has not been verified.";
+      }
+    }
+    return record3;
+  }
+  async function inspectContext(requireIdle) {
+    await options.verifyWorkspace();
+    const host = await options.host.inspectCurrent();
+    if (host.sessionId !== initial.sessionId || host.contextRevision !== initial.contextRevision || host.workingDirectory !== initial.workingDirectory || host.capabilityGeneration !== initial.capabilityGeneration) throw new RepositoryError("context_changed");
+    if (requireIdle && host.activity !== "idle") throw new RepositoryError(host.activity === "busy" ? "session_busy" : "activity_unknown");
+    const identity2 = await inspect(workspacePath);
+    const directory2 = await realpath7(host.workingDirectory);
+    const part = relative6(workspacePath, directory2);
+    if (part === ".." || part.startsWith(`..${sep6}`) || isAbsolute9(part) || identity2 && identity2.worktreeRoot !== workspacePath) {
+      throw new RepositoryError("local_context_mismatch");
+    }
+    return { host, identity: identity2 };
+  }
+  function context(requireIdle = false) {
+    const observation = contextTail.then(() => inspectContext(requireIdle));
+    contextTail = observation.then(() => void 0, () => void 0);
+    return observation;
+  }
+  function sameIdentity(left, right) {
+    return left !== null && right !== null && ["worktreeRoot", "gitCommonDirectory", "origin", "head", "branch"].every((field) => left[field] === right[field]);
+  }
+  const service = {
+    async state() {
+      const current = await context();
+      const saved = await readRecord();
+      if (!consent || consent.expiresAt <= now() || consent.host.activityRevision !== current.host.activityRevision || !sameIdentity(consent.identity, current.identity)) {
+        consent = { id: `setup_${randomBytes8(24).toString("base64url")}`, ...current, expiresAt: now() + 12e4 };
+      }
+      const active = saved && ["running", "waiting"].includes(saved.job.status);
+      return {
+        renderer: "scaffolding",
+        contextId: consent.id,
+        repositoryName: basename3(workspacePath),
+        workspacePath,
+        recommendation: ORGANIZATION_SETUP,
+        setupRequired: options.setupRequired(),
+        steps: initialSteps(),
+        runtime: { node: process.version, platform: process.platform },
+        canStart: Boolean(current.identity) && current.host.activity === "idle" && !active,
+        blockedReason: !current.identity ? "local_context_mismatch" : current.host.activity !== "idle" ? current.host.activity === "busy" ? "session_busy" : "activity_unknown" : active ? "scaffolding_conflict" : null,
+        automaticStartError: saved && ["running", "waiting", "completed"].includes(saved.job.status) ? null : automaticStartError,
+        job: saved ? structuredClone(saved.job) : null
+      };
+    },
+    startAutomatically() {
+      automaticAdmission ??= (async () => {
+        try {
+          const state = await service.state();
+          if (!options.setupRequired() || state.job && state.job.status !== "completed") return { status: "retained" };
+          await service.start(state.contextId, `automatic-${randomBytes8(16).toString("hex")}`);
+          return { status: "started" };
+        } catch (error) {
+          automaticStartError = knownRepositoryError(object3(error)?.code).code;
+          console.error(`SDD automatic setup admission failed: ${automaticStartError}`);
+          listener();
+          return { status: "error", code: automaticStartError };
+        }
+      })();
+      return automaticAdmission;
+    },
+    async start(contextId, requestId) {
+      if (!identifier3(requestId) || !consent || contextId !== consent.id) throw new RepositoryError("invalid_context");
+      const saved = await readRecord();
+      if (saved?.requests.includes(requestId)) return service.state();
+      if (saved && ["running", "waiting"].includes(saved.job.status)) throw new RepositoryError("scaffolding_conflict");
+      const current = await context(true);
+      if (consent.expiresAt <= now() || consent.host.activityRevision !== current.host.activityRevision || !sameIdentity(consent.identity, current.identity)) throw new RepositoryError("context_changed");
+      if (!options.setupRequired() && saved?.job.status !== "error" && saved?.job.status !== "cancelled" && saved?.job.status !== "interrupted") {
+        throw new RepositoryError("scaffolding_not_required");
+      }
+      await verifyManagedPaths(workspacePath);
+      const env = await setupEnvironment(workspacePath, options.environment, home);
+      await safeDirectory(await safeDirectory(home, "SpecKitCanvas"), "scaffolding");
+      const record3 = {
+        schemaVersion: 1,
+        kind: "sdd-organization-scaffolding",
+        workspacePath,
+        pid: process.pid,
+        requests: [...(saved?.requests ?? []).slice(-63), requestId],
+        job: { id: randomBytes8(16).toString("hex"), requestId, status: "running", startedAt: now(), steps: initialSteps(), artifacts: [] }
+      };
+      const lock = await acquireSetupLock(home, ["SpecKitCanvas", "scaffolding", `${key}.lock`], record3.job.id);
+      const active = {
+        record: record3,
+        controller: new AbortController(),
+        completion: Promise.resolve(),
+        listeners: /* @__PURE__ */ new Set([...activeJobs.get(workspacePath)?.listeners ?? [], listener])
+      };
+      automaticStartError = null;
+      activeJobs.set(workspacePath, active);
+      const secrets = [];
+      let saving = Promise.resolve();
+      const publish = () => {
+        const copy = structuredClone(record3);
+        const auth = copy.job.steps.find((step2) => step2.id === "authentication");
+        if (auth?.status === "waiting") auth.detail = "Complete organization authentication in the system browser.";
+        else if (auth?.detail) auth.detail = auth.detail.replace(/\b[A-Z0-9]{4}-[A-Z0-9]{4}\b/g, "[device code omitted]");
+        if (copy.job.message) copy.job.message = copy.job.message.replace(/\b[A-Z0-9]{4}-[A-Z0-9]{4}\b/g, "[device code omitted]");
+        saving = saving.then(() => atomicWrite(recordPath, `${JSON.stringify(copy)}
+`));
+        return saving.then(() => {
+          for (const notify of active.listeners) notify();
+        });
+      };
+      try {
+        await publish();
+      } catch (error) {
+        activeJobs.delete(workspacePath);
+        await lock.close();
+        await unlink3(lockPath);
+        throw error;
+      }
+      const admittedIdentity = current.identity;
+      const guard = async (mutation = false) => {
+        if (active.controller.signal.aborted) throw new RepositoryError("scaffolding_cancelled");
+        const latest = await context(mutation);
+        if (!sameIdentity(admittedIdentity, latest.identity)) throw new RepositoryError("local_context_mismatch");
+        if (mutation) await verifyManagedPaths(workspacePath);
+      };
+      const update = async (id, status, detail, command) => {
+        const step2 = record3.job.steps.find((step3) => step3.id === id);
+        step2.status = status;
+        step2.detail = detail;
+        step2.command = command ?? step2.command;
+        await publish();
+      };
+      const runner = options.runner ?? runSetupCommand;
+      const find = options.findExecutable ?? ((tool) => findSetupExecutable(tool, workspacePath, {
+        environment: { ...options.environment ?? process.env, PATH: env.PATH },
+        homeDirectory: home,
+        platform: options.platform
+      }));
+      const platform2 = options.platform ?? process.platform;
+      const execute = (executable, args, extra = {}) => runner({ executable, args, cwd: workspacePath, env, signal: active.controller.signal, timeoutMs: 12e4, secrets, ...extra });
+      const successful = (result, fallback = "The setup command failed.") => {
+        if (result.exitCode !== 0) throw new Error(redactSetupOutput(result.stderr || result.stdout || fallback, secrets).trim().slice(-2e3));
+        return result.stdout;
+      };
+      let plan;
+      let gh;
+      let specify;
+      let token = "";
+      const step = async (id, run, mutation = false) => {
+        await guard(mutation);
+        await update(id, "loading");
+        await run();
+        await guard();
+        if (record3.job.steps.find((step2) => step2.id === id)?.status === "loading") await update(id, "completed");
+      };
+      active.completion = (async () => {
+        try {
+          await step("github-cli", async () => {
+            gh = await find("gh");
+            if (gh) {
+              await update("github-cli", "skipped", "An installed GitHub CLI is available.");
+              return;
+            }
+            const winget = platform2 === "win32" ? await find("winget") : void 0;
+            if (!winget) throw new RepositoryError("scaffolding_prerequisite_missing");
+            await update("github-cli", "loading", "Installing GitHub CLI with Windows Package Manager.", "winget install --id GitHub.cli --exact");
+            successful(await execute(winget, [
+              "install",
+              "--id",
+              "GitHub.cli",
+              "--exact",
+              "--source",
+              "winget",
+              "--accept-package-agreements",
+              "--accept-source-agreements",
+              "--silent",
+              "--disable-interactivity"
+            ], { cwd: home, timeoutMs: 6e5 }));
+            gh = await find("gh");
+            if (!gh) throw new RepositoryError("scaffolding_prerequisite_missing");
+          }, true);
+          await step("authentication", async () => {
+            const status = await execute(gh, ["auth", "status", "--hostname", ORGANIZATION_SETUP.hostname], { cwd: home });
+            if (status.exitCode !== 0) {
+              let loginOutput = "";
+              record3.job.status = "waiting";
+              await update(
+                "authentication",
+                "waiting",
+                "Complete organization sign-in in the browser. MFA or consent may be required.",
+                `gh auth login --hostname ${ORGANIZATION_SETUP.hostname} --web --git-protocol https`
+              );
+              const result2 = await execute(
+                gh,
+                ["auth", "login", "--hostname", ORGANIZATION_SETUP.hostname, "--web", "--git-protocol", "https"],
+                { cwd: home, input: "\n", timeoutMs: 9e5, onOutput: (text2) => {
+                  loginOutput = (loginOutput + text2).slice(-4096);
+                  const code = /\b[A-Z0-9]{4}-[A-Z0-9]{4}\b/.exec(loginOutput)?.[0];
+                  if (code) {
+                    const auth = record3.job.steps.find((step2) => step2.id === "authentication");
+                    auth.detail = `Open https://${ORGANIZATION_SETUP.hostname}/login/device and enter ${code}. Complete browser sign-in.`;
+                    for (const notify of active.listeners) notify();
+                  }
+                } }
+              );
+              successful(result2);
+              record3.job.status = "running";
+            }
+            successful(await execute(gh, ["auth", "status", "--hostname", ORGANIZATION_SETUP.hostname], { cwd: home }));
+            const result = await execute(gh, ["auth", "token", "--hostname", ORGANIZATION_SETUP.hostname], { cwd: home, sensitive: true });
+            if (result.exitCode !== 0) throw new RepositoryError("scaffolding_auth_failed");
+            token = result.stdout.trim();
+            if (!token || token.length > 4096 || /\s/.test(token)) throw new RepositoryError("scaffolding_auth_failed");
+            secrets.push(token);
+            await update("authentication", "completed", "Organization authentication verified. Credentials remain in GitHub CLI's credential store.");
+          });
+          await step("registry-auth", () => configureRegistryAuthentication(home), true);
+          await step("registry", async () => {
+            const contents = async (path3) => successful(await execute(gh, [
+              "api",
+              "--hostname",
+              ORGANIZATION_SETUP.hostname,
+              `repos/${ORGANIZATION_SETUP.repository}/contents/${path3}`,
+              "-H",
+              "Accept: application/vnd.github.raw+json"
+            ], { cwd: home }));
+            const workflow = await contents("workflows/bootstrap/workflow.yml");
+            const catalog = await contents("bundles.catalog.json");
+            const manifest = await contents(`bundles/${ORGANIZATION_SETUP.bundleId}/bundle.yml`);
+            plan = parseOrganizationSetup(workflow, manifest, catalog);
+            record3.job.artifacts = plan.artifacts;
+            record3.job.bundleVersion = plan.version;
+            await update("registry", "completed", `${ORGANIZATION_SETUP.bundleName} ${plan.version}: ${plan.artifacts.length} components; Spec Kit >= ${plan.minimumVersion}.`);
+          });
+          await step("specify-cli", async () => {
+            specify = await find("specify");
+            if (specify) {
+              const check = await execute(specify, ["--version"]);
+              const installed2 = /(?<!\d)(\d+\.\d+\.\d+)(?!\d)/.exec(check.stdout)?.[1];
+              if (check.exitCode === 0 && installed2 && versionAtLeast(installed2, plan.minimumVersion)) {
+                await update("specify-cli", "skipped", `Spec Kit ${installed2} meets the registry requirement.`);
+                return;
+              }
+            }
+            let uv = await find("uv");
+            const pipx = uv ? void 0 : await find("pipx");
+            if (!uv && !pipx && platform2 === "win32") {
+              const winget = await find("winget");
+              if (winget) {
+                successful(await execute(winget, [
+                  "install",
+                  "--id",
+                  "astral-sh.uv",
+                  "--exact",
+                  "--source",
+                  "winget",
+                  "--scope",
+                  "user",
+                  "--accept-package-agreements",
+                  "--accept-source-agreements",
+                  "--silent",
+                  "--disable-interactivity"
+                ], { cwd: home, timeoutMs: 6e5 }));
+                uv = await find("uv");
+              }
+            }
+            if (!uv && !pipx) throw new RepositoryError("scaffolding_prerequisite_missing");
+            const args = uv ? ["tool", "install", "--upgrade", "--force", "specify-cli"] : ["install", "--force", "specify-cli"];
+            await update(
+              "specify-cli",
+              "loading",
+              "Installing the latest Specify CLI from PyPI using the organization package index.",
+              `${uv ? "uv" : "pipx"} ${args.join(" ")}`
+            );
+            successful(await execute(uv ?? pipx, args, { cwd: home, timeoutMs: 6e5 }));
+            specify = await find("specify");
+            if (!specify) throw new RepositoryError("scaffolding_prerequisite_missing");
+            let installed = /(?<!\d)(\d+\.\d+\.\d+)(?!\d)/.exec(successful(await execute(specify, ["--version"])))?.[1];
+            if (installed && !versionAtLeast(installed, plan.minimumVersion)) {
+              await guard(true);
+              await update(
+                "specify-cli",
+                "loading",
+                `The organization mirror supplied ${installed}, below ${plan.minimumVersion}. Installing the latest official PyPI release instead.`,
+                `${uv ? "UV_DEFAULT_INDEX" : "PIP_INDEX_URL"}=https://pypi.org/simple/ ${uv ? "uv" : "pipx"} ${args.join(" ")}`
+              );
+              successful(await execute(uv ?? pipx, args, {
+                cwd: home,
+                timeoutMs: 6e5,
+                env: { ...env, UV_DEFAULT_INDEX: "https://pypi.org/simple/", PIP_INDEX_URL: "https://pypi.org/simple/" }
+              }));
+              specify = await find("specify");
+              if (!specify) throw new RepositoryError("scaffolding_prerequisite_missing");
+              installed = /(?<!\d)(\d+\.\d+\.\d+)(?!\d)/.exec(successful(await execute(specify, ["--version"])))?.[1];
+            }
+            if (!installed || !versionAtLeast(installed, plan.minimumVersion)) throw new RepositoryError("scaffolding_version_unsupported");
+            await update("specify-cli", "completed", `Spec Kit ${installed} is ready.`);
+          }, true);
+          const specifyCommand = async (id, args, timeoutMs = 12e4, onOutput) => {
+            await update(id, "loading", void 0, `specify ${args.map((arg) => /\s/.test(arg) ? JSON.stringify(arg) : arg).join(" ")}`);
+            return successful(await execute(specify, args, { env: { ...env, GH_ENTERPRISE_TOKEN: token }, timeoutMs, onOutput }));
+          };
+          await step("initialize", async () => {
+            if (!options.setupRequired()) {
+              await update("initialize", "skipped", "Core Copilot skills are already initialized; existing artifacts were retained.");
+              return;
+            }
+            await specifyCommand("initialize", [
+              "init",
+              "--here",
+              "--force",
+              "--integration",
+              "copilot",
+              "--integration-options=--skills",
+              "--script",
+              platform2 === "win32" ? "ps" : "sh",
+              "--ignore-agent-tools"
+            ]);
+            if (options.setupRequired()) throw new RepositoryError("scaffolding_verification_failed");
+          }, true);
+          for (const catalog of CATALOGS) await step(catalog.id, async () => {
+            const content = await safeRead(workspacePath, [".specify", catalog.file]);
+            const configuration = content === null ? {} : yamlObject(content);
+            if (configuration.catalogs !== void 0 && !Array.isArray(configuration.catalogs)) throw new RepositoryError("scaffolding_storage_invalid");
+            const entries = (Array.isArray(configuration.catalogs) ? configuration.catalogs : []).map(object3);
+            if (entries.some((entry) => !entry)) throw new RepositoryError("scaffolding_storage_invalid");
+            const match = entries.find((entry) => entry?.url === catalogUrl(catalog.source));
+            if (match) {
+              if (catalog.group === "bundle" ? match.install_policy !== "install-allowed" : catalog.group !== "workflow" && match.install_allowed !== true) throw new RepositoryError("scaffolding_catalog_conflict");
+              await update(catalog.id, "skipped", "The organization catalog is already registered; existing configuration was retained.");
+              return;
+            }
+            if (entries.some((entry) => entry?.name === catalog.name || entry?.id === catalog.name)) throw new RepositoryError("scaffolding_catalog_conflict");
+            const args = [catalog.group, "catalog", "add", catalogUrl(catalog.source)];
+            if (catalog.group === "bundle") args.push("--id", catalog.name, "--priority", "1", "--policy", "install-allowed");
+            else if (catalog.group === "workflow") args.push("--name", catalog.name);
+            else args.push("--name", catalog.name, "--priority", "1", "--install-allowed");
+            await specifyCommand(catalog.id, args);
+            const written = await safeRead(workspacePath, [".specify", catalog.file]);
+            const registered = written === null ? [] : yamlObject(written).catalogs;
+            if (!Array.isArray(registered) || !registered.some((entry) => object3(entry)?.url === catalogUrl(catalog.source))) {
+              throw new RepositoryError("scaffolding_verification_failed");
+            }
+          }, true);
+          await step("bundle", async () => {
+            for (const artifact of record3.job.artifacts) {
+              artifact.status = await installedArtifact(workspacePath, artifact) ? "skipped" : "loading";
+              artifact.detail = artifact.status === "skipped" ? "Already installed and verified." : "Waiting for the bundle installer.";
+            }
+            await publish();
+            let checking;
+            let progressError;
+            const refresh = async () => {
+              let changed = false;
+              for (const artifact of record3.job.artifacts) if (artifact.status === "loading" && await installedArtifact(workspacePath, artifact, true)) {
+                artifact.status = "completed";
+                artifact.detail = "Installed manifest and registry verified.";
+                changed = true;
+              }
+              if (changed) await publish();
+            };
+            const timer = setInterval(() => {
+              if (!checking) checking = refresh().catch((error) => {
+                progressError = error;
+              }).finally(() => {
+                checking = void 0;
+              });
+            }, 500);
+            try {
+              await specifyCommand("bundle", ["bundle", "install", ORGANIZATION_SETUP.bundleId], 6e5);
+              if (checking) await checking;
+              if (progressError) throw progressError;
+              await verifyOrganizationArtifacts(workspacePath, plan);
+              await refresh();
+            } finally {
+              clearInterval(timer);
+              if (checking) await checking;
+            }
+          }, true);
+          await step("verify", async () => {
+            if (options.setupRequired()) throw new RepositoryError("scaffolding_verification_failed");
+            await verifyOrganizationArtifacts(workspacePath, plan);
+            for (const artifact of record3.job.artifacts) {
+              if (!await installedArtifact(workspacePath, artifact)) throw new RepositoryError("scaffolding_verification_failed");
+              if (artifact.status !== "skipped") artifact.status = "completed";
+            }
+            await publish();
+          });
+          await step("skills", async () => {
+            const diagnostics = await reloadSetupSkills(options.reloadSkills, active.controller.signal);
+            if (diagnostics.errors.length) throw new Error(redactSetupOutput(diagnostics.errors.join("\n"), secrets).slice(0, 2e3));
+            await update("skills", "completed", diagnostics.warnings.length ? `Session skills reloaded with ${diagnostics.warnings.length} warning(s).` : "Session skills reloaded. The original Spec Kit canvas is ready.");
+          }, true);
+          record3.job.status = "completed";
+          record3.job.finishedAt = now();
+          record3.job.message = "Organization setup is complete. Opening the original Spec Kit canvas.";
+          await publish();
+        } catch (error) {
+          const cancelled = active.controller.signal.aborted || error instanceof SetupCommandError && error.reason === "cancelled";
+          record3.job.status = cancelled ? "cancelled" : "error";
+          record3.job.finishedAt = now();
+          const code = knownRepositoryError(object3(error)?.code).code;
+          record3.job.errorCode = cancelled ? "scaffolding_cancelled" : error instanceof RepositoryError ? error.code : code === "upstream_unavailable" ? "scaffolding_failed" : code;
+          record3.job.message = cancelled ? "Setup cancelled. Completed artifacts were retained; retry is explicit." : redactSetupOutput(error instanceof Error ? error.message : "The setup command failed.", secrets).slice(0, 2e3);
+          if (!record3.job.steps.some((item) => ["loading", "waiting"].includes(item.status))) {
+            const blocked = record3.job.steps.find((item) => item.status === "pending");
+            if (blocked) blocked.status = "loading";
+          }
+          for (const item of record3.job.steps) if (["loading", "waiting"].includes(item.status)) {
+            item.status = cancelled ? "cancelled" : "error";
+            item.detail = record3.job.message;
+          }
+          for (const artifact of record3.job.artifacts) {
+            let installed = false;
+            try {
+              installed = await installedArtifact(workspacePath, artifact);
+            } catch (failure) {
+              if (!(failure instanceof RepositoryError)) throw failure;
+              artifact.detail = failure.message;
+            }
+            artifact.status = installed ? "completed" : cancelled ? "cancelled" : "error";
+            artifact.detail ??= installed ? "Installed artifact retained and verified." : "Not installed or rolled back by the bundle installer.";
+          }
+          await publish();
+        } finally {
+          token = "";
+          secrets.length = 0;
+          await lock.close();
+          await unlink3(lockPath);
+        }
+      })();
+      void active.completion.catch((error) => {
+        record3.job.status = "error";
+        record3.job.errorCode = "scaffolding_storage_invalid";
+        record3.job.message = "Setup progress could not be saved. No successful completion is claimed.";
+        for (const notify of active.listeners) notify();
+        console.error(`SDD scaffolding storage failure: ${error instanceof RepositoryError ? error.code : "write_failed"}`);
+      });
+      return service.state();
+    },
+    async cancel(jobId, requestId) {
+      if (!identifier3(requestId)) throw new RepositoryError("invalid_request");
+      await context();
+      const active = activeJobs.get(workspacePath);
+      if (!active || active.record.job.id !== jobId) throw new RepositoryError("scaffolding_conflict");
+      if (["running", "waiting"].includes(active.record.job.status)) active.controller.abort();
+      return service.state();
+    },
+    async continue(requestId) {
+      if (!identifier3(requestId)) throw new RepositoryError("invalid_request");
+      await context(true);
+      const saved = await readRecord();
+      if (!saved || saved.job.status !== "completed" || options.setupRequired() || !saved.job.bundleVersion) throw new RepositoryError("scaffolding_verification_failed");
+      await verifyOrganizationArtifacts(workspacePath, { version: saved.job.bundleVersion, minimumVersion: "1.1.0", artifacts: saved.job.artifacts });
+      options.onContinue();
+      return { renderer: "workflow" };
+    },
+    async settled() {
+      await automaticAdmission;
+      await activeJobs.get(workspacePath)?.completion;
+    },
+    dispose() {
+      activeJobs.get(workspacePath)?.listeners.delete(listener);
+    }
+  };
+  return service;
+}
+async function handleScaffoldingRequest(req, res, url, service) {
+  const json = (status, payload) => {
+    res.writeHead(status, {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+      "Referrer-Policy": "no-referrer",
+      "X-Content-Type-Options": "nosniff"
+    });
+    res.end(JSON.stringify(payload));
+  };
+  try {
+    const route = url.pathname.slice("/api/scaffolding/".length);
+    const allowed = route === "state" && req.method === "GET" ? [] : req.method === "POST" ? { start: ["contextId", "requestId"], cancel: ["jobId", "requestId"], continue: ["requestId"] }[route] : void 0;
+    if (!allowed || [...url.searchParams.keys()].some((key) => key !== "cap" || url.searchParams.getAll(key).length !== 1)) throw new RepositoryError("invalid_request");
+    let body = {};
+    if (req.method === "POST") {
+      if (req.headers.origin !== url.origin || !/^application\/json(?:;|$)/i.test(String(req.headers["content-type"] ?? ""))) throw new RepositoryError("invalid_request");
+      const chunks = [];
+      let bytes = 0;
+      for await (const chunk of req) {
+        bytes += chunk.length;
+        if (bytes > 4096) throw new RepositoryError("invalid_request");
+        chunks.push(chunk);
+      }
+      const text2 = new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks));
+      const document = (0, import_yaml4.parseDocument)(text2, { schema: "json", uniqueKeys: true });
+      const parsed = JSON.parse(text2);
+      if (document.errors.length || !object3(parsed)) throw new RepositoryError("invalid_request");
+      body = object3(parsed);
+      if (Object.keys(body).some((key) => !allowed.includes(key)) || allowed.some((key) => typeof body[key] !== "string")) throw new RepositoryError("invalid_request");
+    }
+    const data = route === "state" ? await service.state() : route === "start" ? await service.start(String(body.contextId), String(body.requestId)) : route === "cancel" ? await service.cancel(String(body.jobId), String(body.requestId)) : await service.continue(String(body.requestId));
+    json(route === "start" ? 202 : 200, { ok: true, data });
+  } catch (error) {
+    const failure = error instanceof SyntaxError || error instanceof TypeError ? new RepositoryError("invalid_request") : error;
+    const envelope = errorEnvelope(failure);
+    json(repositoryErrorStatus(envelope.error.code), envelope);
   }
 }
 
@@ -24561,7 +25661,7 @@ function appCanvasState(request) {
 }
 async function createRepositoryService({ workspacePath, profileStatus, dependencies, request, cloneOptions, bindingOptions, workflowBinding, onChange = () => void 0 }) {
   const configuration = profileStatus ?? await loadRepositoryProfile();
-  const localContextId = `local_${randomBytes8(24).toString("base64url")}`;
+  const localContextId = `local_${randomBytes9(24).toString("base64url")}`;
   let workspaceBinding = workflowBinding?.preparation ?? await inspectWorkspaceBinding({ workspacePath, ...bindingOptions });
   const artifactTime = await createPreparedArtifactClock({ workspacePath, binding: workspaceBinding, ...bindingOptions });
   let mode = "local";
@@ -24598,7 +25698,7 @@ async function createRepositoryService({ workspacePath, profileStatus, dependenc
       return {
         configuration: configuration.state,
         connection: connection?.snapshot() ?? { state: "disconnected", generation: 0, projectLabel: "" },
-        localContext: { contextId: localContextId, label: basename3(workspacePath), binding: workspaceBinding.state },
+        localContext: { contextId: localContextId, label: basename4(workspacePath), binding: workspaceBinding.state },
         mode,
         selectedContextId: selectedContextId ?? null,
         capabilities: { browse: Boolean(connection), clone: Boolean(clones) }
@@ -24698,7 +25798,7 @@ async function createEntryCoordinator({
   const profile = configuration.state === "configured" ? configuration.profile : void 0;
   let disposed = false;
   let currentHost;
-  let localContextId = `local_${randomBytes8(24).toString("base64url")}`;
+  let localContextId = `local_${randomBytes9(24).toString("base64url")}`;
   let localFingerprint;
   let phase = "chooser";
   let selectionGeneration = 0;
@@ -24743,7 +25843,7 @@ async function createEntryCoordinator({
   function preparationReason(snapshot) {
     return !supportsRepositoryCloning(snapshot) || snapshot.activity === "unknown" ? "activity_unknown" : snapshot.activity === "busy" ? "session_busy" : null;
   }
-  const accountKey = (access) => createHash8("sha256").update(JSON.stringify([access.tenantId, access.accountId])).digest("hex");
+  const accountKey = (access) => createHash9("sha256").update(JSON.stringify([access.tenantId, access.accountId])).digest("hex");
   const sameSource = (source, current) => source.sessionId === current.sessionId && source.contextRevision === current.contextRevision && source.workingDirectory === current.workingDirectory && source.capabilityGeneration === current.capabilityGeneration && source.activityRevision === current.activityRevision && current.activity === "idle";
   function remember(record3, repositoryName) {
     activeRecord = record3;
@@ -24778,7 +25878,7 @@ async function createEntryCoordinator({
       const remote = remoteAvailable();
       const access = await remote.connection.access();
       const record3 = await store.read(operationId);
-      if (record3.accountKey !== accountKey(access) || record3.profileFingerprint !== createHash8("sha256").update(JSON.stringify(remote.profile)).digest("hex")) throw new Error();
+      if (record3.accountKey !== accountKey(access) || record3.profileFingerprint !== createHash9("sha256").update(JSON.stringify(remote.profile)).digest("hex")) throw new Error();
       const retained = await store.list();
       if (retained.hasMore || !retained.items.some((item) => item.operationId === operationId)) throw new Error();
       const repository = await remote.discovery.detail(record3.repositoryId);
@@ -24843,7 +25943,7 @@ async function createEntryCoordinator({
       });
       if (!attempt) {
         if (!sameSource(expected, current)) throw new RepositoryError("context_changed");
-        const attemptId = randomBytes8(16).toString("hex");
+        const attemptId = randomBytes9(16).toString("hex");
         attempt = {
           attemptId,
           operationId,
@@ -24998,7 +26098,7 @@ async function createEntryCoordinator({
     const snapshot = await host.inspectCurrent();
     if (disposed) throw new RepositoryError("invalid_context");
     for (const eligibility of automatic.values()) if (!sameSource(eligibility.source, snapshot)) eligibility.eligible = false;
-    if (currentHost && (currentHost.sessionId !== snapshot.sessionId || currentHost.contextRevision !== snapshot.contextRevision || currentHost.workingDirectory !== snapshot.workingDirectory)) localContextId = `local_${randomBytes8(24).toString("base64url")}`;
+    if (currentHost && (currentHost.sessionId !== snapshot.sessionId || currentHost.contextRevision !== snapshot.contextRevision || currentHost.workingDirectory !== snapshot.workingDirectory)) localContextId = `local_${randomBytes9(24).toString("base64url")}`;
     currentHost = snapshot;
     return snapshot;
   }
@@ -25009,14 +26109,14 @@ async function createEntryCoordinator({
     if (current.sessionId !== snapshot.sessionId || current.contextRevision !== snapshot.contextRevision || current.workingDirectory !== snapshot.workingDirectory) throw new RepositoryError("context_changed");
     const fingerprint2 = JSON.stringify([current.sessionId, current.contextRevision, current.workingDirectory, repository]);
     if (localFingerprint !== void 0 && localFingerprint !== fingerprint2) {
-      localContextId = `local_${randomBytes8(24).toString("base64url")}`;
+      localContextId = `local_${randomBytes9(24).toString("base64url")}`;
       if (!activeOperationId) phase = "chooser";
     }
     localFingerprint = fingerprint2;
     return { snapshot: current, repository };
   }
-  async function openLocal(snapshot, instanceId) {
-    const opened = await host.openCurrentCanvas(snapshot, instanceId);
+  async function openLocal(snapshot, instanceId, repositorySetup = true) {
+    const opened = await host.openCurrentCanvas(snapshot, instanceId, void 0, { repositorySetup });
     const after = await readHost();
     if (disposed || opened.sessionId !== snapshot.sessionId || opened.contextRevision !== snapshot.contextRevision || opened.workingDirectory !== snapshot.workingDirectory || opened.instanceId !== instanceId || after.sessionId !== snapshot.sessionId || after.contextRevision !== snapshot.contextRevision || after.workingDirectory !== snapshot.workingDirectory) throw new RepositoryError("context_changed");
   }
@@ -25036,7 +26136,7 @@ async function createEntryCoordinator({
         const repository = local.repository;
         localContext.contextId = localContextId;
         localContext.state = repository ? "repository" : "not_repository";
-        if (repository) localContext.label = basename3(repository.worktreeRoot);
+        if (repository) localContext.label = basename4(repository.worktreeRoot);
         reason = preparationReason(snapshot);
         appAvailable = await appLauncher.available(repository?.worktreeRoot ?? snapshot.workingDirectory).catch(() => false);
       } catch (error) {
@@ -25071,7 +26171,7 @@ async function createEntryCoordinator({
         return existing.completion;
       }
       if (localRequests.size >= 32) throw new RepositoryError("invalid_context");
-      const instanceId = `entry-local-${randomBytes8(16).toString("hex")}`;
+      const instanceId = `entry-local-${randomBytes9(16).toString("hex")}`;
       const completion = (async () => {
         await openLocal(snapshot, instanceId);
         await readLocal();
@@ -25086,7 +26186,7 @@ async function createEntryCoordinator({
     async direct(requestId) {
       text(requestId);
       const snapshot = await readHost();
-      await openLocal(snapshot, `entry-direct-${randomBytes8(16).toString("hex")}`);
+      await openLocal(snapshot, `entry-direct-${randomBytes9(16).toString("hex")}`, false);
       return { opened: true };
     },
     async select(repositoryId, contextId) {
@@ -25112,19 +26212,19 @@ async function createEntryCoordinator({
       const namedOrigin = `https://dev.azure.com/${[remote.profile.organization, remote.profile.project, "_git", repository.name].map(encodeURIComponent).join("/")}`;
       const currentOrigin = local.repository?.origin?.replace(/\/$/, "").toLowerCase();
       const matchesCurrentWorkspace = currentOrigin === originIdentity.toLowerCase() || currentOrigin === namedOrigin.toLowerCase();
-      const home = await realpath6(cloneOptions?.homeDirectory ?? homedir6());
+      const home = await realpath8(cloneOptions?.homeDirectory ?? homedir8());
       let prepareCurrent = false;
       if (matchesCurrentWorkspace) {
         try {
-          await lstat6(join7(home, "SpecKitCanvas", "repositories", repositoryFolderName(repository.name)));
+          await lstat8(join9(home, "SpecKitCanvas", "repositories", repositoryFolderName(repository.name)));
           prepareCurrent = true;
         } catch (error) {
           if (error.code !== "ENOENT") throw error;
         }
       }
-      const profileFingerprint = createHash8("sha256").update(JSON.stringify(remote.profile)).digest("hex");
+      const profileFingerprint = createHash9("sha256").update(JSON.stringify(remote.profile)).digest("hex");
       const selection = {
-        selectionId: `selection_${randomBytes8(24).toString("base64url")}`,
+        selectionId: `selection_${randomBytes9(24).toString("base64url")}`,
         repository,
         originIdentity,
         accountKey: accountKey(access),
@@ -25135,7 +26235,7 @@ async function createEntryCoordinator({
       };
       if (generation !== selectionGeneration || contextId !== localContextId) throw new RepositoryError("context_changed");
       selected = { selection, snapshot: after, contextId, openInApp: false, prepareCurrent };
-      const operationId = randomBytes8(16).toString("hex");
+      const operationId = randomBytes9(16).toString("hex");
       const reason = preparationReason(after) ?? (!repository.sourceVersion || !repository.defaultBranch || repository.operationalState !== "active" ? "source_unavailable" : null);
       const current = selected;
       if ((!matchesCurrentWorkspace || prepareCurrent) && !reason) current.preview = await ensureClones(after).confirm(selection.selectionId, after);
@@ -25150,7 +26250,7 @@ async function createEntryCoordinator({
         matchesCurrentWorkspace,
         openInApp: current.openInApp,
         operationId: current.preview?.operationId ?? operationId,
-        destination: current.preview?.destination ?? (matchesCurrentWorkspace ? local.repository.worktreeRoot : join7(home, "SpecKitCanvas", "repositories", repositoryFolderName(repository.name))),
+        destination: current.preview?.destination ?? (matchesCurrentWorkspace ? local.repository.worktreeRoot : join9(home, "SpecKitCanvas", "repositories", repositoryFolderName(repository.name))),
         reused: current.preview?.reused ?? false,
         migrateFrom: current.preview?.migrateFrom ?? null,
         checkoutCommit: current.preview?.checkoutCommit ?? null,
@@ -25307,7 +26407,7 @@ async function createEntryCoordinator({
     async preparations() {
       const remote = remoteAvailable();
       const access = await remote.connection.access();
-      const fingerprint2 = createHash8("sha256").update(JSON.stringify(remote.profile)).digest("hex");
+      const fingerprint2 = createHash9("sha256").update(JSON.stringify(remote.profile)).digest("hex");
       const result = await store.list();
       if (result.hasMore) throw new RepositoryError("clone_conflict");
       const items = [];
@@ -25384,7 +26484,7 @@ async function requestBody(req, strict = false) {
     const raw = strict ? new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks)) : Buffer.concat(chunks).toString("utf8");
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error();
-    if (strict && (0, import_yaml4.parseDocument)(raw, { schema: "json", uniqueKeys: true }).errors.length) throw new Error();
+    if (strict && (0, import_yaml5.parseDocument)(raw, { schema: "json", uniqueKeys: true }).errors.length) throw new Error();
     return parsed;
   } catch {
     throw new RepositoryError("invalid_request");
@@ -25499,9 +26599,12 @@ export {
   createEntryCoordinator,
   createHostHandoffAdapter,
   createRepositoryService,
+  createScaffoldingService,
   createWorkflowBinding,
   handleEntryRequest,
   handleRepositoryRequest,
+  handleScaffoldingRequest,
+  hasPendingScaffolding,
   loadEntrySettings,
   openRequestedAppCanvas,
   verifyPreparedRepository

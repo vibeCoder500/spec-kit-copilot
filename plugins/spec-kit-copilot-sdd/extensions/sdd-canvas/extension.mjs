@@ -14,11 +14,12 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { join, resolve } from "node:path";
 import { joinSession, createCanvas, CanvasError } from "@github/copilot-sdk/extension";
 import { createSddReviewService } from "./artifact-review.mjs";
 import { handleArtifactReview } from "./vendor/artifact-review.mjs";
 import { ArtifactReadError } from "./vendor/artifact-read.mjs";
-import { createEntryCoordinator, createHostHandoffAdapter, createRepositoryService, createWorkflowBinding, handleEntryRequest, handleRepositoryRequest, loadEntrySettings, openRequestedAppCanvas } from "./vendor/repository-browser/server.mjs";
+import { createEntryCoordinator, createHostHandoffAdapter, createRepositoryService, createScaffoldingService, createWorkflowBinding, handleEntryRequest, handleRepositoryRequest, handleScaffoldingRequest, hasPendingScaffolding, loadEntrySettings, openRequestedAppCanvas } from "./vendor/repository-browser/server.mjs";
 import {
     scanFeatures,
     readArtifact,
@@ -60,6 +61,9 @@ const servers = new Map();
 async function assertActionWorkspace(context) {
     const entry = workflowContext.getStore();
     if (entry?.entryMode) throw new CanvasError("entry_required", "Choose a repository or open the canvas directly first.");
+    if (entry?.scaffoldingMode || await hasPendingScaffolding(currentRoot(), entry?.setupHome)) {
+        throw new CanvasError("scaffolding_required", "Wait for organization setup to complete. If it fails, use Retry organization setup in the canvas.");
+    }
     if (entry?.repositories) { await entry.verifyWorkspace(); await entry.repositories.verifyLocal(context?.input?.localContextId); return; }
     const service = await createRepositoryService({ workspacePath: currentRoot(), profileStatus: { state: "unconfigured" } });
     try { await service.verifyLocal(context?.input?.localContextId); }
@@ -281,6 +285,16 @@ async function broadcast(entry) {
             }
             return;
         }
+        if (entry.scaffoldingMode) {
+            const state = await entry.scaffolding.state();
+            const signature = JSON.stringify(state);
+            if (signature === entry.lastSig) return;
+            entry.lastSig = signature;
+            for (const client of entry.clients) {
+                try { client.write(`event: scaffolding\ndata: ${signature}\n\n`); } catch { continue; }
+            }
+            return;
+        }
         await entry.verifyWorkspace();
         const state = currentState();
         const signature = await entry.review.signature();
@@ -291,7 +305,11 @@ async function broadcast(entry) {
         for (const client of entry.clients) {
             try { client.write(payload); } catch { /* disconnected subscriber */ }
         }
-    } catch { /* existing polling will retry */ }
+    } catch (error) {
+        if (entry.scaffoldingMode) for (const client of entry.clients) {
+            try { client.write(`event: scaffolding-error\ndata: ${JSON.stringify({ code: error.code ?? "scaffolding_failed" })}\n\n`); } catch { continue; }
+        }
+    }
     finally { entry.broadcasting = false; }
 }
 
@@ -333,7 +351,18 @@ function makeHandler(entry) {
             if (entry.entryMode && path.startsWith("/api/review/")) {
                 sendJson(res, 409, { ok: false, error: "Choose a repository first.", code: "entry_required" }); return;
             }
-            if (!entry.entryMode && path.startsWith("/api/")) await entry.verifyWorkspace();
+            if (!entry.entryMode && path.startsWith("/api/") && !path.startsWith("/api/scaffolding/")) await entry.verifyWorkspace();
+            if (path === "/api/entry/view" && req.method === "GET") {
+                if ([...url.searchParams.keys()].some(key => key !== "cap" || url.searchParams.getAll(key).length !== 1)) {
+                    sendJson(res, 400, { ok: false, error: "Invalid entry request.", code: "invalid_request" }); return;
+                }
+                sendJson(res, 200, { ok: true, data: { renderer: entry.entryMode ? "repositories" : entry.scaffoldingMode ? "scaffolding" : "workflow" } });
+                return;
+            }
+            if (path.startsWith("/api/scaffolding/")) {
+                if (!entry.scaffolding) { sendJson(res, 404, { ok: false, error: "setup unavailable" }); return; }
+                return await handleScaffoldingRequest(req, res, url, entry.scaffolding);
+            }
             if (path.startsWith("/api/entry/")) {
                 if (!entry.coordinator) { sendJson(res, 404, { ok: false, error: "entry unavailable" }); return; }
                 return await handleEntryRequest(req, res, url, entry.coordinator);
@@ -387,11 +416,15 @@ function makeHandler(entry) {
                     "Cache-Control": "no-store",
                     "Referrer-Policy": "no-referrer",
                 });
-                res.end(entry.entryMode ? entryHtml() : INDEX_HTML);
+                res.end(entry.entryMode || entry.scaffoldingMode ? entryHtml() : INDEX_HTML);
                 return;
             }
             if (entry.entryMode && ["/api/state", "/api/artifact", "/api/clarifications", "/api/clarify", "/api/setup", "/api/run"].includes(path)) {
                 sendJson(res, 409, { ok: false, error: "Choose a repository first.", code: "entry_required" }); return;
+            }
+            if (["/api/clarify", "/api/setup", "/api/run"].includes(path) &&
+                (entry.scaffoldingMode || await hasPendingScaffolding(currentRoot(), entry.setupHome))) {
+                sendJson(res, 409, { ok: false, error: "Wait for organization setup to complete. If it fails, use Retry organization setup in the canvas.", code: "scaffolding_required" }); return;
             }
             if (!entry.entryMode) await entry.verifyWorkspace();
             if (path === "/api/state") {
@@ -435,6 +468,7 @@ function makeHandler(entry) {
                     Connection: "keep-alive",
                 });
                 if (entry.entryMode) res.write(`event: entry\ndata: ${JSON.stringify(await entry.coordinator.state())}\n\n`);
+                else if (entry.scaffoldingMode) res.write(`event: scaffolding\ndata: ${JSON.stringify(await entry.scaffolding.state())}\n\n`);
                 else res.write(`event: state\ndata: ${JSON.stringify(currentState())}\n\n`);
                 entry.clients.add(res);
                 req.on("close", () => entry.clients.delete(res));
@@ -503,8 +537,42 @@ export async function startServer(repositoryOptions = {}) {
     entry.repositories = await createRepositoryService({ workspacePath, profileStatus: { state: "unconfigured" }, bindingOptions: repositoryOptions.bindingOptions,
         workflowBinding: repositoryOptions.workflowBinding });
     entry.artifactTime = entry.repositories.artifactTime;
+    const setupHome = repositoryOptions.scaffoldingOptions?.homeDirectory ?? repositoryOptions.bindingOptions?.homeDirectory;
+    entry.setupHome = setupHome;
+    entry.scaffoldingMode = !entry.entryMode && (repositoryOptions.repositorySetup === true && scanFeatures(workspacePath).prerequisites.setupRequired ||
+        await hasPendingScaffolding(workspacePath, setupHome));
+    if (entry.scaffoldingMode) {
+        const setupHost = repositoryOptions.scaffoldingOptions?.host ?? sessionHost({}, await session.rpc.metadata.snapshot());
+        entry.scaffolding = await createScaffoldingService({
+            ...repositoryOptions.scaffoldingOptions,
+            workspacePath, host: setupHost, homeDirectory: setupHome, verifyWorkspace: entry.verifyWorkspace,
+            setupRequired: () => scanFeatures(workspacePath).prerequisites.setupRequired,
+            reloadSkills: repositoryOptions.scaffoldingOptions?.reloadSkills ?? (async () => {
+                if (typeof session.rpc.skills?.reload !== "function" || typeof session.rpc.skills?.list !== "function") {
+                    throw new CanvasError("skills_reload_unavailable", "The App cannot reload and verify project skills.");
+                }
+                const diagnostics = await session.rpc.skills.reload();
+                if (diagnostics.errors.length) return diagnostics;
+                const catalog = await session.rpc.skills.list();
+                const normalize = path => process.platform === "win32" ? resolve(path).toLowerCase() : resolve(path);
+                const missing = RUNNABLE_KEYS.map(commandForKey).filter(command => !catalog.skills.some(skill =>
+                    skill.enabled && typeof skill.path === "string" &&
+                    normalize(skill.path) === normalize(join(workspacePath, ".github", "skills", command, "SKILL.md"))));
+                if (missing.length) throw new CanvasError("scaffolding_verification_failed", `The App has not loaded these project skills: ${missing.join(", ")}.`);
+                return diagnostics;
+            }),
+            onContinue: () => { entry.scaffoldingMode = false; entry.lastSig = ""; },
+            onChange: () => { void broadcast(entry); },
+        });
+        if (!repositoryOptions.scaffoldingOptions?.host) entry.disposeSetupHost = () => setupHost.dispose();
+    }
     const server = createServer(makeHandler(entry));
-    server.once("close", () => { clearInterval(entry.timer); entry.review.dispose(); entry.repositories.dispose(); entry.coordinator?.dispose(); repositoryOptions.disposeHost?.(); });
+    server.once("close", () => {
+        clearInterval(entry.timer); entry.review.dispose(); entry.repositories.dispose(); entry.coordinator?.dispose(); entry.scaffolding?.dispose();
+        const dispose = () => { entry.disposeSetupHost?.(); repositoryOptions.disposeHost?.(); };
+        if (entry.scaffolding) void entry.scaffolding.settled().then(dispose, () => { console.error("SDD setup ended without saved completion."); dispose(); });
+        else dispose();
+    });
     await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
     const port = server.address().port;
     entry.server = server;
@@ -522,11 +590,12 @@ const FEATURE_KEYS = RUNNABLE_KEYS;
 const canvasDefinition = {
     id: "sdd-canvas",
     displayName: "Spec-Driven Development",
-    description: "Visual dashboard for the core SDD workflow: track, preview, and run constitution, specify, clarify, plan, tasks, analyze, checklist, and implement per feature.",
+    description: "Default entry for 'open spec driven development' or 'open Spec Kit': start with the repository chooser/search, even when a repository is already open. Continue in the current workspace or clone/open another repository; a verified target without SDD automatically receives the recommended organization setup before the original workflow. Already-enabled repositories open the workflow directly. Do not substitute the Current Workspace provider unless the user explicitly asks to skip repository selection.",
     inputSchema: {
         type: "object",
         properties: {
             readerProbe: { type: "boolean", description: "Enable the opt-in packaged Markdown reader development probe." },
+            repositorySetup: { type: "boolean", description: "Automatically initialize this verified repository with the recommended organization bundle if SDD is missing, showing progress before the original workflow." },
         },
     },
     actions: [
@@ -640,19 +709,24 @@ const canvasDefinition = {
         const key = canvasKey(ctx);
         let entry = servers.get(key);
         if (entry && entry.workspacePath !== workspacePath) throw new CanvasError("context_changed", "Reopen the canvas for the current workspace.");
-        if (entry) await entry.verifyWorkspace();
+        if (entry) {
+            if (entry.scaffoldingMode) await entry.scaffolding.state();
+            else await entry.verifyWorkspace();
+        }
         if (!entry) {
             const settings = ctx.canvasId === "sdd-canvas-direct" ? { state: "disabled" } : await loadEntrySettings();
             const entryMode = settings.state === "enabled";
             const host = sessionHost(ctx, current);
             try {
                 const binding = entryMode ? undefined : await createWorkflowBinding({ host, providerId: ctx.extensionId, instanceId: ctx.instanceId });
-                const options = { workspacePath, entryMode, workflowBinding: binding, disposeHost: () => host.dispose(), verifyWorkspace: async () => {
+                const options = { workspacePath, entryMode, workflowBinding: binding, repositorySetup: ctx.input?.repositorySetup === true || Boolean(binding?.operationId),
+                    disposeHost: () => host.dispose(), verifyWorkspace: async () => {
                     const latest = await session.rpc.metadata.snapshot();
                     if (latest.sessionId !== current.sessionId || latest.workingDirectory !== current.workingDirectory) throw new CanvasError("context_changed", "Reopen the canvas for the current workspace.");
                     await binding?.verify();
                 } };
                 if (entryMode) options.entryOptions = { host };
+                else options.scaffoldingOptions = { host };
                 entry = await startServer(options);
                 await binding?.ready();
             } catch (error) {
@@ -661,11 +735,12 @@ const canvasDefinition = {
             }
             servers.set(key, entry);
         }
+        if (entry.scaffoldingMode) void entry.scaffolding.startAutomatically();
         const url = new URL(entry.url);
         if (ctx.input?.readerProbe === true) url.searchParams.set("readerProbe", "1");
         return {
             title: "Spec-Driven Development",
-            status: entry.entryMode ? "Repository selection" : workspacePath,
+            status: entry.entryMode ? "Repository selection" : entry.scaffoldingMode ? "Organization SDD setup" : workspacePath,
             url: url.href,
         };
     },
@@ -691,6 +766,7 @@ const actions = canvasDefinition.actions.map((action) => ({ ...action, handler: 
     if (entry?.entryMode || (!entry && context.canvasId !== "sdd-canvas-direct" && (await loadEntrySettings()).state === "enabled")) {
         throw new CanvasError("entry_required", "Choose a repository or open the canvas directly first.");
     }
+    if (entry?.scaffoldingMode && action.name !== "list_features") throw new CanvasError("scaffolding_required", "Wait for organization setup to complete. If it fails, use Retry organization setup in the canvas.");
     const current = await session.rpc.metadata.snapshot();
     if (context.sessionId && current.sessionId && context.sessionId !== current.sessionId) throw new CanvasError("context_changed", "The active session changed.");
     if (entry) {
@@ -703,13 +779,17 @@ const actions = canvasDefinition.actions.map((action) => ({ ...action, handler: 
         const binding = await createWorkflowBinding({ host, providerId: context.extensionId, instanceId: context.instanceId });
         await binding.verify();
         const workspacePath = findProjectRoot(current.workingDirectory);
+        if (action.name !== "list_features" && (await hasPendingScaffolding(workspacePath) ||
+            binding.operationId && scanFeatures(workspacePath).prerequisites.setupRequired)) {
+            throw new CanvasError("scaffolding_required", "Wait for organization setup to complete. If it fails, use Retry organization setup in the canvas.");
+        }
         local = await createRepositoryService({ workspacePath, profileStatus: { state: "unconfigured" }, workflowBinding: binding });
         return await workflowContext.run({ workspacePath, repositories: local, verifyWorkspace: binding.verify, artifactTime: local.artifactTime }, () => action.handler(context));
     } finally { local?.dispose(); host.dispose(); }
 } }));
 const canvas = createCanvas({ ...canvasDefinition, actions });
 const directCanvas = createCanvas({ ...canvasDefinition, id: "sdd-canvas-direct", displayName: "Spec-Driven Development (Current Workspace)",
-    description: "Open the original Spec Kit workflow directly in this session's current workspace, without repository selection or cloning.", actions });
+    description: "Explicit direct entry only: use when the user specifically requests Current Workspace, the original canvas directly, or skipping repository selection. For ordinary 'open spec driven development' requests, use sdd-canvas instead so the repository chooser appears first. Repository-entry handoff may invoke this provider internally with setup intent.", actions });
 
 const session = await joinSession({ canvases: [canvas, directCanvas] });
 const metadata = await session.rpc.metadata.snapshot();

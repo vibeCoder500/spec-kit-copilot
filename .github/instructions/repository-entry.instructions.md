@@ -14,8 +14,9 @@ applyTo: "specs/002-repository-entry-flow/**,plugins/spec-kit-copilot-sdd/extens
   fixes. Use a separate entry renderer and narrow routing; never reparent the
   workflow DOM or introduce another workflow implementation.
 - Normal enabled launch is chooser-first. Always retain explicit direct canvas
-  entry. Current-workspace continuation works without remote configuration,
-  authentication, cloning, or host handoff capability.
+  entry. Current-workspace continuation works without remote discovery
+  configuration, Azure DevOps authentication, cloning, or host handoff capability.
+  Organization bootstrap may separately need GHES sign-in when SDD is missing.
 - Empty-query team suggestions stay inside the dropdown; typed queries search
   readable project repositories. No separate rail or pre-clone artifact reader.
 - Reuse the current Node/TypeScript build, MSAL/discovery, native Git protections,
@@ -51,7 +52,14 @@ applyTo: "specs/002-repository-entry-flow/**,plugins/spec-kit-copilot-sdd/extens
   copyable path. Hide unsupported handoff actions; never attempt a cwd-only switch.
 - Clone-only native acceptance may follow passing owned clone-only checks and
   explicit repository consent. Automatic handoff acceptance still requires G-HOST.
-  No implicit setup, skill/plugin installation, workflows, commit, push, or deploy.
+  The user's 2026-10-14 amendment authorizes automatic organization scaffolding
+  after verified repository entry when SDD is missing. Disclose tool installation,
+  sign-in, catalogs and managed-file changes before continuation; there is no
+  separate initial Setup button. Start one owned job only after target binding is
+  ready, retain progress and explicit retry after failure/cancellation, and bypass
+  scaffolding for already-enabled repositories. Search, selection, clone-only and
+  ordinary direct read-only previews do not start setup. No feature workflows,
+  Copilot plugin installation, commit, push, or deploy are implicit.
 - Use [the validation guide](../../specs/002-repository-entry-flow/quickstart.md).
   Run focused checks after each edit, then existing canvas/package gates. Actual
   App current-workspace and clone journeys are required for full completion.

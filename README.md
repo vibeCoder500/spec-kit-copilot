@@ -42,7 +42,7 @@ Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) to get star
 | `spec-kit-copilot` | 0.15.0 | Copilot CLI and App agent | Core skills that teach Copilot how to run `specify` |
 | `spec-kit-copilot-assess` | 0.1.0 | Copilot App canvas | Optional visual dashboard for the Spec Kit `assess` extension |
 | `spec-kit-copilot-bugfix` | 0.1.0 | Copilot App canvas | Optional visual dashboard for the Spec Kit `bug` extension |
-| `spec-kit-copilot-sdd` | 0.1.0 | Copilot App canvas | Optional visual dashboard for the core spec-driven development workflow |
+| `spec-kit-copilot-sdd` | 0.3.0 | Copilot App canvas | Repository discovery, automatic organization setup, and the core spec-driven workflow |
 | `spec-kit-copilot-wizard` | 0.1.1 | Copilot App canvas | Optional guided wizard canvas for the full Spec Kit lifecycle |
 
 The plugins are independently installable and versioned. Install the core skills,
@@ -131,19 +131,31 @@ own README for full details.
 > upgrade with `uv tool install specify-cli` / `uv tool upgrade specify-cli` (or the
 > `pipx` equivalents), or `specify self upgrade`. Each plugin's own `version` is
 > independent of the CLI version.
+> The SDD plugin's **0.3.0** development build adds automatic organization
+> scaffolding. Its setup job checks the registry's live bootstrap requirement
+> (currently Specify **>= 1.1.0**) and installs or upgrades the CLI when needed.
 
 ## Installation
 
-The development branch adds a separate repository chooser to SDD, with offline
+The development build adds a separate repository chooser to SDD, with local
 **Use current workspace**, unconditional `sdd-canvas-direct` entry, and Azure
-DevOps dropdown discovery. **Confirm and clone** creates a separately managed
-checkout after explicit consent and fresh workspace/activity checks. Completion
-shows a copyable checkout path and leaves the current workspace unchanged.
-Automatic App switching remains unavailable; clone completion is not handoff
-acceptance. See the [repository entry guide](docs/sdd-repository-browser.md)
+DevOps dropdown discovery. **Clone and open Spec Kit** creates a separately
+managed checkout and requests a new App session after explicit consent and fresh
+workspace/activity checks. The target opens the same SDD artifact: an enabled
+repository goes to its original dashboard; a repository without setup
+automatically runs authentication, CLI bootstrap, catalog registration, and
+recommended bundle installation in the owned scaffolding canvas. There is no
+initial Setup button. Per-step/component progress is followed by artifact and
+session-skill verification, then the original dashboard. Setup effects are
+disclosed before repository continuation; search, selection, clone-only and
+ordinary direct read-only previews never initialize a project.
+Unsupported launchers retain a copyable checkout path. Native launch and target
+canvas acknowledgment do not establish atomic App handoff. See the
+[repository entry guide](docs/sdd-repository-browser.md)
 and [acceptance report](specs/002-repository-entry-flow/evidence/acceptance.md).
-Existing marketplace versions and preview ZIPs are unchanged. Publication and
-version updates remain separate approval steps.
+The SDD development manifest and marketplace entry are versioned together;
+published marketplace installations and historical ZIPs are not changed by this
+checkout. Publication remains a separate step.
 
 ### Via marketplace (recommended)
 

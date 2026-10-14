@@ -17,7 +17,7 @@ export function appLaunchEnvironment(environment: NodeJS.ProcessEnv = process.en
     return { ...Object.fromEntries(Object.entries(environment).filter(([name]) => allowed.has(name.toLowerCase()))), COPILOT_AUTO_UPDATE: "false" };
 }
 
-async function nativeExecutable(candidate: string, workspacePath: string): Promise<string | undefined> {
+export async function nativeExecutable(candidate: string, workspacePath: string): Promise<string | undefined> {
     try {
         const executable = await realpath(candidate);
         if (inside(resolve(workspacePath), executable)) return;

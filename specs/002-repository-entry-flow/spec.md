@@ -6,6 +6,18 @@
 
 **Status**: Draft
 
+**2026-10-14 automatic scaffolding amendment (supersedes the 2026-10-13
+button-based flow):** After verified repository entry, a target without Copilot
+skills-mode setup automatically runs the recommended organization bootstrap in
+the owned scaffolding canvas. Repository continuation/clone-and-open discloses
+authentication, CLI installation/update, catalogs and managed-file changes.
+There is no separate initial Setup button. Show each step/component, verify
+artifacts and actual session skills, then hand over to the original renderer.
+Already-enabled repositories bypass scaffolding. Reopening does not duplicate
+or resume a failed/cancelled job without explicit retry. Preserve clone/session
+admission, source preservation, ordinary App approval, and original workflows.
+The contract is recorded in [the scaffolding plan](../003-repository-scaffolding/plan.md).
+
 **Input**: User description: "Revamp the repo rail and search into a plugged-in layer that preserves the existing Spec Kit canvas. Start with repository search or continue with the current Copilot workspace. Require confirm and clone for a selected remote repository, use the default clone directory, switch the active Copilot session to that repository, and then show the original canvas. Verify both real clone and existing-workspace journeys with Spec Kit-enabled repositories and report the results."
 
 **Scope amendment, 2026-09-21**: The user requested: "complete the clone action
@@ -247,10 +259,13 @@ artifact rendering, prerequisite decisions, and workflow targets.
   existing user chooses the explicit direct-canvas entry, **Then** the original
   experience opens in the current workspace without the repository chooser.
 3. **Given** a selected repository without Spec Kit configuration, **When** the
-   user reaches its correctly bound canvas, **Then** the canvas's existing setup
-   experience applies; the entry layer does not initialize or regenerate it.
+   user reaches its correctly bound canvas, **Then** the owned scaffolding layer
+   automatically runs the disclosed organization setup before the original
+   workflow renderer opens.
 4. **Given** any entry-layer action, **When** it completes, **Then** no workflow,
-   commit, push, deployment, or project initialization has run implicitly.
+   commit, push, or deployment has run implicitly. Project initialization is
+   limited to the disclosed automatic organization bootstrap for a verified
+   target missing SDD; search, selection and clone-only actions never run it.
 5. **Given** the entry layer is enabled, **When** the user opens the usual Spec
   Kit canvas entry point, **Then** the repository chooser appears first and the
   original canvas is shown only after a successful entry choice.
@@ -373,8 +388,13 @@ entry, with actual session and canvas targets verified in each case.
 - **FR-016**: A separate explicit direct-canvas entry MUST remain available when
   the entry layer is enabled, disabled, or unavailable. It MUST open the original
   canvas in the actual current workspace without repository selection or cloning.
-- **FR-017**: The entry layer MUST NOT implicitly initialize Spec Kit, install
-  skills or plugins, run workflows, commit, push, or deploy.
+- **FR-017**: The entry layer MUST NOT implicitly run feature workflows, install
+  Copilot plugins, commit, push, or deploy. Under the 2026-10-14 amendment, the
+  recommended organization bootstrap MUST start automatically after verified
+  repository continuation when SDD is missing, without an initial Setup button.
+  Its effects MUST be disclosed before continuation. Already-enabled targets
+  MUST bypass scaffolding; reads/reopening MUST NOT duplicate installation, and
+  failed/cancelled/interrupted jobs MUST require explicit retry.
 - **FR-018**: The current repository's files, branch, worktree relationships, and
   in-progress work MUST remain unchanged unless the user separately authorizes
   an operation affecting them. Starting a clone MUST be blocked when fresh host

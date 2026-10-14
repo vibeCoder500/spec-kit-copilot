@@ -181,12 +181,13 @@ for (const width of [360, 768, 1280, 1920]) {
             await expect(search).toBeEnabled(); await search.focus();
             expect(fixture.repositories.browserOpens()).toBe(1);
             await page.getByRole("option", { name: /Synthetic repository 1/ }).click();
-            await expect(page.locator('[data-field="workspace"]')).toHaveText("New session + original canvas");
+            await expect(page.locator('[data-field="workspace"]')).toHaveText("New session + Spec Kit");
+            await expect(page.locator(".entry-selection")).toContainText("automatically sets up the recommended organization bundle if SDD is missing");
             const destination = await page.locator('[data-field="destination"]').textContent();
             expect(fixture.repositories.gitCalls()).toBe(0);
             expect(await fixture.repositories.cloneFiles()).toEqual([]);
             await page.getByRole("button", { name: "Clone and open Spec Kit", exact: true }).click();
-            await expect(page.getByRole("status").filter({ hasText: "Original Spec Kit canvas acknowledged in the new repository session." })).toBeVisible();
+            await expect(page.getByRole("status").filter({ hasText: "Spec Kit canvas acknowledged in the new repository session." })).toBeVisible();
             await expect(page.getByText("Current workspace unchanged. Automatic workspace switching is unavailable.", { exact: true })).toBeVisible();
             await expect(page.getByRole("button", { name: "Retry handoff", exact: true })).toHaveCount(0);
             await expect(page.getByRole("button", { name: "Use current workspace", exact: true })).toBeEnabled();
@@ -196,7 +197,7 @@ for (const width of [360, 768, 1280, 1920]) {
             expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
             await page.screenshot({ path: testInfo.outputPath(`entry-clone-complete-${width}.png`), fullPage: true });
             await page.reload();
-            await expect(page.getByRole("status").filter({ hasText: "Original Spec Kit canvas acknowledged in the new repository session." })).toBeVisible();
+            await expect(page.getByRole("status").filter({ hasText: "Spec Kit canvas acknowledged in the new repository session." })).toBeVisible();
             await page.getByRole("button", { name: "Disconnect Microsoft account", exact: true }).click();
             await expect(page.getByRole("button", { name: "Connect Microsoft account", exact: true })).toBeVisible();
             await page.getByRole("button", { name: "Connect Microsoft account", exact: true }).click();
@@ -275,7 +276,7 @@ test("SDD entry discloses and opens an existing repository without cloning a sec
         expect(destination).toMatch(/[\\/]repositories[\\/]Synthetic repository 1$/);
         await page.getByRole("button", { name: "Clone and open Spec Kit", exact: true }).click();
         await expect.poll(() => fixture.targetUrl()).toBeTruthy();
-        await expect(page.getByRole("status").filter({ hasText: "Original Spec Kit canvas acknowledged" })).toBeVisible();
+        await expect(page.getByRole("status").filter({ hasText: "Spec Kit canvas acknowledged" })).toBeVisible();
         expect(fixture.repositories.cloneCount()).toBe(1);
         await search.focus();
         await page.getByRole("option", { name: /Synthetic repository 1/ }).click();
@@ -287,7 +288,8 @@ test("SDD entry discloses and opens an existing repository without cloning a sec
         await expect(page.locator('[data-action="clone-copy"]')).not.toHaveClass(/entry-primary/);
         await expect(page.locator('[data-field="copy-destination"]')).toHaveText(`${destination}-Copy`);
         await expect(page.locator('[data-field="destination"]')).toHaveText(destination);
-        await expect(page.locator(".entry-selection")).toContainText("without fetching, resetting, or changing its files");
+        await expect(page.locator(".entry-selection")).toContainText("without fetching or resetting its files");
+        await expect(page.locator(".entry-selection")).toContainText("Application source is retained; nothing is committed, pushed, or deployed.");
         await page.getByRole("button", { name: "Open existing in new session", exact: true }).click();
         await expect.poll(() => fixture.appLaunches().length).toBe(2);
         expect(fixture.repositories.cloneCount()).toBe(1);
@@ -308,7 +310,7 @@ for (const width of [360, 768, 1280, 1920]) {
             const original = await page.locator('[data-field="destination"]').innerText();
             await expect(page.getByRole("button", { name: "Clone another copy (-Copy)", exact: true })).toHaveCount(0);
             await page.getByRole("button", { name: "Clone and open Spec Kit", exact: true }).click();
-            await expect(page.getByRole("status").filter({ hasText: "Original Spec Kit canvas acknowledged" })).toBeVisible();
+            await expect(page.getByRole("status").filter({ hasText: "Spec Kit canvas acknowledged" })).toBeVisible();
             for (const [index, suffix] of ["-Copy", "-Copy-2"].entries()) {
                 await search.focus();
                 await page.getByRole("option", { name: /Synthetic repository 1/ }).click();
@@ -321,7 +323,7 @@ for (const width of [360, 768, 1280, 1920]) {
                 expect(fixture.repositories.cloneCount()).toBe(index + 1);
                 expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
                 await page.getByRole("button", { name: "Clone another copy (-Copy)", exact: true }).click();
-                await expect(page.getByRole("status").filter({ hasText: "Original Spec Kit canvas acknowledged" })).toBeVisible();
+                await expect(page.getByRole("status").filter({ hasText: "Spec Kit canvas acknowledged" })).toBeVisible();
                 await expect.poll(() => fixture.appLaunches().length).toBe(index + 2);
                 expect(fixture.appLaunches()[index + 1]).toEqual({ destination });
                 expect(fixture.repositories.cloneCount()).toBe(index + 2);

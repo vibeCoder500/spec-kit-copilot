@@ -65,15 +65,58 @@ the original dashboard directly without remote authentication. See
   before it sends a validated `clarify` run for that feature to the agent.
 - **New feature → specify** — describe what you want to build and kick off
   `speckit-specify`, which creates the feature spec under `specs/`.
-- **Guided prerequisite setup** — when Spec Kit is not initialized in Copilot
-  skills mode, the canvas makes setup the first step and sends the required
-  setup work to the agent instead of forwarding an unavailable command.
+- **Organization scaffolding** — a verified repository without Copilot skills-mode
+  setup automatically starts the owned background job in the same artifact,
+  without an initial Setup button, for sign-in, tool installation or
+  upgrade, all four MSD catalogs, and the default `msd-bundle`. The canvas shows
+  each step and component, supports cancellation/explicit retry, verifies the
+  files, and reloads the session's project skills before opening the original
+  workflow. It does not send a setup prompt to another agent.
 - **Live updates** — the panel refreshes automatically (SSE) as the core
   commands write new artifacts.
 
-Artifact browsing never writes spec files. Repository entry does not initialize
-projects or dispatch workflows. Workflow edits still run through the original
-core commands and the current Copilot session's permissions.
+Artifact browsing never writes spec files. Repository search, selection and
+clone-only never initialize projects or dispatch workflows. Verified repository
+continuation discloses automatic organization setup when SDD is missing;
+already-enabled repositories open the original canvas directly. Ordinary direct
+read-only previews remain non-mutating. Workflow edits still run through the
+original commands and the current session's permissions.
+
+## Recommended Organization Setup
+
+The development build uses the
+[MSD registry](https://msft.ghe.com/1eh-msd/msd-speckit-registry) as its source of
+truth. The current recommended `msd-bundle` installs the `bug` extension and seven
+MSD constitution presets. The fetched bootstrap determines the minimum CLI
+version (currently 1.1.0); the installed CLI is not hard-pinned.
+If the recommended organization mirror successfully installs an older release,
+the job discloses that mismatch and retries official PyPI once. It never treats
+an out-of-date CLI or failed installation as ready.
+
+The job reuses GitHub CLI's credential store or opens its ordinary GHES browser
+login. MFA/consent remain interactive when required. It merges a non-secret
+three-host provider into `~/.specify/auth.json`; the token goes only to setup
+child processes, never canvas state, repository files, or persistent user
+environment variables. No App restart is required to pick up that token.
+
+Setup runs in the verified current worktree with Copilot `--skills` and explicit
+platform scripts. Existing catalogs and installed components are retained on
+retry. CLI exit alone is not completion: component manifests/registries, bundle
+provenance, core prerequisites and the actual session skill catalog must verify.
+While setup is active or incomplete, workflow mutation APIs/actions are blocked.
+
+Closing the canvas does not cancel the job. Refresh/reopen follows the existing
+job; cancellation, failure, or interruption requires an explicit retry. Bounded,
+credential-free progress and locks live under `~/SpecKitCanvas/scaffolding/`,
+outside Git. Automatic prerequisite installation on Windows uses `winget` when
+GitHub CLI or uv is missing; otherwise use an existing uv or pipx installation.
+Missing installers, incompatible configuration, or failed sign-in are visible
+errors, not silently skipped prerequisites.
+
+The registry's
+[`squad-v1.0.0.zip`](https://msft.ghe.com/1eh-msd/msd-speckit-registry/releases/download/v1.0.0/squad-v1.0.0.zip)
+is a separate direct extension install, not the published default bundle. The
+recommended button does not silently add Squad.
 
 ## Repository Entry
 

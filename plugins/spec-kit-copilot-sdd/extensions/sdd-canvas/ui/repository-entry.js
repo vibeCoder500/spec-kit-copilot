@@ -40,6 +40,12 @@ var ArrowRight = [
   ["path", { d: "m12 5 7 7-7 7" }]
 ];
 
+// node_modules/lucide/dist/esm/icons/check.mjs
+var Check = [["path", { d: "M20 6 9 17l-5-5" }]];
+
+// node_modules/lucide/dist/esm/icons/circle.mjs
+var Circle = [["circle", { cx: "12", cy: "12", r: "10" }]];
+
 // node_modules/lucide/dist/esm/icons/clipboard-copy.mjs
 var ClipboardCopy = [
   ["rect", { width: "8", height: "4", x: "8", y: "2", rx: "1", ry: "1" }],
@@ -80,6 +86,9 @@ var GitBranch = [
   ["circle", { cx: "6", cy: "18", r: "3" }]
 ];
 
+// node_modules/lucide/dist/esm/icons/loader-circle.mjs
+var LoaderCircle = [["path", { d: "M21 12a9 9 0 1 1-6.219-8.56" }]];
+
 // node_modules/lucide/dist/esm/icons/log-out.mjs
 var LogOut = [
   ["path", { d: "m16 17 5-5-5-5" }],
@@ -110,6 +119,13 @@ var Search = [
 
 // node_modules/lucide/dist/esm/icons/square.mjs
 var Square = [["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2" }]];
+
+// node_modules/lucide/dist/esm/icons/triangle-alert.mjs
+var TriangleAlert = [
+  ["path", { d: "m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" }],
+  ["path", { d: "M12 9v4" }],
+  ["path", { d: "M12 17h.01" }]
+];
 
 // node_modules/lucide/dist/esm/icons/x.mjs
 var X = [
@@ -153,6 +169,19 @@ var messages = {
   app_launcher_unavailable: "A supported installed Copilot CLI is required to open this checkout in the App.",
   app_launch_failed: "The Copilot App open request failed. The checkout has been preserved.",
   app_launch_unknown: "The App open request could not be confirmed. Check the App before opening again.",
+  scaffolding_conflict: "Setup is already running for this checkout. Reopen its canvas to follow progress.",
+  scaffolding_not_required: "Spec Kit is already enabled. Open the original canvas.",
+  scaffolding_required: "Complete organization setup using the canvas button first.",
+  scaffolding_failed: "Organization setup failed. Review the failed step, then explicitly retry.",
+  scaffolding_cancelled: "Organization setup was cancelled. Completed artifacts were retained.",
+  scaffolding_auth_failed: "Organization registry authentication failed. Complete GitHub Enterprise sign-in and retry.",
+  scaffolding_prerequisite_missing: "Install GitHub CLI and uv or pipx, then retry setup. Automatic prerequisite installation requires Windows Package Manager.",
+  scaffolding_version_unsupported: "The installed Specify CLI does not meet the organization bootstrap's minimum version.",
+  scaffolding_registry_invalid: "The organization bootstrap or bundle metadata is incompatible. No unreviewed registry commands were executed.",
+  scaffolding_storage_invalid: "Setup encountered an invalid, redirected, or unwritable configuration path. Existing files were preserved.",
+  scaffolding_catalog_conflict: "An existing catalog conflicts with the organization setup. Review its URL and installation policy before retrying.",
+  scaffolding_verification_failed: "The required Spec Kit bundle artifacts could not be verified. The workflow canvas remains blocked.",
+  skills_reload_unavailable: "This host cannot reload the generated project skills. Reload skills in the App, then retry the final setup step.",
   upstream_unavailable: "The repository service is temporarily unavailable."
 };
 function knownRepositoryError(code) {
@@ -211,6 +240,267 @@ function createRepositoryApi({ document: document2, request = globalThis.fetch, 
   };
 }
 
+// src/ui/repository-scaffolding.ts
+var LABELS = {
+  pending: "Pending",
+  loading: "Loading",
+  waiting: "Waiting for sign-in",
+  completed: "Completed",
+  skipped: "Already ready",
+  error: "Error",
+  cancelled: "Cancelled"
+};
+var GLYPHS = { pending: Circle, loading: LoaderCircle, waiting: LoaderCircle, completed: Check, skipped: Check, error: TriangleAlert, cancelled: X };
+async function mountRepositoryScaffolding({ container, request, onWorkflow }) {
+  const document2 = container.ownerDocument;
+  const window = document2.defaultView;
+  const api = createRepositoryApi({ document: document2, request, namespace: "scaffolding" });
+  let snapshot;
+  let disposed = false;
+  let submitting = false;
+  let continuing = false;
+  let autoContinued = false;
+  let requestError = "";
+  let pollTimer;
+  let handoverTimer;
+  container.className = "entry-flow setup-flow";
+  container.innerHTML = `<header class="entry-heading"><div><p class="entry-product">Spec-Driven Development</p><h1>Setting up this repository</h1></div><span class="setup-refresh"></span></header>
+        <section class="entry-current" aria-label="Setup repository"><span class="entry-current-icon" aria-hidden="true"></span><div class="entry-current-name"><span class="entry-label">Current repository</span><strong class="setup-repository">Checking workspace...</strong><span class="entry-path setup-path"></span></div></section>
+        <section class="setup-recommendation" aria-label="Recommended organization setup"><div class="setup-recommendation-heading"><h2>Default organization bundle</h2><span class="setup-recommended">Recommended</span></div>
+            <p>Spec Kit is initialized automatically in Copilot skills mode with the organization's recommended bundle, including its extensions and presets.</p>
+            <p class="setup-consent">Repository entry installs or updates local setup tools, opens organization sign-in if needed, configures registry authentication and all four catalogs, and adds Spec Kit-managed files in this checkout. Existing Spec Kit-managed files may be replaced. Application source is not rewritten; nothing is committed, pushed, or deployed.</p>
+            <p class="setup-source"></p><div class="setup-actions"></div></section>
+        <section class="setup-progress" aria-label="Setup progress"><div class="setup-progress-heading"><h2>Setup progress</h2><span class="setup-count"></span></div><progress class="setup-meter" max="13" value="0" aria-label="Completed setup steps"></progress><ol class="setup-steps"></ol></section>
+        <footer class="entry-footer"><div class="setup-message" role="status" aria-live="polite">Loading setup state...</div></footer>`;
+  const element = (selector) => container.querySelector(selector);
+  const message = element(".setup-message");
+  const steps = element(".setup-steps");
+  element(".entry-current-icon").append(createElement(FolderOpen, { width: "24", height: "24", "aria-hidden": "true" }));
+  const requestId = () => `setup-${window.crypto.randomUUID()}`;
+  function button(label, glyph, action, primary = false) {
+    const control = document2.createElement("button");
+    control.type = "button";
+    control.className = `entry-command${primary ? " entry-primary" : ""}`;
+    control.append(createElement(glyph, { width: "18", height: "18", "aria-hidden": "true" }), document2.createTextNode(label));
+    control.addEventListener("click", action);
+    return control;
+  }
+  const retry = button("Retry organization setup", RefreshCw, () => {
+    void start();
+  }, true);
+  retry.dataset.action = "retry-setup";
+  retry.hidden = true;
+  retry.disabled = true;
+  const cancel = button("Cancel setup", Square, () => {
+    void cancelSetup();
+  });
+  cancel.dataset.action = "cancel-setup";
+  cancel.hidden = true;
+  const proceed = button("Open Spec Kit canvas", Check, () => {
+    void openWorkflow();
+  });
+  proceed.dataset.action = "continue-scaffolding";
+  proceed.hidden = true;
+  const refresh = button("Refresh setup state", RefreshCw, () => {
+    void refreshState();
+  });
+  element(".setup-refresh").append(refresh);
+  element(".setup-actions").append(retry, cancel, proceed);
+  const safeError = (error) => knownRepositoryError(error?.code).message;
+  const active = () => Boolean(snapshot?.job && ["running", "waiting"].includes(snapshot.job.status));
+  function progressRow(step, artifact = false) {
+    const row = document2.createElement("li");
+    row.className = "setup-step";
+    row.dataset.status = step.status;
+    row.dataset[artifact ? "artifact" : "step"] = step.id;
+    const glyph = createElement(GLYPHS[step.status], { width: "18", height: "18", "aria-hidden": "true" });
+    glyph.classList.add("setup-step-icon");
+    const content = document2.createElement("div");
+    content.className = "setup-step-content";
+    const label = document2.createElement("strong");
+    label.textContent = step.label;
+    content.append(label);
+    if ("kind" in step) {
+      const metadata = document2.createElement("small");
+      metadata.textContent = `${step.kind} / v${step.version}${step.priority ? ` / priority ${step.priority}` : ""}${step.strategy ? ` / ${step.strategy}` : ""}`;
+      content.append(metadata);
+    }
+    if (step.detail) {
+      const detail = document2.createElement("p");
+      detail.textContent = step.detail;
+      content.append(detail);
+    }
+    if (step.command) {
+      const command = document2.createElement("code");
+      command.textContent = step.command;
+      content.append(command);
+    }
+    const status = document2.createElement("span");
+    status.className = "setup-step-status";
+    status.textContent = LABELS[step.status];
+    row.append(glyph, content, status);
+    if (step.id === "bundle" && snapshot?.job?.artifacts.length) {
+      const artifacts = document2.createElement("ul");
+      artifacts.className = "setup-artifacts";
+      artifacts.setAttribute("aria-label", "Organization bundle artifacts");
+      for (const entry of snapshot.job.artifacts) artifacts.append(progressRow(entry, true));
+      row.append(artifacts);
+    }
+    return row;
+  }
+  function render() {
+    if (!snapshot || disposed) return;
+    element(".setup-repository").textContent = snapshot.repositoryName;
+    element(".setup-path").textContent = snapshot.workspacePath;
+    const source = element(".setup-source");
+    source.replaceChildren();
+    const link = document2.createElement("a");
+    link.href = snapshot.recommendation.sourceUrl;
+    link.textContent = snapshot.recommendation.bundleName;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.referrerPolicy = "no-referrer";
+    source.append(document2.createTextNode("Organization registry: "), link);
+    const job = snapshot.job;
+    const entries = job?.steps ?? snapshot.steps;
+    const complete = entries.filter((step) => ["completed", "skipped"].includes(step.status)).length;
+    element(".setup-count").textContent = `${complete} / ${entries.length} ready`;
+    const meter = element(".setup-meter");
+    meter.max = entries.length;
+    meter.value = complete;
+    steps.replaceChildren(...entries.map((step) => progressRow(step)));
+    const recoverable = snapshot.automaticStartError || job && ["error", "cancelled", "interrupted"].includes(job.status);
+    retry.hidden = !recoverable;
+    retry.disabled = submitting || continuing || !snapshot.canStart || job?.status === "completed";
+    cancel.hidden = !active();
+    cancel.disabled = submitting || continuing;
+    proceed.hidden = job?.status !== "completed";
+    proceed.disabled = continuing;
+    refresh.disabled = submitting || continuing;
+    container.setAttribute("aria-busy", String(submitting || continuing || active() || !job && !snapshot.automaticStartError));
+    container.dataset.setupState = job?.status ?? (snapshot.automaticStartError ? "error" : "pending");
+    if (!submitting && !continuing) {
+      message.textContent = requestError || job?.message || (snapshot.automaticStartError === "session_busy" && snapshot.canStart ? "Automatic setup was blocked while this session was busy. It is now idle; choose Retry organization setup to continue." : snapshot.automaticStartError ? knownRepositoryError(snapshot.automaticStartError).message : job?.status === "waiting" ? "Complete sign-in in the system browser to continue." : job?.status === "running" ? "Setup is running in this checkout. Closing the canvas does not cancel it." : snapshot.blockedReason ? knownRepositoryError(snapshot.blockedReason).message : "Preparing automatic organization setup for this repository...");
+    }
+    if (job?.status === "completed" && !autoContinued) {
+      autoContinued = true;
+      handoverTimer = window.setTimeout(() => {
+        void openWorkflow();
+      }, 800);
+    }
+  }
+  function schedulePoll() {
+    if (pollTimer !== void 0) window.clearTimeout(pollTimer);
+    if (!disposed && !continuing && (active() || !snapshot?.job && !snapshot?.automaticStartError || !snapshot?.canStart && snapshot?.job?.status !== "completed")) {
+      pollTimer = window.setTimeout(() => {
+        void refreshState();
+      }, 1500);
+    }
+  }
+  async function refreshState() {
+    try {
+      const next = await api.call("state");
+      if (!disposed) {
+        snapshot = next;
+        requestError = "";
+        render();
+      }
+    } catch (error) {
+      if (!disposed) {
+        requestError = safeError(error);
+        message.textContent = requestError;
+        retry.disabled = true;
+      }
+    } finally {
+      schedulePoll();
+    }
+  }
+  async function start() {
+    if (submitting || continuing || !snapshot?.canStart) return;
+    submitting = true;
+    requestError = "";
+    message.textContent = "Starting the checkout-bound setup job...";
+    render();
+    try {
+      snapshot = await api.call("state");
+      if (disposed || snapshot.job?.status === "completed") return;
+      if (!snapshot.canStart) throw knownRepositoryError(snapshot.blockedReason);
+      const next = await api.call("start", {}, { contextId: snapshot.contextId, requestId: requestId() });
+      if (!disposed) {
+        snapshot = next;
+        autoContinued = false;
+      }
+    } catch (error) {
+      if (!disposed) requestError = safeError(error);
+    } finally {
+      submitting = false;
+      if (!disposed) {
+        render();
+        schedulePoll();
+      }
+    }
+  }
+  async function cancelSetup() {
+    if (submitting || !active() || !snapshot?.job) return;
+    submitting = true;
+    requestError = "";
+    render();
+    try {
+      const next = await api.call("cancel", {}, { jobId: snapshot.job.id, requestId: requestId() });
+      if (!disposed) snapshot = next;
+    } catch (error) {
+      if (!disposed) requestError = safeError(error);
+    } finally {
+      submitting = false;
+      if (!disposed) {
+        render();
+        schedulePoll();
+      }
+    }
+  }
+  async function openWorkflow() {
+    if (continuing || disposed || snapshot?.job?.status !== "completed") return;
+    continuing = true;
+    if (handoverTimer !== void 0) window.clearTimeout(handoverTimer);
+    requestError = "";
+    message.textContent = "Verifying setup and opening the original Spec Kit canvas...";
+    render();
+    try {
+      await api.call("continue", {}, { requestId: requestId() });
+      if (!disposed) {
+        if (onWorkflow) onWorkflow();
+        else window.location.reload();
+      }
+    } catch (error) {
+      continuing = false;
+      requestError = safeError(error);
+      render();
+    }
+  }
+  await refreshState();
+  return {
+    receive(next) {
+      if (disposed) return;
+      snapshot = next;
+      render();
+      schedulePoll();
+    },
+    refresh: refreshState,
+    fail(error) {
+      requestError = knownRepositoryError(error.code).message;
+      message.textContent = requestError;
+      retry.disabled = true;
+    },
+    dispose() {
+      disposed = true;
+      api.abort();
+      if (pollTimer !== void 0) window.clearTimeout(pollTimer);
+      if (handoverTimer !== void 0) window.clearTimeout(handoverTimer);
+      container.replaceChildren();
+    }
+  };
+}
+
 // src/ui/repository-entry.ts
 async function mountRepositoryEntry({ container, request }) {
   const document2 = container.ownerDocument;
@@ -243,6 +533,7 @@ async function mountRepositoryEntry({ container, request }) {
   container.className = "entry-flow";
   container.innerHTML = `<header class="entry-heading"><div><p class="entry-product">Spec-Driven Development</p><h1>Choose a repository</h1></div><span class="entry-direct"></span></header>
         <section class="entry-current" aria-label="Current workspace"><span class="entry-current-icon" aria-hidden="true"></span><div class="entry-current-name"><span class="entry-label">Current workspace</span><strong class="entry-workspace-label">Checking workspace...</strong></div><span class="entry-local-action"></span></section>
+        <p class="entry-muted">Repositories without SDD automatically receive the recommended organization setup before Spec Kit opens. Existing SDD repositories open directly. Setup may install tools, require organization sign-in, and add or replace Spec Kit-managed files; application source is retained.</p>
         <section class="entry-discovery" aria-label="Repository selection"><div class="entry-discovery-heading"><h2>Repositories</h2><span class="entry-connection"></span></div>
         <div class="entry-search-wrap"><span class="entry-search-icon" aria-hidden="true"></span><input class="entry-search" type="search" role="combobox" aria-label="Search readable project repositories" aria-haspopup="listbox" aria-autocomplete="list" aria-expanded="false" aria-controls="entry-results" placeholder="Search repositories" maxlength="256" spellcheck="false" autocomplete="off" disabled><span class="entry-clear"></span>
         <div class="entry-popup" hidden><div id="entry-results" role="listbox" aria-label="Repository search results"></div><div class="entry-results-state"></div><div class="entry-results-actions"></div></div></div>
@@ -439,7 +730,7 @@ async function mountRepositoryEntry({ container, request }) {
       ["Default branch", selection.repository.defaultBranch ?? "Unavailable", "branch"],
       ["Commit", selection.checkoutCommit ?? selection.repository.sourceVersion ?? "Unavailable", "commit"],
       ["Destination", selection.destination, "destination"],
-      ["App workspace", selection.openInApp ? "New session + original canvas" : snapshot?.host.canHandoff ? "Automatic handoff" : "Unchanged", "workspace"]
+      ["App workspace", selection.openInApp ? "New session + Spec Kit" : snapshot?.host.canHandoff ? "Automatic handoff" : "Unchanged", "workspace"]
     ]) {
       const label = document2.createElement("dt");
       label.textContent = name;
@@ -499,13 +790,13 @@ async function mountRepositoryEntry({ container, request }) {
     if (selection.openInApp) {
       const consent = document2.createElement("p");
       consent.className = "entry-muted";
-      consent.textContent = `${selection.reused ? "Uses the existing checkout without fetching, resetting, or changing its files" : "Clones once into a repository-named folder"}, requests a new Copilot App session, and opens the original canvas when the target session loads this extension. The App may ask you to approve opening the folder. Your current session stays unchanged.`;
+      consent.textContent = `${selection.reused ? "Uses the existing checkout without fetching or resetting its files" : "Clones once into a repository-named folder"}, requests a new Copilot App session, and automatically sets up the recommended organization bundle if SDD is missing before opening Spec Kit. Setup may install or update local tools, require organization sign-in, configure all four catalogs, and add or replace Spec Kit-managed files. Application source is retained; nothing is committed, pushed, or deployed. The App may ask you to approve opening the folder. Your current session stays unchanged.`;
       selectionPanel.append(consent);
     }
     if (selection.copyDestination) {
       const copyConsent = document2.createElement("p");
       copyConsent.className = "entry-muted";
-      copyConsent.textContent = "Alternatively, clone the default-branch commit shown above into the copy destination. The existing checkout, including local changes, stays untouched. Copies use -Copy, then -Copy-2, -Copy-3, and so on; no existing folder is overwritten." + (selection.openInApp ? " The copy also opens in a new session with the original canvas, subject to normal App folder approval." : "");
+      copyConsent.textContent = "Alternatively, clone the default-branch commit shown above into the copy destination. The existing checkout, including local changes, stays untouched. Copies use -Copy, then -Copy-2, -Copy-3, and so on; no existing folder is overwritten." + (selection.openInApp ? " The copy also opens in a new session and automatically receives the recommended organization setup if SDD is missing before Spec Kit opens, subject to normal App folder approval." : "");
       selectionPanel.append(copyConsent);
     }
     const reason = selection.reason ?? snapshot?.host.reason;
@@ -543,7 +834,7 @@ async function mountRepositoryEntry({ container, request }) {
     status.textContent = operation.state === "prepared" ? phases[snapshot?.phase ?? "prepared"] ?? labels.prepared : labels[operation.state];
     if (operation.appCanvas) {
       const request2 = operation.appCanvas;
-      status.textContent = request2.canvasStatus === "opened" ? "Original Spec Kit canvas acknowledged in the new repository session." : request2.canvasStatus === "opening" ? "Opening the original canvas in the new repository session..." : request2.errorCode ? knownRepositoryError(request2.errorCode).message : request2.launchStatus === "requested" ? "Repository ready. App opening requested; waiting for the target canvas." : "Repository ready. Requesting a new Copilot App session...";
+      status.textContent = request2.canvasStatus === "opened" ? "Spec Kit canvas acknowledged in the new repository session." : request2.canvasStatus === "opening" ? "Opening repository setup or Spec Kit in the new repository session..." : request2.errorCode ? knownRepositoryError(request2.errorCode).message : request2.launchStatus === "requested" ? "Repository ready. App opening requested; waiting for the target canvas." : "Repository ready. Requesting a new Copilot App session...";
     }
     const destination = document2.createElement("p");
     destination.className = "entry-path";
@@ -913,23 +1204,28 @@ async function mountRepositoryEntry({ container, request }) {
   };
 }
 export {
-  mountRepositoryEntry
+  mountRepositoryEntry,
+  mountRepositoryScaffolding
 };
 /*! Bundled license information:
 
 lucide/dist/esm/defaultAttributes.mjs:
 lucide/dist/esm/createElement.mjs:
 lucide/dist/esm/icons/arrow-right.mjs:
+lucide/dist/esm/icons/check.mjs:
+lucide/dist/esm/icons/circle.mjs:
 lucide/dist/esm/icons/clipboard-copy.mjs:
 lucide/dist/esm/icons/download.mjs:
 lucide/dist/esm/icons/external-link.mjs:
 lucide/dist/esm/icons/folder-open.mjs:
 lucide/dist/esm/icons/git-branch.mjs:
+lucide/dist/esm/icons/loader-circle.mjs:
 lucide/dist/esm/icons/log-out.mjs:
 lucide/dist/esm/icons/log-in.mjs:
 lucide/dist/esm/icons/refresh-cw.mjs:
 lucide/dist/esm/icons/search.mjs:
 lucide/dist/esm/icons/square.mjs:
+lucide/dist/esm/icons/triangle-alert.mjs:
 lucide/dist/esm/icons/x.mjs:
 lucide/dist/esm/lucide.mjs:
   (**

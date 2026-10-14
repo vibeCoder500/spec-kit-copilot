@@ -9,6 +9,7 @@ on:
       - "scripts/canvas-reader/**"
       - "specs/001-integrated-markdown-review/**"
       - "specs/002-repository-entry-flow/**"
+      - "specs/003-repository-scaffolding/**"
       - ".github/workflows/canvas-reader-validation.yml"
 
 permissions:
@@ -86,7 +87,7 @@ jobs:
       - name: Lint repository entry fixtures and journeys
         working-directory: .
         run: |
-          node plugins/spec-kit-copilot-sdd/extensions/sdd-canvas/repository-browser/node_modules/eslint/bin/eslint.js --config plugins/spec-kit-copilot-sdd/extensions/sdd-canvas/repository-browser/eslint.config.mjs scripts/canvas-reader/serve-fixture.mjs scripts/canvas-reader/serve-repositories.mjs scripts/canvas-reader/fixtures/repositories.mjs scripts/canvas-reader/stage-app-fixture.mjs scripts/canvas-reader/test/repository-browser.test.mjs scripts/canvas-reader/test/repository-staging.test.mjs scripts/canvas-reader/test/repository-preview.test.mjs scripts/canvas-reader/test/repositories.spec.mjs scripts/canvas-reader/test/sdd-shell.spec.mjs scripts/canvas-reader/test/package-security.test.mjs scripts/canvas-reader/test/performance.spec.mjs
+          node plugins/spec-kit-copilot-sdd/extensions/sdd-canvas/repository-browser/node_modules/eslint/bin/eslint.js --config plugins/spec-kit-copilot-sdd/extensions/sdd-canvas/repository-browser/eslint.config.mjs scripts/canvas-reader/serve-fixture.mjs scripts/canvas-reader/serve-repositories.mjs scripts/canvas-reader/fixtures/repositories.mjs scripts/canvas-reader/fixtures/scaffolding.mjs scripts/canvas-reader/stage-app-fixture.mjs scripts/canvas-reader/test/repository-browser.test.mjs scripts/canvas-reader/test/repository-staging.test.mjs scripts/canvas-reader/test/repository-preview.test.mjs scripts/canvas-reader/test/repositories.spec.mjs scripts/canvas-reader/test/scaffolding.spec.mjs scripts/canvas-reader/test/sdd-shell.spec.mjs scripts/canvas-reader/test/package-security.test.mjs scripts/canvas-reader/test/performance.spec.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Build without repairing committed payload copies

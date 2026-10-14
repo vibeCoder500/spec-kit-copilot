@@ -8,6 +8,17 @@
 blocks automatic App handoff, not the independent clone action. This plan does
 not claim that automatic App handoff has been verified.
 
+**2026-10-14 automatic scaffolding amendment:** Keep repository entry and native
+target binding unchanged. Disclose automatic organization setup before
+repository continuation/clone-and-open. A verified target without core Copilot
+skills-mode setup automatically starts one checkout-bound background job and
+shows progress in the owned view, with no initial Setup button. Verify artifacts
+and actual session skills before returning to the original workflow renderer.
+Already-enabled targets bypass this layer; reopening attaches to an existing
+job and failures/cancellation require explicit retry. Search, selection,
+clone-only and direct read-only previews never start setup. See
+[the scaffolding plan](../003-repository-scaffolding/plan.md).
+
 **2026-10-11 amendment**: The supported native launcher now runs once after
 disclosed clone-and-open consent, with fresh source checks. Persist a bounded
 launch intent in the existing preparation store before submitting it. On target

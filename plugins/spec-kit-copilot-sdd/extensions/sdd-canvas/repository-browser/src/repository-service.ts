@@ -29,6 +29,7 @@ export { loadEntrySettings } from "./profile.ts";
 export { createWorkflowBinding } from "./workspace-binding.ts";
 export { verifyPreparedRepository } from "./workspace-binding.ts";
 export { openRequestedAppCanvas } from "./app-canvas.ts";
+export { createScaffoldingService, handleScaffoldingRequest, hasPendingScaffolding } from "./scaffolding.ts";
 
 function appCanvasState(request?: AppCanvasRequest) {
     return request ? { launchStatus: request.launchStatus, canvasStatus: request.canvasStatus, expiresAt: request.expiresAt,
@@ -422,8 +423,8 @@ export async function createEntryCoordinator({ host, profileStatus, dependencies
         return { snapshot: current, repository };
     }
 
-    async function openLocal(snapshot: HostWorkspaceSnapshot, instanceId: string) {
-        const opened = await host.openCurrentCanvas(snapshot, instanceId);
+    async function openLocal(snapshot: HostWorkspaceSnapshot, instanceId: string, repositorySetup = true) {
+        const opened = await host.openCurrentCanvas(snapshot, instanceId, undefined, { repositorySetup });
         const after = await readHost();
         if (disposed || opened.sessionId !== snapshot.sessionId || opened.contextRevision !== snapshot.contextRevision ||
             opened.workingDirectory !== snapshot.workingDirectory || opened.instanceId !== instanceId ||
@@ -483,7 +484,7 @@ export async function createEntryCoordinator({ host, profileStatus, dependencies
         async direct(requestId: string) {
             text(requestId);
             const snapshot = await readHost();
-            await openLocal(snapshot, `entry-direct-${randomBytes(16).toString("hex")}`);
+            await openLocal(snapshot, `entry-direct-${randomBytes(16).toString("hex")}`, false);
             return { opened: true as const };
         },
         async select(repositoryId: string, contextId: string) {

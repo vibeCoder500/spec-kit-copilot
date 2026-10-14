@@ -37,7 +37,8 @@ test("shareable SDD preview opens existing specs in the installed canvas and res
         installed = true;
         const key = `__previewBrowser_${randomUUID().replaceAll("-", "")}`;
         globalThis[key] = { send: async () => { dispatches++; throw new Error("Workflow dispatch is disabled in this test."); }, log: async () => {},
-            rpc: { metadata: { snapshot: async () => ({ workingDirectory: workspace }) } } };
+            rpc: { metadata: { snapshot: async () => ({ sessionId: key, workingDirectory: workspace }),
+                activity: async () => ({ hasActiveWork: false, abortable: false }) } } };
         const sdk = `export const createCanvas = definition => definition; export class CanvasError extends Error {} export async function joinSession() { return globalThis[${JSON.stringify(key)}]; }`;
         const hooks = registerHooks({ resolve(specifier, context, nextResolve) {
             if (specifier === "@github/copilot-sdk/extension") return { url: `data:text/javascript,${encodeURIComponent(sdk)}`, shortCircuit: true };

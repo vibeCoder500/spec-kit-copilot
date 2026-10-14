@@ -4,6 +4,8 @@ import type { EntryCoordinator } from "../repository-service.ts";
 import type { RepositoryPage, RepositorySummary } from "../types.ts";
 import { createRepositoryApi } from "./api.ts";
 
+export { mountRepositoryScaffolding } from "./repository-scaffolding.ts";
+
 export type EntrySnapshot = Awaited<ReturnType<EntryCoordinator["state"]>>;
 type Selection = Awaited<ReturnType<EntryCoordinator["select"]>>;
 type Operation = Awaited<ReturnType<EntryCoordinator["operation"]>>;
@@ -41,6 +43,7 @@ export async function mountRepositoryEntry({ container, request }: { container: 
     container.className = "entry-flow";
     container.innerHTML = `<header class="entry-heading"><div><p class="entry-product">Spec-Driven Development</p><h1>Choose a repository</h1></div><span class="entry-direct"></span></header>
         <section class="entry-current" aria-label="Current workspace"><span class="entry-current-icon" aria-hidden="true"></span><div class="entry-current-name"><span class="entry-label">Current workspace</span><strong class="entry-workspace-label">Checking workspace...</strong></div><span class="entry-local-action"></span></section>
+        <p class="entry-muted">Repositories without SDD automatically receive the recommended organization setup before Spec Kit opens. Existing SDD repositories open directly. Setup may install tools, require organization sign-in, and add or replace Spec Kit-managed files; application source is retained.</p>
         <section class="entry-discovery" aria-label="Repository selection"><div class="entry-discovery-heading"><h2>Repositories</h2><span class="entry-connection"></span></div>
         <div class="entry-search-wrap"><span class="entry-search-icon" aria-hidden="true"></span><input class="entry-search" type="search" role="combobox" aria-label="Search readable project repositories" aria-haspopup="listbox" aria-autocomplete="list" aria-expanded="false" aria-controls="entry-results" placeholder="Search repositories" maxlength="256" spellcheck="false" autocomplete="off" disabled><span class="entry-clear"></span>
         <div class="entry-popup" hidden><div id="entry-results" role="listbox" aria-label="Repository search results"></div><div class="entry-results-state"></div><div class="entry-results-actions"></div></div></div>
@@ -182,7 +185,7 @@ export async function mountRepositoryEntry({ container, request }: { container: 
         const summary = document.createElement("dl"); summary.className = "entry-summary";
         for (const [name, value, field] of [["Account", selection.accountLabel, "account"], ["Default branch", selection.repository.defaultBranch ?? "Unavailable", "branch"],
             ["Commit", selection.checkoutCommit ?? selection.repository.sourceVersion ?? "Unavailable", "commit"], ["Destination", selection.destination, "destination"],
-            ["App workspace", selection.openInApp ? "New session + original canvas" : snapshot?.host.canHandoff ? "Automatic handoff" : "Unchanged", "workspace"]]) {
+            ["App workspace", selection.openInApp ? "New session + Spec Kit" : snapshot?.host.canHandoff ? "Automatic handoff" : "Unchanged", "workspace"]]) {
             const label = document.createElement("dt"); label.textContent = name!;
             const content = document.createElement("dd"); content.textContent = value!; content.dataset.field = field;
             summary.append(label, content);
@@ -218,13 +221,13 @@ export async function mountRepositoryEntry({ container, request }: { container: 
         }
         if (selection.openInApp) {
             const consent = document.createElement("p"); consent.className = "entry-muted";
-            consent.textContent = `${selection.reused ? "Uses the existing checkout without fetching, resetting, or changing its files" : "Clones once into a repository-named folder"}, requests a new Copilot App session, and opens the original canvas when the target session loads this extension. The App may ask you to approve opening the folder. Your current session stays unchanged.`;
+            consent.textContent = `${selection.reused ? "Uses the existing checkout without fetching or resetting its files" : "Clones once into a repository-named folder"}, requests a new Copilot App session, and automatically sets up the recommended organization bundle if SDD is missing before opening Spec Kit. Setup may install or update local tools, require organization sign-in, configure all four catalogs, and add or replace Spec Kit-managed files. Application source is retained; nothing is committed, pushed, or deployed. The App may ask you to approve opening the folder. Your current session stays unchanged.`;
             selectionPanel.append(consent);
         }
         if (selection.copyDestination) {
             const copyConsent = document.createElement("p"); copyConsent.className = "entry-muted";
             copyConsent.textContent = "Alternatively, clone the default-branch commit shown above into the copy destination. The existing checkout, including local changes, stays untouched. Copies use -Copy, then -Copy-2, -Copy-3, and so on; no existing folder is overwritten." +
-                (selection.openInApp ? " The copy also opens in a new session with the original canvas, subject to normal App folder approval." : "");
+                (selection.openInApp ? " The copy also opens in a new session and automatically receives the recommended organization setup if SDD is missing before Spec Kit opens, subject to normal App folder approval." : "");
             selectionPanel.append(copyConsent);
         }
         const reason = selection.reason ?? snapshot?.host.reason;
@@ -249,8 +252,8 @@ export async function mountRepositoryEntry({ container, request }: { container: 
             operation.state === "prepared" ? phases[snapshot?.phase ?? "prepared"] ?? labels.prepared : labels[operation.state];
         if (operation.appCanvas) {
             const request = operation.appCanvas;
-            status.textContent = request.canvasStatus === "opened" ? "Original Spec Kit canvas acknowledged in the new repository session." :
-                request.canvasStatus === "opening" ? "Opening the original canvas in the new repository session..." :
+            status.textContent = request.canvasStatus === "opened" ? "Spec Kit canvas acknowledged in the new repository session." :
+                request.canvasStatus === "opening" ? "Opening repository setup or Spec Kit in the new repository session..." :
                     request.errorCode ? knownRepositoryError(request.errorCode).message :
                         request.launchStatus === "requested" ? "Repository ready. App opening requested; waiting for the target canvas." :
                             "Repository ready. Requesting a new Copilot App session...";

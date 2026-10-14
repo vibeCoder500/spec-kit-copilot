@@ -32,7 +32,7 @@ async function fixture(run: (proof: {
     } finally { await rm(home, { recursive: true, force: true }); }
 }
 
-function targetHost(directory: string, { sessionId = "target", busy = false, open = async (input: { instanceId: string }) =>
+function targetHost(directory: string, { sessionId = "target", busy = false, open = async (input: { instanceId: string; input: { repositorySetup?: boolean } }) =>
     ({ extensionId: "sdd", canvasId: "sdd-canvas-direct", instanceId: input.instanceId }) } = {}) {
     return createHostHandoffAdapter({ sessionId, extensionId: "sdd", metadata: {
         snapshot: async () => ({ sessionId, workingDirectory: directory }),
@@ -45,6 +45,7 @@ test("A new target session opens the original canvas once without a model prompt
     let verifications = 0;
     const host = targetHost(record.destination, { open: async input => {
         opens++;
+        assert.deepEqual(input.input, { repositorySetup: true });
         assert.equal((await store.read(record.operationId)).appCanvas?.canvasStatus, "opening");
         return { extensionId: "sdd", canvasId: "sdd-canvas-direct", instanceId: input.instanceId };
     } });
