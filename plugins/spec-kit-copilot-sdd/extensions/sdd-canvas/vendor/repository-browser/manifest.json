@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "kind": "sdd-repository-browser",
-  "sourceHash": "3befa8d1522b4071eca1456e84ce7a49a351dc5582462204e57e043f83ada0e9",
-  "buildHash": "afd950314168b740718318c0dfde4b625708e30195d7fcdd80517ae100d821e1",
+  "sourceHash": "b95d3ee13d9cd4dedce31f404cc84946ab08a48cf841271ae20b24aacc2229e9",
+  "buildHash": "24bfa847f93a94dacd6f02362cb93bdd380ed919d1d282f232197b11092521d2",
   "sources": [
     {
       "path": "build-runtime.mjs",
@@ -30,7 +30,7 @@
     },
     {
       "path": "src/auth.ts",
-      "sha256": "70fd6ba43222db134e280b1f4c1dccf3c73972e0c27bcdc092e39c45ac4de5ad"
+      "sha256": "a32cf6748274bc1cdf9fe8243de0a005d6df10412d91921c7b51c9c830e8eead"
     },
     {
       "path": "src/clone.ts",
@@ -54,7 +54,7 @@
     },
     {
       "path": "src/msal-client.ts",
-      "sha256": "e59e6b7470855603f2ec58ac0997f3b031b5f9eeee0d0de619187440bf954544"
+      "sha256": "0335a87046c13eb9b4c0b87c5fb3978ef2ce189606f1588dc3e9263f8c931b49"
     },
     {
       "path": "src/oauth-callback.ts",
@@ -280,8 +280,8 @@
     },
     {
       "path": "vendor/repository-browser/server.mjs",
-      "bytes": 1088746,
-      "sha256": "62301db4605bec5f083e26cbf66f4cfce964577c1f9111897f1b0c5f88223269"
+      "bytes": 1097170,
+      "sha256": "fe593008607fe82d03e8d2ad8498474281eb896323e7ecc58f593dd4a71c5914"
     },
     {
       "path": "vendor/repository-browser/THIRD_PARTY_NOTICES.txt",

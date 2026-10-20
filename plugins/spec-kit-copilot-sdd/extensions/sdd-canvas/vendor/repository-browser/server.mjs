@@ -11300,7 +11300,7 @@ var import_yaml5 = __toESM(require_dist(), 1);
 import { createHash as createHash9, randomBytes as randomBytes9 } from "node:crypto";
 import { lstat as lstat8, realpath as realpath8 } from "node:fs/promises";
 import { homedir as homedir8 } from "node:os";
-import { basename as basename4, join as join9 } from "node:path";
+import { basename as basename4, join as join10 } from "node:path";
 
 // src/ado-client.ts
 import { setTimeout as delay } from "node:timers/promises";
@@ -11496,9 +11496,9 @@ async function responseBytes(response, maximumBytes) {
 function createAdoClient({ profile, connection, request = fetch, pause = (milliseconds, signal) => delay(milliseconds, void 0, { signal }) }) {
   const api = {
     async open() {
-      const access = await connection.access();
+      const access2 = await connection.access();
       const expiresAt = Date.now() + 35e3;
-      const signal = AbortSignal.any([access.signal, AbortSignal.timeout(35e3)]);
+      const signal = AbortSignal.any([access2.signal, AbortSignal.timeout(35e3)]);
       let retries = 2;
       async function send(segments, query, options, accept) {
         if (segments.some((segment2) => !segment2 || segment2 === "." || segment2 === ".." || /[\p{Cc}/\\?#]/u.test(segment2))) throw new RepositoryError("invalid_request");
@@ -11506,14 +11506,14 @@ function createAdoClient({ profile, connection, request = fetch, pause = (millis
         url.searchParams.set("api-version", "7.1");
         for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value);
         while (true) {
-          access.assertCurrent();
+          access2.assertCurrent();
           if (signal.aborted) throw new RepositoryError("upstream_unavailable");
           let response;
           try {
             response = await request(url, {
               method: options.body === void 0 ? "GET" : "POST",
               headers: {
-                Authorization: `Bearer ${access.accessToken}`,
+                Authorization: `Bearer ${access2.accessToken}`,
                 Accept: accept,
                 ...options.body === void 0 ? {} : { "Content-Type": "application/json" }
               },
@@ -11522,10 +11522,10 @@ function createAdoClient({ profile, connection, request = fetch, pause = (millis
               signal: AbortSignal.any([signal, AbortSignal.timeout(1e4)])
             });
           } catch {
-            access.assertCurrent();
+            access2.assertCurrent();
             throw new RepositoryError("upstream_unavailable");
           }
-          access.assertCurrent();
+          access2.assertCurrent();
           if (response.ok) return response;
           await response.body?.cancel();
           if ([401, 403, 404].includes(response.status)) {
@@ -11543,19 +11543,19 @@ function createAdoClient({ profile, connection, request = fetch, pause = (millis
         }
       }
       return {
-        access,
+        access: access2,
         signal,
         async json(segments, query = {}, options = {}) {
           const response = await send(segments, query, options, "application/json");
           const payload = await readBoundedJson(response, options.maximumBytes ?? 25 * 1024 * 1024);
-          access.assertCurrent();
+          access2.assertCurrent();
           return record(payload);
         },
         async bytes(segments, query = {}, maximumBytes = 5242880) {
           const response = await send(segments, query, {}, "application/octet-stream");
           try {
             const bytes = await responseBytes(response, maximumBytes);
-            access.assertCurrent();
+            access2.assertCurrent();
             return bytes;
           } catch (error) {
             if (error instanceof RepositoryError) throw error;
@@ -12657,7 +12657,7 @@ function createCloneService({
   const pending = /* @__PURE__ */ new Set();
   let active;
   let disposed = false;
-  const identity2 = (access) => JSON.stringify([access.tenantId, access.accountId, access.connectionId, access.generation]);
+  const identity2 = (access2) => JSON.stringify([access2.tenantId, access2.accountId, access2.connectionId, access2.generation]);
   function update(operation, state, error) {
     operation.public = { ...operation.public, state, ...error ? { error } : {} };
     try {
@@ -12672,10 +12672,10 @@ function createCloneService({
     let environment;
     try {
       const source = await readSource(operation.contextId);
-      const access = await connection.access();
-      if (disposed || operation.account !== identity2(access) || source.sourceVersion !== operation.source.sourceVersion || source.repository.id !== operation.source.repository.id || source.repository.defaultBranch !== operation.source.repository.defaultBranch) throw new RepositoryError("invalid_context");
-      access.assertCurrent();
-      const signal = AbortSignal.any([controller.signal, access.signal, deadline]);
+      const access2 = await connection.access();
+      if (disposed || operation.account !== identity2(access2) || source.sourceVersion !== operation.source.sourceVersion || source.repository.id !== operation.source.repository.id || source.repository.defaultBranch !== operation.source.repository.defaultBranch) throw new RepositoryError("invalid_context");
+      access2.assertCurrent();
+      const signal = AbortSignal.any([controller.signal, access2.signal, deadline]);
       if (signal.aborted) throw new RepositoryError("clone_cancelled");
       const git = executable ?? await findGitExecutable(workspacePath);
       if (!isAbsolute5(git)) throw new RepositoryError("clone_conflict");
@@ -12697,7 +12697,7 @@ function createCloneService({
       const emptyFile = join4(config, "empty");
       await writeFile(emptyFile, "", { flag: "wx" });
       const remote = `https://dev.azure.com/${[profile.organization, profile.project, "_git", source.repository.id].map(encodeURIComponent).join("/")}`;
-      environment = cloneEnvironment({ token: access.accessToken, remote, home: config, emptyFile });
+      environment = cloneEnvironment({ token: access2.accessToken, remote, home: config, emptyFile });
       const policy = [
         "-c",
         "credential.helper=",
@@ -12723,7 +12723,7 @@ function createCloneService({
         "gc.auto=0"
       ];
       const gitCommand = async (args, cwd = root) => {
-        access.assertCurrent();
+        access2.assertCurrent();
         if (signal.aborted) throw new RepositoryError("clone_cancelled");
         return runner({ executable: git, args: [...policy, ...args], cwd, env: environment, signal });
       };
@@ -12742,7 +12742,7 @@ function createCloneService({
             } catch (error) {
               if (error.code !== "ENOENT") throw error;
             }
-            access.assertCurrent();
+            access2.assertCurrent();
             if (signal.aborted) throw new RepositoryError("clone_cancelled");
             try {
               await rename2(operation.public.migrateFrom, operation.public.destination);
@@ -12804,13 +12804,13 @@ function createCloneService({
       const common = await gitCommand(["rev-parse", "--path-format=absolute", "--git-common-dir"], operation.public.destination);
       const gitDirectory = await realpath3(common);
       if (gitDirectory !== join4(operation.public.destination, ".git")) throw new RepositoryError("clone_conflict");
-      access.assertCurrent();
+      access2.assertCurrent();
       if (signal.aborted) throw new RepositoryError("clone_cancelled");
       if (onPrepared) {
         if (!operation.existing && await gitCommand(["status", "--porcelain=v1", "--untracked-files=all"], operation.public.destination)) throw new RepositoryError("clone_identity_changed");
         const initialWorktreeFingerprint = await fingerprintCheckout(operation.public.destination, signal);
         if (operation.existing && initialWorktreeFingerprint !== operation.existing.fingerprint) throw new RepositoryError("clone_identity_changed");
-        access.assertCurrent();
+        access2.assertCurrent();
         if (signal.aborted) throw new RepositoryError("clone_cancelled");
         await onPrepared({
           operationId: operation.public.operationId,
@@ -12872,8 +12872,8 @@ function createCloneService({
       if (disposed || active) throw new RepositoryError("clone_conflict");
       const source = await readSource(contextId);
       if (!COMMIT2.test(source.sourceVersion) || !source.repository.defaultBranch || source.repository.operationalState !== "active") throw new RepositoryError("source_unavailable");
-      const access = await connection.access();
-      if (source.generation !== access.generation) throw new RepositoryError("invalid_context");
+      const access2 = await connection.access();
+      if (source.generation !== access2.generation) throw new RepositoryError("invalid_context");
       const canonicalHome = await realpath3(homeDirectory);
       const operationId = randomBytes3(16).toString("hex");
       const folder = repositoryFolderName(source.repository.name);
@@ -12881,7 +12881,7 @@ function createCloneService({
       const destination = onPrepared ? join4(parent, folder) : join4(parent, operationId, "checkout");
       const records = await createPreparationStore({ homeDirectory }).list();
       if (records.hasMore) throw new RepositoryError("clone_conflict");
-      const matchingRecords = records.items.filter((item) => item.record?.repositoryId === source.repository.id && item.record.profileFingerprint === digest(JSON.stringify(profile)) && item.record.accountKey === digest(JSON.stringify([access.tenantId, access.accountId])));
+      const matchingRecords = records.items.filter((item) => item.record?.repositoryId === source.repository.id && item.record.profileFingerprint === digest(JSON.stringify(profile)) && item.record.accountKey === digest(JSON.stringify([access2.tenantId, access2.accountId])));
       const named = matchingRecords.filter((item) => item.destination === destination);
       const matching = named.length ? named : matchingRecords.filter((item) => basename2(item.destination) === "checkout" && operationIdPattern.test(basename2(dirname3(item.destination))) && dirname3(dirname3(item.destination)) === parent);
       if (matching.length > 1) throw new RepositoryError("existing_repository_conflict");
@@ -12925,7 +12925,7 @@ function createCloneService({
       };
       for (const [key, operation] of operations) if (!operation.completion && operation.expiresAt <= now()) operations.delete(key);
       if (operations.size >= 32) throw new RepositoryError("clone_conflict");
-      operations.set(operationId, { public: state, source, contextId, confirmation: digest(confirmation), account: identity2(access), expiresAt: now() + 12e4, existing });
+      operations.set(operationId, { public: state, source, contextId, confirmation: digest(confirmation), account: identity2(access2), expiresAt: now() + 12e4, existing });
       return { ...state, confirmation, accountLabel: connection.snapshot().accountLabel ?? "Microsoft account" };
     },
     async start(operationId, confirmation, mode = "reuse") {
@@ -12933,8 +12933,8 @@ function createCloneService({
       const operation = operations.get(operationId);
       if (!operation || !sameSecret(confirmation, operation.confirmation)) throw new RepositoryError("clone_conflict");
       if (mode !== "reuse" && mode !== "copy") throw new RepositoryError("invalid_request");
-      const access = await connection.access();
-      if (operation.account !== identity2(access)) throw new RepositoryError("invalid_context");
+      const access2 = await connection.access();
+      if (operation.account !== identity2(access2)) throw new RepositoryError("invalid_context");
       if (operation.completion) {
         if (operation.mode !== mode) throw new RepositoryError("clone_conflict");
         return { ...operation.public };
@@ -12994,8 +12994,8 @@ function createEntryCloneService({ host, readSource, connection, profile, worksp
   const profileFingerprint = digest(JSON.stringify(profile));
   let disposed = false;
   let starting;
-  const identity2 = (access) => JSON.stringify([access.tenantId, access.accountId, access.connectionId, access.generation]);
-  const accountKey = (access) => digest(JSON.stringify([access.tenantId, access.accountId]));
+  const identity2 = (access2) => JSON.stringify([access2.tenantId, access2.accountId, access2.connectionId, access2.generation]);
+  const accountKey = (access2) => digest(JSON.stringify([access2.tenantId, access2.accountId]));
   function guard(snapshot, expected) {
     if (disposed) throw new RepositoryError("invalid_context");
     if (!supportsRepositoryCloning(snapshot)) throw new RepositoryError("activity_unknown");
@@ -13030,19 +13030,19 @@ function createEntryCloneService({ host, readSource, connection, profile, worksp
       guard(await host.inspectCurrent(), expected);
       if (starting || consents.size >= 32) throw new RepositoryError("clone_conflict");
       const source = await readSource(selectionId);
-      const access = await connection.access();
+      const access2 = await connection.access();
       const preview = await core.confirm(selectionId);
-      access.assertCurrent();
+      access2.assertCurrent();
       guard(await host.inspectCurrent(), expected);
-      if (source.generation !== access.generation || source.sourceVersion !== preview.sourceCommit || source.repository.defaultBranch !== preview.branch) throw new RepositoryError("source_changed");
+      if (source.generation !== access2.generation || source.sourceVersion !== preview.sourceCommit || source.repository.defaultBranch !== preview.branch) throw new RepositoryError("source_changed");
       for (const consent of consents.values()) if (!consent.start) consent.revoked = true;
       const createdAt = now();
       consents.set(preview.operationId, {
         selectionId,
         source,
         expected: structuredClone(expected),
-        account: identity2(access),
-        accountKey: accountKey(access),
+        account: identity2(access2),
+        accountKey: accountKey(access2),
         digest: digest(preview.confirmation),
         createdAt,
         expiresAt: createdAt + 12e4,
@@ -13055,8 +13055,8 @@ function createEntryCloneService({ host, readSource, connection, profile, worksp
       if (disposed || !consent || !requestId || requestId.length > 256 || !sameSecret(confirmation, consent.digest)) throw new RepositoryError("clone_conflict");
       if (mode !== "reuse" && mode !== "copy") throw new RepositoryError("invalid_request");
       if (mode === "copy" && !consent.start && !core.status(operationId).copyDestination) throw new RepositoryError("invalid_request");
-      const access = await connection.access();
-      if (identity2(access) !== consent.account) throw new RepositoryError("invalid_context");
+      const access2 = await connection.access();
+      if (identity2(access2) !== consent.account) throw new RepositoryError("invalid_context");
       if (consent.start) {
         if (consent.requestId !== requestId || consent.mode !== mode) throw new RepositoryError("clone_conflict");
         await consent.start;
@@ -13070,7 +13070,7 @@ function createEntryCloneService({ host, readSource, connection, profile, worksp
       consent.start = (async () => {
         try {
           const source = await readSource(consent.selectionId);
-          access.assertCurrent();
+          access2.assertCurrent();
           if (source.sourceVersion !== consent.source.sourceVersion || source.repository.id !== consent.source.repository.id || source.repository.defaultBranch !== consent.source.repository.defaultBranch || source.generation !== consent.source.generation) throw new RepositoryError("source_changed");
           const snapshot = await host.inspectCurrent();
           guard(snapshot, consent.expected);
@@ -13081,7 +13081,7 @@ function createEntryCloneService({ host, readSource, connection, profile, worksp
             capabilityGeneration: snapshot.capabilityGeneration,
             activityRevision: snapshot.activityRevision
           }, async () => {
-            access.assertCurrent();
+            access2.assertCurrent();
             if (disposed || consent.revoked) throw new RepositoryError("confirmation_expired");
             return core.start(operationId, confirmation, mode);
           });
@@ -13357,33 +13357,40 @@ function createRepositoryConnection(profile, dependencies) {
     timeout.unref();
     let callback;
     try {
-      const codes = await dependencies.generatePkce();
-      current(epoch, controller.signal);
-      callback = await (dependencies.callback ?? startOAuthCallback)({ state, signal: controller.signal });
-      const authorizationUrl = await client.getAuthCodeUrl({
-        scopes: [...ADO_SCOPES],
-        redirectUri: callback.redirectUri,
-        codeChallenge: codes.challenge,
-        codeChallengeMethod: "S256",
-        responseMode: "query",
-        state,
-        nonce
-      });
-      current(epoch, controller.signal);
-      const url = new URL(authorizationUrl);
-      if (url.origin !== "https://login.microsoftonline.com" || url.pathname !== `/${profile.tenantId}/oauth2/v2.0/authorize` || url.username || url.password || url.hash) throw new RepositoryError("invalid_request");
-      await dependencies.openBrowser(url.href);
-      const code = await callback.result;
-      current(epoch, controller.signal);
-      const result = await client.acquireTokenByCode({
-        code,
-        scopes: [...ADO_SCOPES],
-        redirectUri: callback.redirectUri,
-        codeVerifier: codes.verifier,
-        nonce
-      });
-      current(epoch, controller.signal);
-      const account = validateResult(result, profile, void 0, nonce);
+      let account;
+      if (client.acquireTokenBroker) {
+        const result = await client.acquireTokenBroker({ scopes: [...ADO_SCOPES], signal: controller.signal });
+        current(epoch, controller.signal);
+        account = validateResult(result, profile);
+      } else {
+        const codes = await dependencies.generatePkce();
+        current(epoch, controller.signal);
+        callback = await (dependencies.callback ?? startOAuthCallback)({ state, signal: controller.signal });
+        const authorizationUrl = await client.getAuthCodeUrl({
+          scopes: [...ADO_SCOPES],
+          redirectUri: callback.redirectUri,
+          codeChallenge: codes.challenge,
+          codeChallengeMethod: "S256",
+          responseMode: "query",
+          state,
+          nonce
+        });
+        current(epoch, controller.signal);
+        const url = new URL(authorizationUrl);
+        if (url.origin !== "https://login.microsoftonline.com" || url.pathname !== `/${profile.tenantId}/oauth2/v2.0/authorize` || url.username || url.password || url.hash) throw new RepositoryError("invalid_request");
+        await dependencies.openBrowser(url.href);
+        const code = await callback.result;
+        current(epoch, controller.signal);
+        const result = await client.acquireTokenByCode({
+          code,
+          scopes: [...ADO_SCOPES],
+          redirectUri: callback.redirectUri,
+          codeVerifier: codes.verifier,
+          nonce
+        });
+        current(epoch, controller.signal);
+        account = validateResult(result, profile, void 0, nonce);
+      }
       const accountLabel = (account.username || account.name || "Microsoft account").replace(/[\p{Cc}\p{Cf}]/gu, "").slice(0, 256);
       const connectionId = randomBytes5(24).toString("base64url");
       pending = void 0;
@@ -13745,6 +13752,12 @@ function createRepositoryDiscovery({ client, profile, now = Date.now }) {
     }
   };
 }
+
+// src/msal-client.ts
+import { execFile as execFile8 } from "node:child_process";
+import { access } from "node:fs/promises";
+import { delimiter as delimiter3, dirname as dirname4, join as join6 } from "node:path";
+import { promisify as promisify8 } from "node:util";
 
 // node_modules/@azure/msal-node/dist/cache/serializer/Serializer.mjs
 var Serializer = class {
@@ -23913,6 +23926,142 @@ defineLazyProperty(apps, "safari", () => detectPlatformBinary({
 var open_default = open4;
 
 // src/msal-client.ts
+var execFileAsync5 = promisify8(execFile8);
+var WINDOWS_WAM_BROKER_SCRIPT = [
+  "import ctypes, json, sys",
+  "import msal, pymsalruntime",
+  "if sys.platform != 'win32':",
+  "    print('broker_required', file=sys.stderr)",
+  "    raise SystemExit(1)",
+  "parts = [int(p) for p in msal.__version__.split('.')[:2] if p.isdigit()]",
+  "if tuple(parts) < (1, 35):",
+  "    print('broker_required', file=sys.stderr)",
+  "    raise SystemExit(1)",
+  "tenant_id, client_id, mode, *scopes = sys.argv[1:]",
+  "app = msal.PublicClientApplication(client_id, authority=f'https://login.microsoftonline.com/{tenant_id}', enable_broker_on_windows=True)",
+  "hwnd = int(ctypes.windll.user32.GetForegroundWindow() or ctypes.windll.user32.GetDesktopWindow() or 0)",
+  "res = app.acquire_token_interactive(scopes=scopes, parent_window_handle=hwnd, prompt='none')",
+  "if mode != 'silent' and not (isinstance(res, dict) and res.get('access_token')):",
+  "    res = app.acquire_token_interactive(scopes=scopes, parent_window_handle=hwnd)",
+  "if not isinstance(res, dict) or not res.get('access_token'):",
+  "    err = res.get('error', 'interaction_required') if isinstance(res, dict) else 'interaction_required'",
+  "    print(str(err), file=sys.stderr)",
+  "    raise SystemExit(1)",
+  "if res.get('token_source') != 'broker':",
+  "    print('broker_required', file=sys.stderr)",
+  "    raise SystemExit(1)",
+  "claims = res.get('id_token_claims') or {}",
+  "accounts = app.get_accounts()",
+  "acct = accounts[0] if accounts else {}",
+  "tenant = str(claims.get('tid') or acct.get('realm') or '')",
+  "local_id = str(claims.get('oid') or acct.get('local_account_id') or '')",
+  "home_id = str(acct.get('home_account_id') or (f'{local_id}.{tenant}' if local_id and tenant else ''))",
+  "username = str(acct.get('username') or claims.get('preferred_username') or claims.get('upn') or '')",
+  "name = str(claims.get('name') or username or 'Microsoft account')",
+  "scopes_out = str(res.get('scope') or '').split() or list(scopes)",
+  "print(json.dumps({",
+  "    'accessToken': str(res['access_token']),",
+  "    'expiresIn': int(res.get('expires_in') or 3600),",
+  "    'tenantId': tenant,",
+  "    'localAccountId': local_id,",
+  "    'homeAccountId': home_id,",
+  "    'username': username,",
+  "    'name': name,",
+  "    'environment': str(acct.get('environment') or 'login.microsoftonline.com'),",
+  "    'scopes': scopes_out,",
+  "    'tokenSource': str(res.get('token_source')),",
+  "}))"
+].join("\n");
+async function resolveWindowsBrokerPython() {
+  const candidates = /* @__PURE__ */ new Set();
+  for (const root of [process.env.ProgramFiles, process.env["ProgramFiles(x86)"], "C:\\Program Files", "C:\\Program Files (x86)"]) {
+    if (root) candidates.add(join6(root, "Microsoft SDKs", "Azure", "CLI2", "python.exe"));
+  }
+  for (const entry of (process.env.PATH ?? "").split(delimiter3)) {
+    const trimmed = entry.trim();
+    if (!trimmed) continue;
+    candidates.add(join6(dirname4(trimmed), "python.exe"));
+  }
+  for (const candidate of candidates) {
+    try {
+      await access(candidate);
+      return candidate;
+    } catch {
+      continue;
+    }
+  }
+  throw new RepositoryError("upstream_unavailable");
+}
+var defaultWindowsBrokerRunner = async ({ tenantId, clientId, scopes, mode, signal }) => {
+  if (signal.aborted) throw new RepositoryError("invalid_context");
+  const pythonPath = await resolveWindowsBrokerPython();
+  try {
+    const { stdout } = await execFileAsync5(
+      pythonPath,
+      ["-I", "-c", WINDOWS_WAM_BROKER_SCRIPT, tenantId, clientId, mode, ...scopes],
+      { windowsHide: true, maxBuffer: 262144, timeout: 9e4, signal }
+    );
+    return stdout;
+  } catch (error) {
+    if (signal.aborted) throw new RepositoryError("invalid_context");
+    const stderr = error && typeof error === "object" && "stderr" in error ? String(error.stderr ?? "") : "";
+    if (/unauthorized_client|access_denied|blocked_by_conditional_access|broker_required/i.test(stderr)) {
+      throw new RepositoryError("policy_blocked");
+    }
+    throw new RepositoryError("interaction_required");
+  }
+};
+async function acquireWindowsBrokerToken({
+  profile,
+  scopes,
+  mode = "interactive",
+  signal,
+  runner = defaultWindowsBrokerRunner
+}) {
+  if (signal.aborted) throw new RepositoryError("invalid_context");
+  const raw = await runner({ tenantId: profile.tenantId, clientId: profile.clientId, scopes, mode, signal });
+  if (signal.aborted) throw new RepositoryError("invalid_context");
+  let parsed;
+  try {
+    const json = JSON.parse(raw);
+    if (!json || typeof json !== "object" || Array.isArray(json)) throw new Error();
+    parsed = json;
+  } catch {
+    throw new RepositoryError("interaction_required");
+  }
+  if (parsed.tokenSource !== "broker") throw new RepositoryError("policy_blocked");
+  const tenantId = typeof parsed.tenantId === "string" ? parsed.tenantId : "";
+  const localAccountId = typeof parsed.localAccountId === "string" ? parsed.localAccountId : "";
+  const homeAccountId = typeof parsed.homeAccountId === "string" ? parsed.homeAccountId : "";
+  const username = typeof parsed.username === "string" ? parsed.username : "";
+  const name3 = typeof parsed.name === "string" ? parsed.name : username;
+  const environment = typeof parsed.environment === "string" && parsed.environment ? parsed.environment : "login.microsoftonline.com";
+  const accessToken = typeof parsed.accessToken === "string" ? parsed.accessToken : "";
+  const expiresIn = typeof parsed.expiresIn === "number" && Number.isFinite(parsed.expiresIn) && parsed.expiresIn > 0 ? parsed.expiresIn : 3600;
+  const grantedScopes = Array.isArray(parsed.scopes) && parsed.scopes.every((item) => typeof item === "string") ? parsed.scopes : [...scopes];
+  const account = {
+    homeAccountId,
+    environment,
+    tenantId,
+    username,
+    localAccountId,
+    name: name3
+  };
+  return {
+    authority: `https://login.microsoftonline.com/${profile.tenantId}`,
+    uniqueId: localAccountId,
+    tenantId,
+    scopes: grantedScopes,
+    account,
+    idToken: "",
+    idTokenClaims: {},
+    accessToken,
+    fromCache: false,
+    expiresOn: new Date(Date.now() + expiresIn * 1e3),
+    tokenType: "Bearer",
+    correlationId: ""
+  };
+}
 function createIdentityNetwork(signal, request = fetch) {
   async function send(target, method, options) {
     const url = new URL(target);
@@ -23962,7 +24111,49 @@ function createIdentityNetwork(signal, request = fetch) {
     sendPostRequestAsync: (url, options) => send(url, "POST", options)
   };
 }
-function createMsalClient(profile, signal) {
+function createMsalClient(profile, signal, options) {
+  const platform2 = options?.platform ?? process.platform;
+  if (platform2 === "win32") {
+    let cachedResult2;
+    return {
+      async acquireTokenBroker({ scopes, signal: requestSignal }) {
+        const combinedSignal = AbortSignal.any([signal, requestSignal]);
+        const result = await acquireWindowsBrokerToken({
+          profile,
+          scopes,
+          mode: "interactive",
+          signal: combinedSignal,
+          runner: options?.brokerRunner
+        });
+        cachedResult2 = result;
+        return result;
+      },
+      async getAuthCodeUrl() {
+        throw new RepositoryError("policy_blocked");
+      },
+      async acquireTokenByCode() {
+        throw new RepositoryError("policy_blocked");
+      },
+      async acquireTokenSilent(request) {
+        if (signal.aborted) throw new RepositoryError("invalid_context");
+        if (cachedResult2?.account && cachedResult2.expiresOn && cachedResult2.expiresOn.getTime() - Date.now() > 6e4 && cachedResult2.account.homeAccountId === request.account.homeAccountId && cachedResult2.account.localAccountId === request.account.localAccountId) {
+          return cachedResult2;
+        }
+        const refreshed = await acquireWindowsBrokerToken({
+          profile,
+          scopes: request.scopes,
+          mode: "silent",
+          signal,
+          runner: options?.brokerRunner
+        });
+        cachedResult2 = refreshed;
+        return refreshed;
+      },
+      async clear() {
+        cachedResult2 = void 0;
+      }
+    };
+  }
   const client = new PublicClientApplication({
     auth: { clientId: profile.clientId, authority: `https://login.microsoftonline.com/${profile.tenantId}` },
     system: {
@@ -24206,7 +24397,7 @@ function createRemoteReview({ client, now = Date.now }) {
 // src/workspace-binding.ts
 import { lstat as lstat5, readFile as readFile3, readdir as readdir2, realpath as realpath5 } from "node:fs/promises";
 import { homedir as homedir5 } from "node:os";
-import { dirname as dirname4, isAbsolute as isAbsolute7, join as join6, relative as relative4, resolve as resolve6, sep as sep4 } from "node:path";
+import { dirname as dirname5, isAbsolute as isAbsolute7, join as join7, relative as relative4, resolve as resolve6, sep as sep4 } from "node:path";
 function inside3(root, path3) {
   const part = relative4(root, path3);
   return part !== ".." && !part.startsWith(`..${sep4}`) && !isAbsolute7(part);
@@ -24214,21 +24405,21 @@ function inside3(root, path3) {
 async function inspectCurrentRepository({ workspacePath, homeDirectory = homedir5(), runner = runGit, executable, signal: cancellation }) {
   try {
     if (!isAbsolute7(workspacePath) || /[\p{Cc}\p{Cf}]/u.test(workspacePath)) throw new Error();
-    for (let directory = resolve6(workspacePath); ; directory = dirname4(directory)) {
+    for (let directory = resolve6(workspacePath); ; directory = dirname5(directory)) {
       const info = await lstat5(directory);
       if (!info.isDirectory() || info.isSymbolicLink()) throw new Error();
-      if (dirname4(directory) === directory) break;
+      if (dirname5(directory) === directory) break;
     }
     const workingDirectory = await realpath5(workspacePath);
     let repositoryRoot = workingDirectory;
     for (; ; ) {
       try {
-        const marker = await lstat5(join6(repositoryRoot, ".git"));
+        const marker = await lstat5(join7(repositoryRoot, ".git"));
         if (marker.isSymbolicLink() || !marker.isFile() && !marker.isDirectory()) throw new Error();
         break;
       } catch (error) {
         if (error.code !== "ENOENT") throw error;
-        const parent = dirname4(repositoryRoot);
+        const parent = dirname5(repositoryRoot);
         if (parent === repositoryRoot) return null;
         repositoryRoot = parent;
       }
@@ -24385,7 +24576,7 @@ async function createWorkflowBinding({ host, providerId, instanceId, homeDirecto
   const candidates = records.items.flatMap((item) => item.record && (item.record.gitCommonDirectory === identity2?.gitCommonDirectory || item.record.destination === identity2?.worktreeRoot || item.record.handoff?.activation?.workingDirectory === initial.workingDirectory) ? [item.record] : []);
   if (candidates.length > 1) throw new RepositoryError("entry_required");
   const prepared = candidates[0];
-  const managed = join6(await realpath5(homeDirectory), "SpecKitCanvas", "repositories");
+  const managed = join7(await realpath5(homeDirectory), "SpecKitCanvas", "repositories");
   if (!prepared && (inside3(managed, resolve6(initial.workingDirectory)) || identity2 && inside3(managed, identity2.gitCommonDirectory))) {
     throw new RepositoryError("entry_required");
   }
@@ -24452,16 +24643,16 @@ async function createWorkflowBinding({ host, providerId, instanceId, homeDirecto
 }
 async function inspectWorkspaceBinding({ workspacePath, homeDirectory = homedir5(), runner = runGit, executable, previous }) {
   let entries;
-  const requiresPreparation = previous?.state === "verified" || inside3(join6(resolve6(homeDirectory), "SpecKitCanvas", "repositories"), resolve6(workspacePath));
+  const requiresPreparation = previous?.state === "verified" || inside3(join7(resolve6(homeDirectory), "SpecKitCanvas", "repositories"), resolve6(workspacePath));
   const unprepared = { state: requiresPreparation ? "mismatch" : "ordinary" };
   try {
-    const gitEntry = await lstat5(join6(workspacePath, ".git"));
+    const gitEntry = await lstat5(join7(workspacePath, ".git"));
     if (gitEntry.isSymbolicLink() || !gitEntry.isFile() && !gitEntry.isDirectory()) return { state: "unavailable" };
   } catch (error) {
     if (error.code === "ENOENT") return unprepared;
     return { state: "unavailable" };
   }
-  const directory = join6(homeDirectory, ".speckit-canvas", "preparations");
+  const directory = join7(homeDirectory, ".speckit-canvas", "preparations");
   try {
     const info = await lstat5(directory);
     if (!info.isDirectory() || info.isSymbolicLink()) return { state: "unavailable" };
@@ -24475,11 +24666,11 @@ async function inspectWorkspaceBinding({ workspacePath, homeDirectory = homedir5
     const home = await realpath5(homeDirectory);
     for (const entry of entries) {
       if (!/^[a-f0-9]{32}\.json$/.test(entry.name) || !entry.isFile() || entry.isSymbolicLink()) continue;
-      const file = join6(directory, entry.name);
+      const file = join7(directory, entry.name);
       if ((await lstat5(file)).size > 4096) continue;
       const record4 = JSON.parse(await readFile3(file, "utf8"));
-      const root = join6(home, "SpecKitCanvas", "repositories", entry.name.slice(0, -5));
-      if (record4.schemaVersion !== 1 || record4.kind !== "sdd-prepared-repository" || record4.operationId !== entry.name.slice(0, -5) || !/^[a-f0-9]{40}$/.test(record4.initialCommit) || record4.initialBranch !== `speckit/canvas-${record4.operationId}` || !isAbsolute7(record4.gitDirectory) || !inside3(root, record4.gitDirectory) || resolve6(record4.checkout) !== join6(root, "checkout")) continue;
+      const root = join7(home, "SpecKitCanvas", "repositories", entry.name.slice(0, -5));
+      if (record4.schemaVersion !== 1 || record4.kind !== "sdd-prepared-repository" || record4.operationId !== entry.name.slice(0, -5) || !/^[a-f0-9]{40}$/.test(record4.initialCommit) || record4.initialBranch !== `speckit/canvas-${record4.operationId}` || !isAbsolute7(record4.gitDirectory) || !inside3(root, record4.gitDirectory) || resolve6(record4.checkout) !== join7(root, "checkout")) continue;
       const remote2 = new URL(record4.remote);
       if (remote2.origin !== "https://dev.azure.com" || remote2.username || remote2.password || remote2.search || remote2.hash || !remote2.pathname.endsWith(`/_git/${record4.repositoryId}`)) continue;
       records.push(record4);
@@ -24568,13 +24759,13 @@ var import_yaml4 = __toESM(require_dist(), 1);
 import { createHash as createHash8, randomBytes as randomBytes8 } from "node:crypto";
 import { lstat as lstat7, mkdir as mkdir3, open as open6, readFile as readFile4, readdir as readdir3, realpath as realpath7, rename as rename3, unlink as unlink3, writeFile as writeFile2 } from "node:fs/promises";
 import { homedir as homedir7 } from "node:os";
-import { basename as basename3, isAbsolute as isAbsolute9, join as join8, relative as relative6, resolve as resolve9, sep as sep6 } from "node:path";
+import { basename as basename3, isAbsolute as isAbsolute9, join as join9, relative as relative6, resolve as resolve9, sep as sep6 } from "node:path";
 
 // src/setup-process.ts
 import { spawn as spawn3 } from "node:child_process";
 import { lstat as lstat6, open as open5, realpath as realpath6 } from "node:fs/promises";
 import { homedir as homedir6 } from "node:os";
-import { delimiter as delimiter3, isAbsolute as isAbsolute8, join as join7, relative as relative5, resolve as resolve8, sep as sep5 } from "node:path";
+import { delimiter as delimiter4, isAbsolute as isAbsolute8, join as join8, relative as relative5, resolve as resolve8, sep as sep5 } from "node:path";
 var SetupCommandError = class extends Error {
   reason;
   constructor(reason, message) {
@@ -24616,7 +24807,7 @@ async function setupEnvironment(workspacePath, environment = process.env, homeDi
   ]);
   const env = Object.fromEntries(Object.entries(environment).filter(([name3]) => allowed.has(name3.toLowerCase())));
   const directories = [];
-  for (const directory of (environment.PATH ?? environment.Path ?? "").split(delimiter3)) {
+  for (const directory of (environment.PATH ?? environment.Path ?? "").split(delimiter4)) {
     if (!directory || !isAbsolute8(directory)) continue;
     try {
       const canonical = await realpath6(directory);
@@ -24625,7 +24816,7 @@ async function setupEnvironment(workspacePath, environment = process.env, homeDi
       if (!["ENOENT", "EACCES", "EPERM"].includes(error.code ?? "")) throw error;
     }
   }
-  const userBin = join7(homeDirectory, ".local", "bin");
+  const userBin = join8(homeDirectory, ".local", "bin");
   try {
     const canonical = await realpath6(userBin);
     if (!inside4(resolve8(workspacePath), canonical)) directories.unshift(canonical);
@@ -24635,7 +24826,7 @@ async function setupEnvironment(workspacePath, environment = process.env, homeDi
   }
   return {
     ...env,
-    PATH: [...new Set(directories)].join(delimiter3),
+    PATH: [...new Set(directories)].join(delimiter4),
     HOME: homeDirectory,
     USERPROFILE: homeDirectory,
     NO_COLOR: "1",
@@ -24675,24 +24866,24 @@ async function findSetupExecutable(tool, workspacePath, {
   homeDirectory = homedir6(),
   platform: platform2 = process.platform
 } = {}) {
-  const directories = [join7(homeDirectory, ".local", "bin"), ...(environment.PATH ?? environment.Path ?? "").split(delimiter3)];
+  const directories = [join8(homeDirectory, ".local", "bin"), ...(environment.PATH ?? environment.Path ?? "").split(delimiter4)];
   if (platform2 === "win32") {
-    if (environment.ProgramFiles) directories.push(join7(environment.ProgramFiles, "GitHub CLI"));
+    if (environment.ProgramFiles) directories.push(join8(environment.ProgramFiles, "GitHub CLI"));
     if (environment.LOCALAPPDATA) directories.push(
-      join7(environment.LOCALAPPDATA, "Microsoft", "WinGet", "Links"),
-      join7(environment.LOCALAPPDATA, "Microsoft", "WindowsApps")
+      join8(environment.LOCALAPPDATA, "Microsoft", "WinGet", "Links"),
+      join8(environment.LOCALAPPDATA, "Microsoft", "WindowsApps")
     );
   }
   for (const directory of [...new Set(directories)]) {
     if (!isAbsolute8(directory) || inside4(resolve8(workspacePath), resolve8(directory))) continue;
-    const executable = await nativeExecutable(join7(directory, platform2 === "win32" ? `${tool}.exe` : tool), workspacePath);
+    const executable = await nativeExecutable(join8(directory, platform2 === "win32" ? `${tool}.exe` : tool), workspacePath);
     if (executable) return executable;
     if (platform2 !== "win32" && ["specify", "pipx"].includes(tool)) {
-      const console2 = await pythonConsoleExecutable(join7(directory, tool), workspacePath);
+      const console2 = await pythonConsoleExecutable(join8(directory, tool), workspacePath);
       if (console2) return console2;
     }
     if (platform2 === "win32" && tool === "winget" && environment.LOCALAPPDATA && resolve8(directory) === resolve8(environment.LOCALAPPDATA, "Microsoft", "WindowsApps")) {
-      const alias = join7(directory, "winget.exe");
+      const alias = join8(directory, "winget.exe");
       try {
         const parent = await realpath6(directory);
         const info = await lstat6(alias);
@@ -24710,7 +24901,7 @@ async function stopOwnedCommand(child) {
     child.kill("SIGTERM");
     return;
   }
-  const executable = join7(process.env.SystemRoot ?? "C:\\Windows", "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
+  const executable = join8(process.env.SystemRoot ?? "C:\\Windows", "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
   const pid = child.pid;
   const script = `$ids = [System.Collections.Generic.List[int]]::new(); $ids.Add(${pid}); for ($i=0; $i -lt $ids.Count -and $ids.Count -lt 128; $i++) { Get-CimInstance Win32_Process -Filter ("ParentProcessId=" + $ids[$i]) | ForEach-Object { $ids.Add([int]$_.ProcessId) } }; for ($i=$ids.Count-1; $i -ge 0; $i--) { Stop-Process -Id $ids[$i] -Force -ErrorAction SilentlyContinue }`;
   await new Promise((done) => {
@@ -24899,7 +25090,7 @@ async function safeRead(root, segments, maximum = 1048576) {
     const rootInfo = await lstat7(root);
     if (!rootInfo.isDirectory() || rootInfo.isSymbolicLink() || await realpath7(root) !== resolve9(root)) throw new RepositoryError("scaffolding_storage_invalid");
     for (let index = 0; index < segments.length; index++) {
-      path3 = join8(path3, segments[index]);
+      path3 = join9(path3, segments[index]);
       const info = await lstat7(path3);
       if (info.isSymbolicLink() || (index === segments.length - 1 ? !info.isFile() || info.size > maximum : !info.isDirectory()) || await realpath7(path3) !== resolve9(path3)) throw new RepositoryError("scaffolding_storage_invalid");
     }
@@ -24912,7 +25103,7 @@ async function safeRead(root, segments, maximum = 1048576) {
   }
 }
 async function safeDirectory(parent, name3) {
-  const path3 = join8(parent, name3);
+  const path3 = join9(parent, name3);
   await mkdir3(path3).catch((error) => {
     if (error.code !== "EEXIST") throw error;
   });
@@ -24932,7 +25123,7 @@ async function atomicWrite(path3, content) {
   }
 }
 async function acquireSetupLock(root, segments, jobId) {
-  const path3 = join8(root, ...segments);
+  const path3 = join9(root, ...segments);
   const previous = await safeRead(root, segments, 1024);
   if (previous !== null) {
     const recoveryPath = `${path3}.recovery`;
@@ -24984,7 +25175,7 @@ function mergeRegistryAuthentication(existing) {
 }
 async function configureRegistryAuthentication(home) {
   await safeDirectory(home, ".specify");
-  const path3 = join8(home, ".specify", "auth.json");
+  const path3 = join9(home, ".specify", "auth.json");
   const lockPath = `${path3}.sdd-lock`;
   const lock = await acquireSetupLock(home, [".specify", "auth.json.sdd-lock"], randomBytes8(16).toString("hex"));
   try {
@@ -25006,7 +25197,7 @@ async function configureRegistryAuthentication(home) {
 async function verifyManagedPaths(workspacePath) {
   let count = 0;
   for (const root of [".specify", ".github"]) {
-    const queue = [join8(workspacePath, root)];
+    const queue = [join9(workspacePath, root)];
     while (queue.length) {
       const path3 = queue.pop();
       let info;
@@ -25017,7 +25208,7 @@ async function verifyManagedPaths(workspacePath) {
         throw error;
       }
       if (++count > 5e4 || info.isSymbolicLink() || await realpath7(path3) !== resolve9(path3)) throw new RepositoryError("scaffolding_storage_invalid");
-      if (info.isDirectory()) for (const entry of await readdir3(path3)) queue.push(join8(path3, entry));
+      if (info.isDirectory()) for (const entry of await readdir3(path3)) queue.push(join9(path3, entry));
       else if (!info.isFile()) throw new RepositoryError("scaffolding_storage_invalid");
     }
   }
@@ -25115,9 +25306,9 @@ async function createScaffoldingService(options) {
   const home = await realpath7(options.homeDirectory ?? homedir7());
   const workspacePath = await realpath7(options.workspacePath);
   const key = createHash8("sha256").update(workspacePath).digest("hex");
-  const directory = join8(home, "SpecKitCanvas", "scaffolding");
-  const recordPath = join8(directory, `${key}.json`);
-  const lockPath = join8(directory, `${key}.lock`);
+  const directory = join9(home, "SpecKitCanvas", "scaffolding");
+  const recordPath = join9(directory, `${key}.json`);
+  const lockPath = join9(directory, `${key}.lock`);
   const now = options.now ?? Date.now;
   const inspect = options.inspectWorkspace ?? ((path3) => inspectCurrentRepository({ workspacePath: path3, homeDirectory: home }));
   const initial = await options.host.inspectCurrent();
@@ -25843,7 +26034,7 @@ async function createEntryCoordinator({
   function preparationReason(snapshot) {
     return !supportsRepositoryCloning(snapshot) || snapshot.activity === "unknown" ? "activity_unknown" : snapshot.activity === "busy" ? "session_busy" : null;
   }
-  const accountKey = (access) => createHash9("sha256").update(JSON.stringify([access.tenantId, access.accountId])).digest("hex");
+  const accountKey = (access2) => createHash9("sha256").update(JSON.stringify([access2.tenantId, access2.accountId])).digest("hex");
   const sameSource = (source, current) => source.sessionId === current.sessionId && source.contextRevision === current.contextRevision && source.workingDirectory === current.workingDirectory && source.capabilityGeneration === current.capabilityGeneration && source.activityRevision === current.activityRevision && current.activity === "idle";
   function remember(record3, repositoryName) {
     activeRecord = record3;
@@ -25876,14 +26067,14 @@ async function createEntryCoordinator({
   async function authorizedRecord(operationId) {
     try {
       const remote = remoteAvailable();
-      const access = await remote.connection.access();
+      const access2 = await remote.connection.access();
       const record3 = await store.read(operationId);
-      if (record3.accountKey !== accountKey(access) || record3.profileFingerprint !== createHash9("sha256").update(JSON.stringify(remote.profile)).digest("hex")) throw new Error();
+      if (record3.accountKey !== accountKey(access2) || record3.profileFingerprint !== createHash9("sha256").update(JSON.stringify(remote.profile)).digest("hex")) throw new Error();
       const retained = await store.list();
       if (retained.hasMore || !retained.items.some((item) => item.operationId === operationId)) throw new Error();
       const repository = await remote.discovery.detail(record3.repositoryId);
-      access.assertCurrent();
-      return { record: record3, repository, access };
+      access2.assertCurrent();
+      return { record: record3, repository, access: access2 };
     } catch {
       throw new RepositoryError("resource_unavailable");
     }
@@ -26066,12 +26257,12 @@ async function createEntryCoordinator({
     const remote = remoteAvailable();
     const current = selected;
     if (!current || current.selection.selectionId !== selectionId || current.selection.matchesCurrentWorkspace && !current.prepareCurrent) throw new RepositoryError("context_changed");
-    const access = await remote.connection.access();
-    if (accountKey(access) !== current.selection.accountKey || access.generation !== current.selection.connectionGeneration) throw new RepositoryError("invalid_context");
+    const access2 = await remote.connection.access();
+    if (accountKey(access2) !== current.selection.accountKey || access2.generation !== current.selection.connectionGeneration) throw new RepositoryError("invalid_context");
     const repository = await remote.discovery.detail(current.selection.repository.id);
-    access.assertCurrent();
+    access2.assertCurrent();
     if (selected !== current || !repository.sourceVersion || repository.sourceVersion !== current.selection.repository.sourceVersion || repository.defaultBranch !== current.selection.repository.defaultBranch) throw new RepositoryError("source_changed");
-    return { repository, sourceVersion: repository.sourceVersion, generation: access.generation };
+    return { repository, sourceVersion: repository.sourceVersion, generation: access2.generation };
   }
   function ensureClones(snapshot) {
     const remote = remoteAvailable();
@@ -26203,9 +26394,9 @@ async function createEntryCoordinator({
       selected = void 0;
       const local = await readLocal();
       if (contextId !== localContextId) throw new RepositoryError("context_changed");
-      const access = await remote.connection.access();
+      const access2 = await remote.connection.access();
       const repository = await remote.discovery.detail(repositoryId);
-      access.assertCurrent();
+      access2.assertCurrent();
       const after = await readHost();
       if (generation !== selectionGeneration || contextId !== localContextId || after.contextRevision !== local.snapshot.contextRevision || after.sessionId !== local.snapshot.sessionId) throw new RepositoryError("context_changed");
       const originIdentity = `https://dev.azure.com/${[remote.profile.organization, remote.profile.project, "_git", repository.id].map(encodeURIComponent).join("/")}`;
@@ -26216,7 +26407,7 @@ async function createEntryCoordinator({
       let prepareCurrent = false;
       if (matchesCurrentWorkspace) {
         try {
-          await lstat8(join9(home, "SpecKitCanvas", "repositories", repositoryFolderName(repository.name)));
+          await lstat8(join10(home, "SpecKitCanvas", "repositories", repositoryFolderName(repository.name)));
           prepareCurrent = true;
         } catch (error) {
           if (error.code !== "ENOENT") throw error;
@@ -26227,8 +26418,8 @@ async function createEntryCoordinator({
         selectionId: `selection_${randomBytes9(24).toString("base64url")}`,
         repository,
         originIdentity,
-        accountKey: accountKey(access),
-        connectionGeneration: access.generation,
+        accountKey: accountKey(access2),
+        connectionGeneration: access2.generation,
         profileFingerprint,
         expectedSource: { sessionId: after.sessionId, contextRevision: after.contextRevision },
         matchesCurrentWorkspace
@@ -26250,7 +26441,7 @@ async function createEntryCoordinator({
         matchesCurrentWorkspace,
         openInApp: current.openInApp,
         operationId: current.preview?.operationId ?? operationId,
-        destination: current.preview?.destination ?? (matchesCurrentWorkspace ? local.repository.worktreeRoot : join9(home, "SpecKitCanvas", "repositories", repositoryFolderName(repository.name))),
+        destination: current.preview?.destination ?? (matchesCurrentWorkspace ? local.repository.worktreeRoot : join10(home, "SpecKitCanvas", "repositories", repositoryFolderName(repository.name))),
         reused: current.preview?.reused ?? false,
         migrateFrom: current.preview?.migrateFrom ?? null,
         checkoutCommit: current.preview?.checkoutCommit ?? null,
@@ -26406,17 +26597,17 @@ async function createEntryCoordinator({
     },
     async preparations() {
       const remote = remoteAvailable();
-      const access = await remote.connection.access();
+      const access2 = await remote.connection.access();
       const fingerprint2 = createHash9("sha256").update(JSON.stringify(remote.profile)).digest("hex");
       const result = await store.list();
       if (result.hasMore) throw new RepositoryError("clone_conflict");
       const items = [];
       for (const item of result.items) {
         const record3 = item.record;
-        if (!record3 || record3.accountKey !== accountKey(access) || record3.profileFingerprint !== fingerprint2) continue;
+        if (!record3 || record3.accountKey !== accountKey(access2) || record3.profileFingerprint !== fingerprint2) continue;
         try {
           const repository = await remote.discovery.detail(record3.repositoryId);
-          access.assertCurrent();
+          access2.assertCurrent();
           items.push({
             operationId: record3.operationId,
             repositoryName: repository.name,
@@ -26427,7 +26618,7 @@ async function createEntryCoordinator({
             appCanvas: appCanvasState(record3.appCanvas)
           });
         } catch {
-          access.assertCurrent();
+          access2.assertCurrent();
         }
       }
       return { items };

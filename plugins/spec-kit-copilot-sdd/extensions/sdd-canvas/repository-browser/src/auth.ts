@@ -8,7 +8,13 @@ import type { RepositoryProfile } from "./profile.ts";
 
 export const ADO_SCOPES = ["https://app.vssps.visualstudio.com/.default"];
 
+export interface BrokerAuthRequest {
+    scopes: string[];
+    signal: AbortSignal;
+}
+
 export interface IdentityClient {
+    acquireTokenBroker?(request: BrokerAuthRequest): Promise<AuthenticationResult>;
     getAuthCodeUrl(request: AuthorizationUrlRequest): Promise<string>;
     acquireTokenByCode(request: AuthorizationCodeRequest): Promise<AuthenticationResult>;
     acquireTokenSilent(request: SilentFlowRequest): Promise<AuthenticationResult>;
@@ -90,22 +96,29 @@ export function createRepositoryConnection(profile: Readonly<RepositoryProfile>,
         timeout.unref();
         let callback: Awaited<ReturnType<typeof startOAuthCallback>> | undefined;
         try {
-            const codes = await dependencies.generatePkce();
-            current(epoch, controller.signal);
-            callback = await (dependencies.callback ?? startOAuthCallback)({ state, signal: controller.signal });
-            const authorizationUrl = await client.getAuthCodeUrl({ scopes: [...ADO_SCOPES], redirectUri: callback.redirectUri,
-                codeChallenge: codes.challenge, codeChallengeMethod: "S256", responseMode: "query", state, nonce });
-            current(epoch, controller.signal);
-            const url = new URL(authorizationUrl);
-            if (url.origin !== "https://login.microsoftonline.com" || url.pathname !== `/${profile.tenantId}/oauth2/v2.0/authorize` ||
-                url.username || url.password || url.hash) throw new RepositoryError("invalid_request");
-            await dependencies.openBrowser(url.href);
-            const code = await callback.result;
-            current(epoch, controller.signal);
-            const result = await client.acquireTokenByCode({ code, scopes: [...ADO_SCOPES], redirectUri: callback.redirectUri,
-                codeVerifier: codes.verifier, nonce });
-            current(epoch, controller.signal);
-            const account = validateResult(result, profile, undefined, nonce);
+            let account: AccountInfo;
+            if (client.acquireTokenBroker) {
+                const result = await client.acquireTokenBroker({ scopes: [...ADO_SCOPES], signal: controller.signal });
+                current(epoch, controller.signal);
+                account = validateResult(result, profile);
+            } else {
+                const codes = await dependencies.generatePkce();
+                current(epoch, controller.signal);
+                callback = await (dependencies.callback ?? startOAuthCallback)({ state, signal: controller.signal });
+                const authorizationUrl = await client.getAuthCodeUrl({ scopes: [...ADO_SCOPES], redirectUri: callback.redirectUri,
+                    codeChallenge: codes.challenge, codeChallengeMethod: "S256", responseMode: "query", state, nonce });
+                current(epoch, controller.signal);
+                const url = new URL(authorizationUrl);
+                if (url.origin !== "https://login.microsoftonline.com" || url.pathname !== `/${profile.tenantId}/oauth2/v2.0/authorize` ||
+                    url.username || url.password || url.hash) throw new RepositoryError("invalid_request");
+                await dependencies.openBrowser(url.href);
+                const code = await callback.result;
+                current(epoch, controller.signal);
+                const result = await client.acquireTokenByCode({ code, scopes: [...ADO_SCOPES], redirectUri: callback.redirectUri,
+                    codeVerifier: codes.verifier, nonce });
+                current(epoch, controller.signal);
+                account = validateResult(result, profile, undefined, nonce);
+            }
             const accountLabel = (account.username || account.name || "Microsoft account").replace(/[\p{Cc}\p{Cf}]/gu, "").slice(0, 256);
             const connectionId = randomBytes(24).toString("base64url");
             pending = undefined;

@@ -239,10 +239,13 @@ DevOps project. Delegated `vso.code` permits code reads; team suggestions also u
 `vso.project`, `vso.work`, readable team settings and Code Search indexing. Consent
 does not grant access to otherwise inaccessible repositories.
 
-The existing public-client registration needs the desktop redirect
-`http://localhost/speckit-canvas/oauth/callback`; the runtime uses an ephemeral
-localhost port. Keep existing SPA/broker redirects, grants and tenant policies.
-MFA and Conditional Access remain authoritative. Do not introduce a client secret.
+The existing public-client registration uses the Windows Web Account Manager (WAM)
+broker redirect `ms-appx-web://Microsoft.AAD.BrokerPlugin/<client-id>` on Windows
+and rejects non-brokered native tokens to comply with the Microsoft MSAL Adoption
+KPI; the legacy `http://localhost/speckit-canvas/oauth/callback` native loopback
+redirect is retired on Windows. Keep existing SPA/broker redirects, grants and
+tenant policies. MFA and Conditional Access remain authoritative. Do not introduce
+a client secret.
 
 Configure `~/.speckit-canvas/repository-profile.json` outside the repository:
 

@@ -89,3 +89,57 @@ test("Silent acquisition failure invalidates the connection and sanitizes provid
     proof.connection.dispose();
     assert.throws(() => proof.connection.connect(), { code: "connection_required" });
 });
+
+test("Broker-enabled connection acquires tokens without opening a loopback listener or browser", async () => {
+    let brokerCalls = 0;
+    let browserCount = 0;
+    let callbackCount = 0;
+    const brokerResult = ({
+        accessToken: "synthetic-broker-token",
+        scopes: ["vso.code", "vso.project", "vso.work"],
+        tenantId: profile.tenantId,
+        expiresOn: new Date(Date.now() + 600_000),
+        account: {
+            tenantId: profile.tenantId,
+            localAccountId: "33333333-3333-4333-8333-333333333333",
+            homeAccountId: "synthetic-home-account",
+            username: "synthetic@example.invalid",
+            environment: "login.microsoftonline.com",
+        },
+    }) as AuthenticationResult;
+    const client: IdentityClient = {
+        async acquireTokenBroker() {
+            brokerCalls++;
+            return brokerResult;
+        },
+        async getAuthCodeUrl() {
+            throw new Error("Loopback flow must not run when broker is available");
+        },
+        async acquireTokenByCode() {
+            throw new Error("Loopback flow must not run when broker is available");
+        },
+        async acquireTokenSilent() {
+            return brokerResult;
+        },
+        async clear() {},
+    };
+    const connection = createRepositoryConnection(profile, {
+        createClient: () => client,
+        generatePkce: async () => ({ verifier: "synthetic-pkce-verifier", challenge: "synthetic-pkce-challenge" }),
+        callback: async () => {
+            callbackCount++;
+            throw new Error("Loopback listener must not start when broker is available");
+        },
+        openBrowser: async () => {
+            browserCount++;
+        },
+    });
+    await connection.connect().completion;
+    assert.equal(brokerCalls, 1);
+    assert.equal(browserCount, 0);
+    assert.equal(callbackCount, 0);
+    assert.equal(connection.snapshot().state, "connected");
+    const access = await connection.access();
+    assert.equal(access.accessToken, "synthetic-broker-token");
+    connection.dispose();
+});

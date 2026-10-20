@@ -1,6 +1,16 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createIdentityNetwork, nativeAuthDependencies } from "../src/msal-client.ts";
+import { acquireWindowsBrokerToken, createIdentityNetwork, createMsalClient, nativeAuthDependencies } from "../src/msal-client.ts";
+import { parseRepositoryProfile } from "../src/profile.ts";
+
+const profile = parseRepositoryProfile({
+    schemaVersion: 1,
+    enabled: true,
+    tenantId: "11111111-1111-4111-8111-111111111111",
+    clientId: "22222222-2222-4222-8222-222222222222",
+    organization: "SyntheticOrg",
+    project: "SyntheticProject",
+});
 
 test("Identity transport only reaches the configured Microsoft authority and rejects redirects", async () => {
     const calls: { url: string; redirect?: RequestRedirect }[] = [];
@@ -35,4 +45,60 @@ test("MSAL produces PKCE material without opening a browser or acquiring a crede
     assert.match(material.verifier, /^[A-Za-z0-9_-]{43,128}$/);
     assert.match(material.challenge, /^[A-Za-z0-9_-]{43}$/);
     assert.notEqual(material.verifier, material.challenge);
+});
+
+test("Windows WAM broker enforces broker tokenSource, caches valid tokens, and blocks loopback fallback", async () => {
+    const controller = new AbortController();
+    let runnerCalls = 0;
+    const brokerPayload = (tokenSource = "broker") => JSON.stringify({
+        accessToken: "synthetic-broker-access-token",
+        expiresIn: 3600,
+        tenantId: profile.tenantId,
+        localAccountId: "33333333-3333-4333-8333-333333333333",
+        homeAccountId: `33333333-3333-4333-8333-333333333333.${profile.tenantId}`,
+        username: "synthetic@example.invalid",
+        name: "Synthetic User",
+        environment: "login.microsoftonline.com",
+        scopes: ["vso.code", "vso.project", "vso.work"],
+        tokenSource,
+    });
+    await assert.rejects(
+        acquireWindowsBrokerToken({
+            profile,
+            scopes: ["https://app.vssps.visualstudio.com/.default"],
+            signal: controller.signal,
+            runner: async () => brokerPayload("identity_provider"),
+        }),
+        { code: "policy_blocked" },
+    );
+    const client = createMsalClient(profile, controller.signal, {
+        platform: "win32",
+        brokerRunner: async () => {
+            runnerCalls++;
+            return brokerPayload("broker");
+        },
+    });
+    assert.equal(typeof client.acquireTokenBroker, "function");
+    await assert.rejects(
+        client.getAuthCodeUrl({ scopes: ["https://app.vssps.visualstudio.com/.default"], redirectUri: "http://localhost/speckit-canvas/oauth/callback" }),
+        { code: "policy_blocked" },
+    );
+    const interactive = await client.acquireTokenBroker!({
+        scopes: ["https://app.vssps.visualstudio.com/.default"],
+        signal: controller.signal,
+    });
+    assert.equal(runnerCalls, 1);
+    assert.equal(interactive.accessToken, "synthetic-broker-access-token");
+    const silent = await client.acquireTokenSilent({
+        account: interactive.account!,
+        scopes: ["https://app.vssps.visualstudio.com/.default"],
+    });
+    assert.equal(runnerCalls, 1);
+    assert.equal(silent.accessToken, "synthetic-broker-access-token");
+    await client.clear();
+    await client.acquireTokenSilent({
+        account: interactive.account!,
+        scopes: ["https://app.vssps.visualstudio.com/.default"],
+    });
+    assert.equal(runnerCalls, 2);
 });
