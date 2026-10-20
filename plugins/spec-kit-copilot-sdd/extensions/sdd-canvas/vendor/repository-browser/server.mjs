@@ -11397,6 +11397,14 @@ import { homedir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 var PROFILE_FIELDS = /* @__PURE__ */ new Set(["schemaVersion", "enabled", "tenantId", "clientId", "organization", "project"]);
+var DEFAULT_REPOSITORY_PROFILE = Object.freeze({
+  schemaVersion: 1,
+  enabled: true,
+  tenantId: "72f988bf-86f1-41af-91ab-2d7cd011db47",
+  clientId: "bc6942b7-d615-45b4-9461-41eed3e3e45d",
+  organization: "MicrosoftIT",
+  project: "OneITVSO"
+});
 function identifier(value) {
   if (typeof value !== "string" || !UUID.test(value)) throw new RepositoryError("invalid_request");
   return value.toLowerCase();
@@ -11420,9 +11428,10 @@ function parseRepositoryProfile(value) {
     project: segment(input.project)
   });
 }
-async function loadRepositoryProfile(homeDirectory = homedir()) {
-  if (!isAbsolute(homeDirectory)) return { state: "invalid" };
-  const profilePath = join(resolve(homeDirectory), ".speckit-canvas", "repository-profile.json");
+async function loadRepositoryProfile(homeDirectory) {
+  const resolvedHome = homeDirectory ?? homedir();
+  if (!isAbsolute(resolvedHome)) return { state: "invalid" };
+  const profilePath = join(resolve(resolvedHome), ".speckit-canvas", "repository-profile.json");
   try {
     for (let parent = dirname(profilePath); ; parent = dirname(parent)) {
       const info2 = await lstat(parent);
@@ -11436,7 +11445,10 @@ async function loadRepositoryProfile(homeDirectory = homedir()) {
     const profile = parseRepositoryProfile(JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)));
     return profile.enabled ? { state: "configured", profile } : { state: "disabled" };
   } catch (error) {
-    return { state: error.code === "ENOENT" ? "unconfigured" : "invalid" };
+    if (error.code === "ENOENT") {
+      return homeDirectory === void 0 ? { state: "configured", profile: DEFAULT_REPOSITORY_PROFILE } : { state: "unconfigured" };
+    }
+    return { state: "invalid" };
   }
 }
 async function loadEntrySettings(homeDirectory = homedir()) {

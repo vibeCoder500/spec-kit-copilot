@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "kind": "sdd-repository-browser",
-  "sourceHash": "b95d3ee13d9cd4dedce31f404cc84946ab08a48cf841271ae20b24aacc2229e9",
-  "buildHash": "24bfa847f93a94dacd6f02362cb93bdd380ed919d1d282f232197b11092521d2",
+  "sourceHash": "b8f91bf3d44ce9a0d5904e397919465b15e2268193f74ef2ec8bff43affdb334",
+  "buildHash": "f9a826994ba73b2b01f97f010093ac078244175003f79f0aa995671f47145cdc",
   "sources": [
     {
       "path": "build-runtime.mjs",
@@ -66,7 +66,7 @@
     },
     {
       "path": "src/profile.ts",
-      "sha256": "20974b796a3e5c077b15a0ffacf43bced5589c407d82fdf39f075490c9ae50f7"
+      "sha256": "3b60b137d0441e553fb93161a00ddb5b7f70d51136f4de74e8eaa07785b4b550"
     },
     {
       "path": "src/remote-review.ts",
@@ -280,8 +280,8 @@
     },
     {
       "path": "vendor/repository-browser/server.mjs",
-      "bytes": 1097170,
-      "sha256": "fe593008607fe82d03e8d2ad8498474281eb896323e7ecc58f593dd4a71c5914"
+      "bytes": 1097582,
+      "sha256": "2d37257eb22188e896aff70632bd43eb4c78bbea6c12aecf8e316d76c1695a43"
     },
     {
       "path": "vendor/repository-browser/THIRD_PARTY_NOTICES.txt",
