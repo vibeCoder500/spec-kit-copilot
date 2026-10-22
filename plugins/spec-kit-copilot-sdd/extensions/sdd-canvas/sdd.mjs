@@ -12,6 +12,7 @@
 
 import { closeSync, constants, fstatSync, lstatSync, openSync, readdirSync, readSync, realpathSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { parseClarificationSource } from "./vendor/artifact-clarifications.mjs";
 
 // The primary artifact spine, in pipeline order. Each stage owns exactly one
 // Markdown artifact under the feature directory and one generated skill. These
@@ -252,18 +253,35 @@ function constitutionStatus(text) {
     return placeholders > 0 ? "template" : "ratified";
 }
 
+function advanceMarkdownFence(line, openFence) {
+    const match = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+    if (!match) return { openFence, isFenceLine: false };
+
+    const marker = match[1][0];
+    const length = match[1].length;
+    const rest = match[2];
+    if (!openFence) {
+        if (marker === "`" && rest.includes("`")) {
+            return { openFence: null, isFenceLine: false };
+        }
+        return { openFence: { marker, length }, isFenceLine: true };
+    }
+    if (marker === openFence.marker && length >= openFence.length && !rest.trim()) {
+        return { openFence: null, isFenceLine: true };
+    }
+    return { openFence, isFenceLine: false };
+}
+
 // Count task checkboxes in tasks.md to derive implementation progress.
-function taskProgress(text) {
+export function taskProgress(text) {
     if (typeof text !== "string") return { total: 0, completed: 0 };
     let total = 0;
     let completed = 0;
-    let inFence = false;
+    let openFence = null;
     for (const line of text.split(/\r?\n/)) {
-        if (line.startsWith("```")) {
-            inFence = !inFence;
-            continue;
-        }
-        if (inFence) continue;
+        const fenceState = advanceMarkdownFence(line, openFence);
+        openFence = fenceState.openFence;
+        if (fenceState.isFenceLine || openFence) continue;
         const m = line.match(/^\s*[-*+]\s+\[([ xX])\]/);
         if (!m) continue;
         total++;
@@ -517,33 +535,11 @@ export function readArtifact(projectRoot, featureInput, stageKey) {
 // Pull `[NEEDS CLARIFICATION: …]` markers out of a spec so the canvas can offer
 // a targeted clarify action. Contents are treated strictly as data.
 export function extractClarifications(text) {
-    const clarifications = [];
-    let section = "";
-    let inCodeFence = false;
-    for (const line of String(text || "").split(/\r?\n/)) {
-        if (line.startsWith("```")) {
-            inCodeFence = !inCodeFence;
-            continue;
-        }
-        if (inCodeFence) continue;
-        const heading = line.match(/^#{1,6}\s+(.+?)\s*$/);
-        if (heading) {
-            section = heading[1].trim();
-            continue;
-        }
-        for (const match of line.matchAll(/\[NEEDS CLARIFICATION:\s*([^\]]+)\]/gi)) {
-            clarifications.push({
-                index: clarifications.length,
-                section,
-                question: match[1].trim(),
-            });
-        }
-    }
-    return clarifications;
+    return parseClarificationSource(String(text || "")).map(({ index, section, question }) => ({ index, section, question }));
 }
 
 // Build a signature string for change detection (used by the SSE poller).
-export function stateSignature(state) {
+export function stateSignature(state, reviewSignature) {
     const parts = [
         state.exists ? "1" : "0",
         state.prerequisites.initialized ? "i" : "-",
@@ -561,5 +557,6 @@ export function stateSignature(state) {
         parts.push(`ck:${feature.checklistCount}`);
         parts.push(`im:${feature.implement.completed}/${feature.implement.total}`);
     }
+    if (reviewSignature) parts.push(`review:${reviewSignature}`);
     return parts.join("|");
 }
