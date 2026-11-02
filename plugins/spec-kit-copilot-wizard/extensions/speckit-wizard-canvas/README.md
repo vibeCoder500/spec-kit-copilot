@@ -50,6 +50,28 @@ artifacts, provide input, and run the matching `speckit-*` skill.
 
 ![Phases page](../../../../docs/images/wizard-phases.png)
 
+### Tests
+
+From this extension directory, run `npm ci` followed by `npm test` for the unit,
+HTTP service, UI, and regression suites. The extension declares its own test
+dependencies; installing the nested Markdown reader package is not required for
+this command. Use Node 24.19.0 / npm 11.17.0 for the reader's pinned validation
+toolchain.
+
+Regenerate dependency lockfiles against `https://registry.npmjs.org/`, preserving
+public HTTPS tarball URLs and SHA-512 integrity. The Markdown reader package's
+contract tests enforce this for both package lockfiles.
+
+For browser tests:
+
+From this extension directory, run `npm ci`, `npx playwright install chromium`,
+then `npm run test:e2e`. The tests start a local Wizard server with fixed
+catalog data; no `specify` installation or live catalog is required.
+`.github/workflows/wizard-e2e.yml` runs them on PRs targeting `main` only
+when the Wizard plugin changes. The check is advisory until branch protection
+is configured separately; its always-present gate can later be made required
+without blocking unrelated PRs on a skipped workflow.
+
 ## Quickstart
 
 > This is a **canvas extension** — it opens in the **GitHub Copilot app**
@@ -81,6 +103,10 @@ The agent opens the wizard in a side panel. See
   phase in your lifecycle. Each phase corresponds to a command you
   execute — customize the commands in the pipeline, provide input to
   execute them, and view each artifact produced.
+- **Markdown artifact review** — the existing preview includes a heading
+  outline, related-artifact selection, history, and revision-aware refresh.
+  See [Markdown Artifact Review](../../../../docs/markdown-artifact-review.md)
+  for behavior, safety boundaries, and maintainer checks.
 
 ## Opening the dashboard
 
@@ -116,7 +142,7 @@ canvas can only trigger phases that belong to your composed pipeline.
 
 You can drive the wizard with natural-language prompts at any point —
 the agent maps what you ask into canvas actions and the UI updates
-accordingly. The extension registers **11 actions** across four groups:
+accordingly. The extension registers **13 actions** across four groups:
 
 **Verbs (agent-initiated work):**
 - `runPhase` — dispatch a phase's `/speckit-<phase>` slash command with the
@@ -124,6 +150,10 @@ accordingly. The extension registers **11 actions** across four groups:
 - `addPreset` — install a preset by id (same code path as the Install button).
 - `addExtension` — install a Spec Kit extension by id (same code path as
   the Install button).
+- `addPipelinePhases` — add ordered command phases to the Phases pipeline
+  without removing or reordering existing steps. Given a README link, the
+  agent reads its workflow and supplies installed command IDs with optional
+  `after` anchors; automatic hook commands are not addable.
 - `reloadSessionSkills` — reload Copilot's in-memory skill registry for
   the session (equivalent to `/skills reload`).
 - `runNpmDiagnostics` — dispatch a scripted npm-diagnostic prompt to the
@@ -225,6 +255,18 @@ live where Spec Kit puts them: `.specify/memory/constitution.md` and
 
 ## Troubleshooting
 
+**A phase status, pipeline command, or composition change looks wrong after
+overlapping wizard actions.**
+
+Concurrent updates can occasionally overwrite newer fields in
+`.speckit-wizard/state.json`. This state-write limitation predates
+`addPipelinePhases`; the new action is another possible participant. It
+affects the wizard's saved progress and pipeline, **not the generated spec,
+plan, or other artifact files**. Refresh the canvas and check the artifacts
+before rerunning a phase. If the state still looks wrong, ask the agent to
+reconcile it against the files on disk and the pipeline you intended; the
+wizard cannot detect or undo the overwritten update automatically.
+
 **First open shows "Spec Kit Wizard cannot start" or an npm error like
 `ERR_SSL_SSL/TLS_ALERT_HANDSHAKE_FAILURE`, `ECONNREFUSED`, `ETIMEDOUT`,
 or `403 Forbidden` against `registry.npmjs.org`.**
@@ -282,6 +324,6 @@ change and doesn't require any org-wide npm reconfiguration.
 | `env/` | Environment probe + PATH resolution: `probe.mjs`, `probe-cache.mjs`, `resolve-path.mjs` (locates `copilot`/`specify` binaries when the SDK dir isn't on `PATH`), `deps-check.mjs`, `workspace.mjs`. |
 | `state/` | `.speckit-wizard/state.json` read / write / normalize: `store.mjs`, `normalize.mjs`, `execution-reports.mjs`. |
 | `ui/` | Dashboard UI served to the canvas iframe: `index.html`, `app.js`, `client.js`, plus per-page modules (`setup.js`, `catalog.js`, `composition.js`, `composition-artifacts.js`, `phase-card.js`, `phase-contributors.js`, `phase-runtime.js`, `state.js`, `modals.js`). |
-| `test/` | 5 consolidated `node --test` files (`composition`, `catalog`, `env`, `state-and-scanner`, `server-integration`) — zero SDK, zero network, zero real subprocess spawns. |
+| `test/` | Unit, HTTP service, UI, scanner, and regression suites using mocked host sessions and owned synthetic workspaces. Run with `npm test` after installing this package's development dependencies. |
 | `copilot-extension.json` | Manifest for gist share/install. |
-| `package.json`, `package-lock.json` | `js-yaml` runtime dependency. |
+| `package.json`, `package-lock.json` | `js-yaml` runtime dependency; Playwright and jsdom development/test dependencies. |
